@@ -107,15 +107,15 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
   }
 
   async function addLinha() {
-    const medida = prompt("Informe a nova medida (cm):");
+    const medida = window.prompt("Informe a nova medida (cm):");
     if (!medida) return;
     const n = Number(medida);
     if (isNaN(n) || n <= 0) {
-      alert("Medida inválida");
+      alert("Medida inválida. Informe um número maior que zero.");
       return;
     }
     if (linhas.some((l) => l.medida_cm === n)) {
-      alert("Já existe uma linha com esta medida");
+      alert("Já existe uma linha com esta medida. Escolha outra medida.");
       return;
     }
 
@@ -252,7 +252,13 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
     URL.revokeObjectURL(url);
   }
 
-  if (loading) return <div>Carregando...</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="text-base font-medium text-gray-500">Carregando tabela de preço...</div>
+      </div>
+    );
+  }
 
   const columns = [
     { key: "medida_cm", label: "Medida", readonly: true },
@@ -272,13 +278,13 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Tabela de Preço</h2>
-        <div className="flex items-center gap-2">
-          {saving && <span className="text-sm text-gray-500">Salvando...</span>}
-          {saved && <span className="text-sm text-green-600">Salvo ✓</span>}
-          {error && <span className="text-sm text-red-600">Erro ✕</span>}
+        <h2 className="text-2xl font-bold text-gray-900">Tabela de Preço</h2>
+        <div className="flex items-center gap-3">
+          {saving && <span className="text-sm font-medium text-gray-500">Salvando...</span>}
+          {saved && <span className="text-sm font-semibold text-green-600">Salvo ✓</span>}
+          {error && <span className="text-sm font-semibold text-red-600">Erro ✕</span>}
           <input
             ref={fileInputRef}
             type="file"
@@ -301,42 +307,44 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
           </button>
           <button
             onClick={addLinha}
-            className="rounded bg-emerald-600 px-3 py-2 text-sm text-white hover:bg-emerald-700"
+            className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
           >
             + Adicionar Medida
           </button>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full border text-xs">
-          <thead className="bg-gray-50">
-            <tr>
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+        <table className="min-w-full text-base">
+          <thead>
+            <tr className="bg-gradient-to-r from-gray-50 to-gray-100">
               {columns.map((col) => (
-                <th key={col.key} className="border px-2 py-1 font-medium">
+                <th key={col.key} className="border-b border-gray-200 px-3 py-3 text-center text-xs font-semibold text-gray-700">
                   {col.label}
                 </th>
               ))}
-              <th className="border px-2 py-1 font-medium">Ações</th>
+              <th className="border-b border-gray-200 px-3 py-3 text-center text-xs font-semibold text-gray-700">Ações</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-200">
             {linhas.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + 1} className="px-3 py-4 text-center text-gray-500">
+                <td colSpan={columns.length + 1} className="px-4 py-8 text-center text-base text-gray-500">
                   Nenhuma linha cadastrada. Use "Criar variações" na aba Variações ou adicione manualmente.
                 </td>
               </tr>
             ) : (
               linhas.map((l) => (
-                <tr key={l.medida_cm} className="border-t hover:bg-gray-50">
+                <tr key={l.medida_cm} className="bg-white transition-colors hover:bg-blue-50">
                   {columns.map((col) => (
-                    <td key={col.key} className="border px-1">
+                    <td key={col.key} className="border-r border-gray-200 px-2 py-2 last:border-r-0">
                       <input
                         type="number"
                         step={col.key.includes("metragem") || col.key.includes("preco") ? "0.01" : "1"}
                         min="0"
-                        className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-center text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className={`w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-center text-sm font-medium text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          col.readonly ? "bg-gray-50 cursor-not-allowed" : ""
+                        }`}
                         value={l[col.key as keyof LinhaPreco] || 0}
                         onChange={(e) => onChange(l.medida_cm, col.key as keyof LinhaPreco, e.target.value)}
                         readOnly={col.readonly}
@@ -348,10 +356,10 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
                       />
                     </td>
                   ))}
-                  <td className="border px-1">
+                  <td className="border-r border-gray-200 px-3 py-2 text-center">
                     <button
                       onClick={() => deleteLinha(l.medida_cm)}
-                      className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50"
+                      className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                     >
                       Excluir
                     </button>

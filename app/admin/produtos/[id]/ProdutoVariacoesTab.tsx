@@ -136,24 +136,30 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
     }
   }
 
-  if (loading) return <div>Carregando...</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="text-base font-medium text-gray-500">Carregando variações...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Variações</h2>
-        <div className="flex items-center gap-2">
-          {saved && <span className="text-sm text-green-600">Salvo ✓</span>}
-          {saving && <span className="text-sm text-gray-500">Salvando...</span>}
+        <h2 className="text-2xl font-bold text-gray-900">Variações</h2>
+        <div className="flex items-center gap-3">
+          {saved && <span className="text-sm font-semibold text-green-600">Salvo ✓</span>}
+          {saving && <span className="text-sm font-medium text-gray-500">Salvando...</span>}
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="rounded border px-3 py-2 text-sm"
+            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
           >
             + Adicionar Variação
           </button>
           <button
             onClick={() => setShowModal(true)}
-            className="rounded bg-blue-600 px-3 py-2 text-sm text-white"
+            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             id="criar-variacoes"
             data-testid="criar-variacoes"
           >
@@ -163,9 +169,9 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
       </div>
 
       {showAddForm && (
-        <div className="rounded border bg-gray-50 p-4">
-          <h3 className="mb-2 font-medium">Nova Variação</h3>
-          <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 shadow-sm">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">Nova Variação</h3>
+          <div className="grid grid-cols-3 gap-3">
             <input
               type="number"
               placeholder="Medida (cm)"
@@ -218,72 +224,72 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+        <table className="min-w-full text-base">
           <thead>
-            <tr className="bg-gray-50">
-              <th className="px-3 py-2 text-left">Medida (cm)</th>
-              <th className="px-3 py-2 text-left">Largura (cm)</th>
-              <th className="px-3 py-2 text-left">Profundidade (cm)</th>
-              <th className="px-3 py-2 text-left">Altura (cm)</th>
-              <th className="px-3 py-2 text-left">Met. Tecido (m)</th>
-              <th className="px-3 py-2 text-left">Met. Couro (m)</th>
-              <th className="px-3 py-2 text-left">Ações</th>
+            <tr className="bg-gradient-to-r from-gray-50 to-gray-100">
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Medida (cm)</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Largura (cm)</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Profundidade (cm)</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Altura (cm)</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Met. Tecido (m)</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Met. Couro (m)</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Ações</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-200">
             {variacoes.length === 0 ? (
-              <tr><td colSpan={7} className="px-3 py-4 text-center text-gray-500">Nenhuma variação cadastrada</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-base text-gray-500">Nenhuma variação cadastrada</td></tr>
             ) : (
               variacoes.map((v) => (
-                <tr key={v.id} className="border-t">
-                  <td className="px-3 py-2 font-medium">{v.medida_cm}</td>
-                  <td className="px-3 py-2">
+                <tr key={v.id} className="bg-white transition-colors hover:bg-blue-50">
+                  <td className="px-4 py-3 font-semibold text-gray-900">{v.medida_cm}</td>
+                  <td className="px-4 py-3">
                     <input
                       type="number"
                       value={v.largura_cm}
                       onChange={(e) => handleFieldChange(v.medida_cm, "largura_cm", e.target.value)}
-                      className="w-20 rounded-lg border border-gray-300 bg-white px-2 py-1 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-4 py-3">
                     <input
                       type="number"
                       value={v.profundidade_cm}
                       onChange={(e) => handleFieldChange(v.medida_cm, "profundidade_cm", e.target.value)}
-                      className="w-20 rounded-lg border border-gray-300 bg-white px-2 py-1 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-4 py-3">
                     <input
                       type="number"
                       value={v.altura_cm}
                       onChange={(e) => handleFieldChange(v.medida_cm, "altura_cm", e.target.value)}
-                      className="w-20 rounded-lg border border-gray-300 bg-white px-2 py-1 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-4 py-3">
                     <input
                       type="number"
                       step="0.1"
                       value={v.metragem_tecido_m}
                       onChange={(e) => handleFieldChange(v.medida_cm, "metragem_tecido_m", e.target.value)}
-                      className="w-24 rounded-lg border border-gray-300 bg-white px-2 py-1 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-28 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-4 py-3">
                     <input
                       type="number"
                       step="0.1"
                       value={v.metragem_couro_m}
                       onChange={(e) => handleFieldChange(v.medida_cm, "metragem_couro_m", e.target.value)}
-                      className="w-24 rounded-lg border border-gray-300 bg-white px-2 py-1 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-28 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-4 py-3">
                     <button
                       onClick={() => handleDelete(v.medida_cm)}
-                      className="rounded border px-2 py-1 text-sm text-red-600"
+                      className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                     >
                       Excluir
                     </button>
@@ -297,14 +303,14 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="rounded bg-white p-6 max-w-md w-full">
-            <h3 className="mb-4 text-lg font-semibold">Criar Variações</h3>
-            <div className="space-y-4">
+          <div className="rounded-lg border border-gray-200 bg-white p-6 max-w-md w-full shadow-xl">
+            <h3 className="mb-6 text-xl font-bold text-gray-900">Criar Variações</h3>
+            <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium mb-2">Medidas Fixas</label>
-                <div className="flex flex-wrap gap-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Medidas Fixas</label>
+                <div className="flex flex-wrap gap-3">
                   {[80, 90, 100, 110, 120].map(m => (
-                    <label key={m} className="flex items-center gap-1">
+                    <label key={m} className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={medidasFixas.includes(m)}
@@ -312,8 +318,9 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                           if (e.target.checked) setMedidasFixas([...medidasFixas, m]);
                           else setMedidasFixas(medidasFixas.filter(x => x !== m));
                         }}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
                       />
-                      <span>{m}cm</span>
+                      <span className="text-sm font-medium text-gray-700">{m}cm</span>
                     </label>
                   ))}
                 </div>

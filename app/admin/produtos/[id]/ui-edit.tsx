@@ -11,25 +11,91 @@ export default function EditProduto({ item }: { item: any }) {
   const router = useRouter();
   const [categorias, setCategorias] = useState<any[]>([]);
   const [familias, setFamilias] = useState<any[]>([]);
-  const { register, handleSubmit, control, watch, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, control, watch, setValue, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(produtoSchema),
-    defaultValues: { ...item, imagens: item.imagens || [] },
+    defaultValues: { 
+      categoriaId: item.categoriaId || "",
+      familiaId: item.familiaId || "",
+      nome: item.nome || "",
+      tipo: item.tipo || "",
+      abertura: item.abertura || "",
+      acionamento: item.acionamento || "",
+      configuracao: item.configuracao || "",
+      imagens: item.imagens || [],
+      status: item.status ?? true,
+    },
   });
   const { fields, append, remove } = useFieldArray({ control, name: "imagens" });
   const categoriaId = watch("categoriaId");
 
   useEffect(() => {
-    fetch("/api/categorias").then(r=>r.json()).then(d=>setCategorias(d.data?.items || []));
-    fetch("/api/familias").then(r=>r.json()).then(d=>setFamilias(d.data?.items || []));
+    async function loadData() {
+      const [catRes, famRes] = await Promise.all([
+        fetch("/api/categorias").then(r=>r.json()),
+        fetch("/api/familias").then(r=>r.json())
+      ]);
+      
+      const cats = catRes.data?.items || [];
+      const fams = famRes.data?.items || [];
+      
+      setCategorias(cats);
+      setFamilias(fams);
+    }
+    
+    loadData();
   }, []);
+
+  // Garantir que os valores sejam definidos após carregar as opções
+  useEffect(() => {
+    if (categorias.length > 0 && item.categoriaId) {
+      setValue("categoriaId", item.categoriaId, { shouldValidate: false });
+    }
+  }, [categorias, item.categoriaId, setValue]);
+
+  useEffect(() => {
+    if (familias.length > 0 && item.familiaId) {
+      setValue("familiaId", item.familiaId, { shouldValidate: false });
+    }
+  }, [familias, item.familiaId, setValue]);
 
   const familiasFiltradas = categoriaId ? familias.filter((f:any)=>f.categoriaId === categoriaId) : familias;
 
   async function onSubmit(values:any) {
-    const data = { ...values, imagens: values.imagens.filter((url: string) => url.trim() !== "") };
-    const res = await fetch(`/api/produtos/${item.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-    if (res.ok) router.push("/admin/produtos");
-    else alert("Erro ao salvar");
+    try {
+      const payload = {
+        categoriaId: values.categoriaId,
+        familiaId: values.familiaId,
+        nome: values.nome,
+        tipo: values.tipo || null,
+        abertura: values.abertura || null,
+        acionamento: values.acionamento || null,
+        configuracao: values.configuracao || null,
+        imagens: values.imagens.filter((url: string) => url.trim() !== ""),
+        status: Boolean(values.status),
+      };
+      
+      console.log("Enviando dados:", payload); // Debug
+      
+      const res = await fetch(`/api/produtos/${item.id}`, { 
+        method: "PUT", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(payload) 
+      });
+      
+      const data = await res.json();
+      console.log("Resposta da API:", data); // Debug
+      
+      if (res.ok && data.ok) {
+        router.push("/admin/produtos");
+        router.refresh();
+      } else {
+        const errorMsg = data.error || data.details || "Erro ao salvar";
+        alert(`Erro ao salvar: ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error("Erro ao salvar produto:", error);
+      alert("Erro ao salvar. Verifique o console para mais detalhes.");
+    }
   }
   async function onDelete() {
     if (!confirm("Excluir este produto?")) return;
@@ -41,25 +107,6 @@ export default function EditProduto({ item }: { item: any }) {
   return (
     <FormShell 
       title="Editar Produto"
-      actions={
-        <>
-          <button 
-            type="button" 
-            onClick={onDelete} 
-            className="rounded-lg border border-red-300 bg-white px-5 py-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-          >
-            Excluir
-          </button>
-          <button 
-            type="submit" 
-            disabled={isSubmitting} 
-            form="edit-produto-form"
-            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            {isSubmitting ? "Salvando..." : "Salvar"}
-          </button>
-        </>
-      }
     >
       <form id="edit-produto-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div>
@@ -112,8 +159,32 @@ export default function EditProduto({ item }: { item: any }) {
           <button type="button" onClick={()=>append("")} className="mt-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700">+ Adicionar URL</button>
         </div>
         <div className="flex items-center gap-3">
-          <input type="checkbox" id="status" {...register("status")} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500" />
+          <input 
+            type="checkbox" 
+            id="status" 
+            {...register("status", { 
+              setValueAs: (value) => Boolean(value)
+            })} 
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500" 
+          />
           <label htmlFor="status" className="text-sm font-medium text-gray-700">Status (Ativo)</label>
+        </div>
+        {/* Botões dentro do form para garantir que o submit funcione */}
+        <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-6">
+          <button 
+            type="button" 
+            onClick={onDelete} 
+            className="rounded-lg border border-red-300 bg-white px-5 py-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+          >
+            Excluir
+          </button>
+          <button 
+            type="submit" 
+            disabled={isSubmitting} 
+            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            {isSubmitting ? "Salvando..." : "Salvar"}
+          </button>
         </div>
       </form>
     </FormShell>

@@ -69,15 +69,16 @@ export default function ProdutoTecidosTab({ produtoId }: { produtoId: string }) 
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Tecidos Vinculados</h2>
-        <div className="flex items-center gap-2">
-          {saved && <span className="text-sm text-green-600">Salvo ✓</span>}
+        <h2 className="text-2xl font-bold text-gray-900">Tecidos Vinculados</h2>
+        <div className="flex items-center gap-3">
+          {saved && <span className="text-sm font-semibold text-green-600">Salvo ✓</span>}
+          {saving && <span className="text-sm font-medium text-gray-500">Salvando...</span>}
           <button
             onClick={handleSave}
             disabled={saving}
-            className="rounded bg-emerald-600 px-3 py-2 text-sm text-white disabled:opacity-60"
+            className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
           >
             {saving ? "Salvando..." : "Salvar Seleção"}
           </button>
@@ -90,36 +91,45 @@ export default function ProdutoTecidosTab({ produtoId }: { produtoId: string }) 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar tecido..."
-          className="w-full rounded border p-2"
+          className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
-        {tecidosFiltrados.map((t) => (
-          <div key={t.id} className="flex items-center justify-between rounded border p-2">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={tecidoIds.includes(t.id)}
-                onChange={() => toggleTecido(t.id)}
-              />
-              <span>{t.nome}</span>
-              <span className={`rounded px-2 py-0.5 text-xs ${
-                t.grade === "COURO" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
-              }`}>
-                {t.grade}
-              </span>
-            </div>
-            {tecidosVinculados.some(v => v.id === t.id) && (
-              <button
-                onClick={() => handleRemove(t.id)}
-                className="rounded border px-2 py-1 text-sm text-red-600 hover:bg-red-50"
-              >
-                Remover
-              </button>
-            )}
+      <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+        {tecidosFiltrados.length === 0 ? (
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
+            <p className="text-base text-gray-500">Nenhum tecido encontrado</p>
           </div>
-        ))}
+        ) : (
+          tecidosFiltrados.map((t) => (
+            <div key={t.id} className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+              <div className="flex items-center gap-4">
+                <input
+                  type="checkbox"
+                  checked={tecidoIds.includes(t.id)}
+                  onChange={() => toggleTecido(t.id)}
+                  className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-base font-semibold text-gray-900">{t.nome}</span>
+                <span className={`rounded-lg px-3 py-1 text-sm font-bold ${
+                  t.grade === "COURO" 
+                    ? "bg-amber-100 text-amber-800 border border-amber-200" 
+                    : "bg-blue-100 text-blue-800 border border-blue-200"
+                }`}>
+                  {t.grade}
+                </span>
+              </div>
+              {tecidosVinculados.some(v => v.id === t.id) && (
+                <button
+                  onClick={() => handleRemove(t.id)}
+                  className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                >
+                  Remover
+                </button>
+              )}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

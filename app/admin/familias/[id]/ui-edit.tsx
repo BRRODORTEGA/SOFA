@@ -12,7 +12,13 @@ export default function EditFamilia({ item }: { item: any }) {
   const [categorias, setCategorias] = useState<any[]>([]);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(familiaSchema),
-    defaultValues: { ...item, perfilMedidas: item.perfilMedidas ? JSON.stringify(item.perfilMedidas, null, 2) : "" },
+    defaultValues: { 
+      categoriaId: item.categoriaId || "",
+      nome: item.nome || "",
+      descricao: item.descricao || "",
+      perfilMedidas: item.perfilMedidas ? JSON.stringify(item.perfilMedidas, null, 2) : "",
+      ativo: item.ativo ?? true,
+    },
   });
 
   useEffect(() => {
@@ -20,19 +26,47 @@ export default function EditFamilia({ item }: { item: any }) {
   }, []);
 
   async function onSubmit(values:any) {
-    let perfilMedidas = null;
-    if (values.perfilMedidas && values.perfilMedidas.trim()) {
-      try {
-        perfilMedidas = JSON.parse(values.perfilMedidas);
-      } catch {
-        alert("JSON inválido no campo Perfil de Medidas");
-        return;
+    try {
+      let perfilMedidas = null;
+      if (values.perfilMedidas && values.perfilMedidas.trim()) {
+        try {
+          perfilMedidas = JSON.parse(values.perfilMedidas);
+        } catch {
+          alert("JSON inválido no campo Perfil de Medidas");
+          return;
+        }
       }
+      
+      const payload = {
+        categoriaId: values.categoriaId,
+        nome: values.nome,
+        descricao: values.descricao || null,
+        perfilMedidas: perfilMedidas,
+        ativo: Boolean(values.ativo),
+      };
+      
+      console.log("Enviando dados:", payload); // Debug
+      
+      const res = await fetch(`/api/familias/${item.id}`, { 
+        method: "PUT", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(payload) 
+      });
+      
+      const data = await res.json();
+      console.log("Resposta da API:", data); // Debug
+      
+      if (res.ok && data.ok) {
+        router.push("/admin/familias");
+        router.refresh();
+      } else {
+        const errorMsg = data.error || data.details || "Erro ao salvar";
+        alert(`Erro ao salvar: ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error("Erro ao salvar família:", error);
+      alert("Erro ao salvar. Verifique o console para mais detalhes.");
     }
-    const data = { ...values, perfilMedidas };
-    const res = await fetch(`/api/familias/${item.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-    if (res.ok) router.push("/admin/familias");
-    else alert("Erro ao salvar");
   }
   async function onDelete() {
     if (!confirm("Excluir esta família?")) return;
@@ -44,25 +78,6 @@ export default function EditFamilia({ item }: { item: any }) {
   return (
     <FormShell 
       title="Editar Família"
-      actions={
-        <>
-          <button 
-            type="button" 
-            onClick={onDelete} 
-            className="rounded-lg border border-red-300 bg-white px-5 py-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-          >
-            Excluir
-          </button>
-          <button 
-            type="submit" 
-            disabled={isSubmitting} 
-            form="edit-familia-form"
-            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            {isSubmitting ? "Salvando..." : "Salvar"}
-          </button>
-        </>
-      }
     >
       <form id="edit-familia-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div>
@@ -88,8 +103,32 @@ export default function EditFamilia({ item }: { item: any }) {
           <p className="mt-2 text-xs text-gray-500">Deixe vazio se não desejar. Validaremos o JSON na geração de variações (Fase 5).</p>
         </div>
         <div className="flex items-center gap-3">
-          <input type="checkbox" id="ativo" {...register("ativo")} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500" />
+          <input 
+            type="checkbox" 
+            id="ativo" 
+            {...register("ativo", { 
+              setValueAs: (value) => Boolean(value)
+            })} 
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500" 
+          />
           <label htmlFor="ativo" className="text-sm font-medium text-gray-700">Ativo</label>
+        </div>
+        {/* Botões dentro do form para garantir que o submit funcione */}
+        <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-6">
+          <button 
+            type="button" 
+            onClick={onDelete} 
+            className="rounded-lg border border-red-300 bg-white px-5 py-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+          >
+            Excluir
+          </button>
+          <button 
+            type="submit" 
+            disabled={isSubmitting} 
+            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            {isSubmitting ? "Salvando..." : "Salvar"}
+          </button>
         </div>
       </form>
     </FormShell>

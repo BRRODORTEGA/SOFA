@@ -10,13 +10,27 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
     const json = await req.json();
+    console.log("PUT /api/categorias/[id] - Recebido:", json); // Debug
+    
     const parsed = categoriaSchema.safeParse(json);
-    if (!parsed.success) return unprocessable(parsed.error.flatten());
-    const updated = await prisma.categoria.update({ where: { id: params.id }, data: parsed.data });
+    if (!parsed.success) {
+      console.log("Erro de validação:", parsed.error.flatten()); // Debug
+      return unprocessable(parsed.error.flatten());
+    }
+    
+    console.log("Dados validados:", parsed.data); // Debug
+    
+    const updated = await prisma.categoria.update({ 
+      where: { id: params.id }, 
+      data: parsed.data 
+    });
+    
+    console.log("Categoria atualizada:", updated); // Debug
     return ok(updated);
   } catch (e: any) {
+    console.error("Erro ao atualizar categoria:", e); // Debug
     if (e?.code === "P2025") return notFound();
-    return serverError();
+    return serverError(e?.message || "Erro interno do servidor");
   }
 }
 
