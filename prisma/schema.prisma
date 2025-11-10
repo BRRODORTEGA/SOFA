@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/**
+ * ===== Enums =====
+ */
+
+enum Role {
+  ADMIN
+  OPERADOR
+  FABRICA
+  CLIENTE
+}
+
+enum CategoriaGrade {
+  G1000
+  G2000
+  G3000
+  G4000
+  G5000
+  G6000
+  G7000
+  COURO
+}
+
+/**
+ * ===== Usuário / Autenticação =====
+ */
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  password  String
+  role      Role     @default(CLIENTE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pedidos Pedido[]
+}
+
+/**
+ * ===== Catálogo: Categoria / Família / Produto =====
+ */
+
+model Categoria {
+  id        String    @id @default(cuid())
+  nome      String
+  ativo     Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  familias  Familia[]
+  produtos  Produto[]
+}
+
+model Familia {
+  id            String   @id @default(cuid())
+  categoriaId   String
+  nome          String
+  descricao     String?
+  ativo         Boolean  @default(true)
+  // Perfil padrão para gerar variações em lote (usado pelo botão "Criar variações")
+  // Formato sugerido: { medidas: [80,90,100,110,120], dimensoes: { "80": { largura:.., profundidade:.., altura:.. }, ... }, metragem: { tecido:{...}, couro:{...} } }
+  perfilMedidas Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  categoria Categoria @relation(fields: [categoriaId], references: [id])
+  produtos  Produto[]
+}
+
+model Produto {
+  id           String    @id @default(cuid())
+  categoriaId  String
+  familiaId    String
+  nome         String
+  tipo         String?   // ex.: Modular
+  abertura     String?   // ex.: Retrátil
+  acionamento  String?   // ex.: Manual
+  configuracao String?   // ex.: Módulo com braço
+  status       Boolean   @default(true)
+  imagens      String[]  // URLs
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  categoria Categoria          @relation(fields: [categoriaId], references: [id])
+  familia   Familia            @relation(fields: [familiaId], references: [id])
+  tecidos   ProdutoTecido[]
+  variacoes Variacao[]
+  precos    TabelaPrecoLinha[]
+  itens     PedidoItem[]
+
+  @@index([familiaId, categoriaId])
+}
+
+/**
+ * ===== Tecidos (por Grade) e Vínculo Produto↔Tecido =====
+ */
+
+model Tecido {
+  id        String         @id @default(cuid())
+  nome      String
+  grade     CategoriaGrade
+  imagemUrl String?
+  ativo     Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  produtos    ProdutoTecido[]
+  pedidoItems PedidoItem[]
+
+  @@index([grade])
+}
+
+model ProdutoTecido {
+  produtoId String
+  tecidoId  String
+
+  produto Produto @relation(fields: [produtoId], references: [id])
+  tecido  Tecido  @relation(fields: [tecidoId], references: [id])
+
+  @@id([produtoId, tecidoId]) // N:N sem payload
+}
+
+/**
+ * ===== Variações (Medidas por Produto) =====
+ */
+
+model Variacao {
+  id                String @id @default(cuid())
+  produtoId         String
+  medida_cm         Int
+  largura_cm        Int
+  profundidade_cm   Int
+  altura_cm         Int
+  metragem_tecido_m Float
+  metragem_couro_m  Float
+
+  produto Produto @relation(fields: [produtoId], references: [id])
+
+  // Cada produto só pode ter uma variação por medida
+  @@unique([produtoId, medida_cm])
+}
+
+/**
+ * ===== Tabela de Preço (espelha o PRINT) =====
+ * Uma linha por (Produto × Medida)
+ * Colunas fixas: Grades 1000..7000 + Couro, além de metragem de tecido e couro
+ */
+model TabelaPrecoLinha {
+  id String @id @default(cuid())
+
+  produtoId String
+
+  // Campos textuais redundantes para CSV/planilha (facilita export/import e UI sem JOIN)
+  nomeProduto    String?
+  categoriaTxt   String? // ex.: "Sofá"
+  familiaTxt     String? // ex.: "TEMPO"
+  tipoTxt        String?
+  aberturaTxt    String?
+  acionamentoTxt String?
+
+  // Chave de linha
+  medida_cm       Int
+  largura_cm      Int
+  profundidade_cm Int
+  altura_cm       Int
+
+  // Consumos
+  metragem_tecido_m Float // aparece como "Metragem Tecido (m)" na planilha
+  metragem_couro_m  Float // aparece como "Metragem Couro (m)"
+
+  // Preços finais por grade (uma coluna por grade) + couro
+  preco_grade_1000 Decimal @db.Decimal(10, 2)
+  preco_grade_2000 Decimal @db.Decimal(10, 2)
+  preco_grade_3000 Decimal @db.Decimal(10, 2)
+  preco_grade_4000 Decimal @db.Decimal(10, 2)
+  preco_grade_5000 Decimal @db.Decimal(10, 2)
+  preco_grade_6000 Decimal @db.Decimal(10, 2)
+  preco_grade_7000 Decimal @db.Decimal(10, 2)
+  preco_couro      Decimal @db.Decimal(10, 2)
+
+  produto Produto @relation(fields: [produtoId], references: [id])
+
+  @@unique([produtoId, medida_cm]) // 1 linha por medida
+  @@index([produtoId, medida_cm])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/**
+ * ===== Pedidos e Histórico de Status =====
+ */
+
+model Pedido {
+  id        String   @id @default(cuid())
+  codigo    String   @unique // ex.: ORD-AB12CD
+  clienteId String
+  status    String   @default("Solicitado")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cliente   User                  @relation(fields: [clienteId], references: [id])
+  itens     PedidoItem[]
+  historico PedidoStatusHistory[]
+}
+
+model PedidoItem {
+  id                String  @id @default(cuid())
+  pedidoId          String
+  produtoId         String
+  tecidoId          String
+  variacaoMedida_cm Int
+  quantidade        Int
+  precoUnit         Decimal @db.Decimal(10, 2)
+
+  pedido  Pedido  @relation(fields: [pedidoId], references: [id])
+  produto Produto @relation(fields: [produtoId], references: [id])
+  tecido  Tecido  @relation(fields: [tecidoId], references: [id])
+}
+
+model PedidoStatusHistory {
+  id        String   @id @default(cuid())
+  pedidoId  String
+  status    String
+  reason    String?
+  userId    String?
+  createdAt DateTime @default(now())
+
+  pedido Pedido @relation(fields: [pedidoId], references: [id])
+
+  @@index([pedidoId, createdAt])
+}
+
+/**
+ * ===== Log de E-mails Transacionais =====
+ */
+
+model EmailLog {
+  id         String   @id @default(cuid())
+  to         String
+  subject    String
+  template   String
+  providerId String?
+  status     String // ex.: queued, sent, failed
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}

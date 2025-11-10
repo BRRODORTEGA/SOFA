@@ -1,0 +1,48 @@
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { categoriaSchema } from "@/lib/validators";
+import { FormShell } from "@/components/admin/form-shell";
+import { useRouter } from "next/navigation";
+
+export default function EditCategoria({ item }: { item: any }) {
+  const router = useRouter();
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+    resolver: zodResolver(categoriaSchema),
+    defaultValues: item,
+  });
+
+  async function onSubmit(values:any) {
+    const res = await fetch(`/api/categorias/${item.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
+    if (res.ok) router.push("/admin/categorias");
+    else alert("Erro ao salvar");
+  }
+  async function onDelete() {
+    if (!confirm("Excluir esta categoria?")) return;
+    const res = await fetch(`/api/categorias/${item.id}`, { method: "DELETE" });
+    if (res.ok) router.push("/admin/categorias");
+    else alert("Erro ao excluir");
+  }
+
+  return (
+    <FormShell title="Editar Categoria">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+        <div>
+          <label className="block text-sm font-medium">Nome</label>
+          <input {...register("nome")} className="mt-1 w-full rounded border p-2" />
+          {errors.nome && <p className="text-sm text-red-600">{String(errors.nome.message)}</p>}
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="ativo" {...register("ativo")} />
+          <label htmlFor="ativo" className="text-sm">Ativo</label>
+        </div>
+        <div className="flex items-center justify-end gap-2">
+          <button type="button" onClick={onDelete} className="rounded border px-3 py-2 text-sm text-red-600">Excluir</button>
+          <button type="submit" disabled={isSubmitting} className="rounded bg-black px-3 py-2 text-sm text-white">Salvar</button>
+        </div>
+      </form>
+    </FormShell>
+  );
+}
+
