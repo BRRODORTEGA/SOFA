@@ -26,6 +26,7 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
 
     return (
       <div>
+        <h1 className="mb-6 text-3xl font-bold text-gray-900">Famílias</h1>
         <AdminToolbar createHref="/admin/familias/new" />
         <AdminTableWrapper
           columns={[
@@ -36,7 +37,7 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
           rows={rowsWithFormatted}
           basePath="/admin/familias"
         />
-        <div className="mt-3 text-sm text-gray-600">Total: {total}</div>
+        <div className="mt-4 text-base font-medium text-gray-700">Total: <span className="font-semibold text-gray-900">{total}</span></div>
       </div>
     );
   } catch (error: any) {

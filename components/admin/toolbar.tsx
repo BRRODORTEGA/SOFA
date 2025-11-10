@@ -17,12 +17,24 @@ export function AdminToolbar({ createHref }: { createHref: string }) {
   }
 
   return (
-    <div className="mb-4 flex items-center justify-between gap-3">
+    <div className="mb-6 flex items-center justify-between gap-4">
       <form onSubmit={onSearch} className="flex items-center gap-2">
-        <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Buscar..." className="rounded border px-3 py-2 text-sm" />
-        <button className="rounded bg-black px-3 py-2 text-sm text-white">Buscar</button>
+        <input 
+          value={q} 
+          onChange={(e)=>setQ(e.target.value)} 
+          placeholder="Buscar..." 
+          className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+        />
+        <button className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+          Buscar
+        </button>
       </form>
-      <a href={createHref} className="rounded bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700">Novo</a>
+      <a 
+        href={createHref} 
+        className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+      >
+        + Novo
+      </a>
     </div>
   );
 }

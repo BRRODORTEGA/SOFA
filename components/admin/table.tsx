@@ -10,23 +10,23 @@ type Props<T> = {
 
 export function AdminTable<T extends { id?: string }>({ columns, rows, onRowClick, emptyText = "Nenhum registro" }: Props<T>) {
   return (
-    <div className="overflow-x-auto rounded border">
-      <table className="min-w-full text-sm">
+    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+      <table className="min-w-full text-base">
         <thead>
-          <tr className="bg-gray-50 text-left">
+          <tr className="bg-gradient-to-r from-gray-50 to-gray-100 text-left">
             {columns.map((c) => (
-              <th key={String(c.key)} className={`px-3 py-2 font-medium ${c.className || ""}`}>{c.header}</th>
+              <th key={String(c.key)} className={`px-4 py-3 text-sm font-semibold text-gray-700 ${c.className || ""}`}>{c.header}</th>
             ))}
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-gray-200">
           {rows.length === 0 && (
-            <tr><td colSpan={columns.length} className="px-3 py-6 text-center text-gray-500">{emptyText}</td></tr>
+            <tr><td colSpan={columns.length} className="px-4 py-8 text-center text-base text-gray-500">{emptyText}</td></tr>
           )}
           {rows.map((r, i) => (
-            <tr key={String((r as any).id ?? i)} className="border-t hover:bg-gray-50 cursor-pointer" onClick={() => onRowClick?.(r)}>
+            <tr key={String((r as any).id ?? i)} className="bg-white transition-colors hover:bg-blue-50 cursor-pointer" onClick={() => onRowClick?.(r)}>
               {columns.map((c) => (
-                <td key={String(c.key)} className="px-3 py-2">{c.render ? c.render(r) : String((r as any)[c.key] ?? "")}</td>
+                <td key={String(c.key)} className="px-4 py-3 text-sm text-gray-900">{c.render ? c.render(r) : String((r as any)[c.key] ?? "")}</td>
               ))}
             </tr>
           ))}

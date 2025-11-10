@@ -171,28 +171,28 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
               placeholder="Medida (cm)"
               value={newVariacao.medida_cm}
               onChange={(e) => setNewVariacao({...newVariacao, medida_cm: e.target.value})}
-              className="rounded border p-2"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <input
               type="number"
               placeholder="Largura (cm)"
               value={newVariacao.largura_cm}
               onChange={(e) => setNewVariacao({...newVariacao, largura_cm: e.target.value})}
-              className="rounded border p-2"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <input
               type="number"
               placeholder="Profundidade (cm)"
               value={newVariacao.profundidade_cm}
               onChange={(e) => setNewVariacao({...newVariacao, profundidade_cm: e.target.value})}
-              className="rounded border p-2"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <input
               type="number"
               placeholder="Altura (cm)"
               value={newVariacao.altura_cm}
               onChange={(e) => setNewVariacao({...newVariacao, altura_cm: e.target.value})}
-              className="rounded border p-2"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <input
               type="number"
@@ -200,7 +200,7 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
               placeholder="Metragem Tecido (m)"
               value={newVariacao.metragem_tecido_m}
               onChange={(e) => setNewVariacao({...newVariacao, metragem_tecido_m: e.target.value})}
-              className="rounded border p-2"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <input
               type="number"
@@ -208,12 +208,12 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
               placeholder="Metragem Couro (m)"
               value={newVariacao.metragem_couro_m}
               onChange={(e) => setNewVariacao({...newVariacao, metragem_couro_m: e.target.value})}
-              className="rounded border p-2"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div className="mt-2 flex gap-2">
-            <button onClick={handleAdd} className="rounded bg-black px-3 py-1 text-sm text-white">Adicionar</button>
-            <button onClick={() => setShowAddForm(false)} className="rounded border px-3 py-1 text-sm">Cancelar</button>
+            <button onClick={handleAdd} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700">Adicionar</button>
+            <button onClick={() => setShowAddForm(false)} className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50">Cancelar</button>
           </div>
         </div>
       )}
@@ -243,7 +243,7 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                       type="number"
                       value={v.largura_cm}
                       onChange={(e) => handleFieldChange(v.medida_cm, "largura_cm", e.target.value)}
-                      className="w-20 rounded border p-1"
+                      className="w-20 rounded-lg border border-gray-300 bg-white px-2 py-1 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -251,7 +251,7 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                       type="number"
                       value={v.profundidade_cm}
                       onChange={(e) => handleFieldChange(v.medida_cm, "profundidade_cm", e.target.value)}
-                      className="w-20 rounded border p-1"
+                      className="w-20 rounded-lg border border-gray-300 bg-white px-2 py-1 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -259,7 +259,7 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                       type="number"
                       value={v.altura_cm}
                       onChange={(e) => handleFieldChange(v.medida_cm, "altura_cm", e.target.value)}
-                      className="w-20 rounded border p-1"
+                      className="w-20 rounded-lg border border-gray-300 bg-white px-2 py-1 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -268,7 +268,7 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                       step="0.1"
                       value={v.metragem_tecido_m}
                       onChange={(e) => handleFieldChange(v.medida_cm, "metragem_tecido_m", e.target.value)}
-                      className="w-24 rounded border p-1"
+                      className="w-24 rounded-lg border border-gray-300 bg-white px-2 py-1 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -277,7 +277,7 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                       step="0.1"
                       value={v.metragem_couro_m}
                       onChange={(e) => handleFieldChange(v.medida_cm, "metragem_couro_m", e.target.value)}
-                      className="w-24 rounded border p-1"
+                      className="w-24 rounded-lg border border-gray-300 bg-white px-2 py-1 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -319,13 +319,13 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Medidas Personalizadas (separadas por vírgula)</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Medidas Personalizadas (separadas por vírgula)</label>
                 <input
                   type="text"
                   value={medidasCustom}
                   onChange={(e) => setMedidasCustom(e.target.value)}
                   placeholder="ex: 95, 105, 125"
-                  className="w-full rounded border p-2"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -334,8 +334,9 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                   id="usarPerfil"
                   checked={usarPerfilFamilia}
                   onChange={(e) => setUsarPerfilFamilia(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
                 />
-                <label htmlFor="usarPerfil" className="text-sm">Usar perfil da família</label>
+                <label htmlFor="usarPerfil" className="text-sm font-medium text-gray-700">Usar perfil da família</label>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -343,19 +344,20 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                   id="criarSkeleton"
                   checked={criarSkeletonPreco}
                   onChange={(e) => setCriarSkeletonPreco(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
                 />
-                <label htmlFor="criarSkeleton" className="text-sm">Criar skeleton de preços</label>
+                <label htmlFor="criarSkeleton" className="text-sm font-medium text-gray-700">Criar skeleton de preços</label>
               </div>
               <div className="flex gap-2 justify-end">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="rounded border px-3 py-2 text-sm"
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleGenerate}
-                  className="rounded bg-blue-600 px-3 py-2 text-sm text-white"
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
                 >
                   Gerar
                 </button>

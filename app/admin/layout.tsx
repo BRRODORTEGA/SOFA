@@ -11,28 +11,43 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <html lang="pt-BR">
-      <body>
+      <body className="font-sans antialiased">
         <Providers>
-          <div className="grid min-h-screen grid-cols-12">
-            <aside className="col-span-3 border-r p-4">
-              <div className="mb-2 text-lg font-semibold">Admin</div>
-              <div className="mb-6 text-xs text-gray-500">Logado como: <span className="font-medium">{session.user?.email}</span> ({role})</div>
-              <nav className="space-y-2 text-sm">
-                <Link className="block rounded px-2 py-1 hover:bg-gray-100" href="/admin">Dashboard</Link>
-                <div className="mt-4 text-xs font-semibold uppercase text-gray-500">Cadastros</div>
-                <Link className="block rounded px-2 py-1 hover:bg-gray-100" href="/admin/categorias">Categorias</Link>
-                <Link className="block rounded px-2 py-1 hover:bg-gray-100" href="/admin/familias">Famílias</Link>
-                <Link className="block rounded px-2 py-1 hover:bg-gray-100" href="/admin/tecidos">Tecidos</Link>
-                <Link className="block rounded px-2 py-1 hover:bg-gray-100" href="/admin/produtos">Produtos</Link>
+          <div className="grid min-h-screen grid-cols-12 bg-gray-50">
+            <aside className="col-span-3 border-r border-gray-200 bg-white p-6 shadow-sm">
+              <div className="mb-4 text-2xl font-bold text-gray-900">Admin</div>
+              <div className="mb-6 rounded-lg bg-blue-50 p-3 text-sm text-gray-700">
+                <div className="font-semibold text-gray-900">{session.user?.email}</div>
+                <div className="mt-1 text-xs text-gray-600">Role: <span className="font-medium text-blue-700">{role}</span></div>
+              </div>
+              <nav className="space-y-1">
+                <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin">
+                  📊 Dashboard
+                </Link>
+                <div className="mt-6 mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">Cadastros</div>
+                <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/categorias">
+                  📁 Categorias
+                </Link>
+                <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/familias">
+                  🏷️ Famílias
+                </Link>
+                <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/tecidos">
+                  🧵 Tecidos
+                </Link>
+                <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/produtos">
+                  📦 Produtos
+                </Link>
 
-                <div className="mt-4 text-xs font-semibold uppercase text-gray-500">Operação</div>
-                <Link className="block rounded px-2 py-1 hover:bg-gray-100" href="/admin/pedidos">Pedidos</Link>
+                <div className="mt-6 mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">Operação</div>
+                <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/pedidos">
+                  🛒 Pedidos
+                </Link>
               </nav>
-              <div className="mt-8">
+              <div className="mt-8 border-t border-gray-200 pt-4">
                 <LogoutButton />
               </div>
             </aside>
-            <main className="col-span-9 p-6">{children}</main>
+            <main className="col-span-9 bg-gray-50 p-8">{children}</main>
           </div>
         </Providers>
       </body>

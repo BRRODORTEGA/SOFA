@@ -2,6 +2,8 @@ import type { NextAuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { getServerSession } from "next-auth/next";
 import { ENV } from "./env";
+import { prisma } from "./prisma";
+import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
   secret: ENV.NEXTAUTH_SECRET || "changeme",
@@ -13,25 +15,48 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Senha", type: "password" },
       },
       async authorize(credentials) {
-        // MOCK para Fase 3 (substituído por Prisma Adapter/seed na Fase 6)
         if (!credentials?.email || !credentials.password) return null;
 
-        // Exemplos de login e role (para teste):
-        // admin@local / admin  => ADMIN
-        // op@local    / op     => OPERADOR
-        // fab@local   / fab    => FABRICA
-        // cli@local   / cli    => CLIENTE
+        // Tentar buscar usuário no banco
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email.toLowerCase() },
+          });
+
+          if (user) {
+            // Verificar senha com bcrypt
+            const isValid = await bcrypt.compare(credentials.password, user.password);
+            if (isValid) {
+              return {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+              };
+            }
+          }
+        } catch (error) {
+          console.error("Auth error:", error);
+        }
+
+        // Fallback para usuários mock (para desenvolvimento)
         const map: Record<string, { pass: string; role: "ADMIN" | "OPERADOR" | "FABRICA" | "CLIENTE" }> = {
-          "admin@local": { pass: "admin", role: "ADMIN" },
-          "op@local":    { pass: "op",    role: "OPERADOR" },
-          "fab@local":   { pass: "fab",   role: "FABRICA" },
-          "cli@local":   { pass: "cli",   role: "CLIENTE" },
+          "admin@gmail.com": { pass: "admin", role: "ADMIN" },
+          "op@local": { pass: "op", role: "OPERADOR" },
+          "fab@local": { pass: "fab", role: "FABRICA" },
+          "cli@local": { pass: "cli", role: "CLIENTE" },
         };
 
         const found = map[credentials.email.toLowerCase()];
         if (found && found.pass === credentials.password) {
-          return { id: credentials.email, name: credentials.email.split("@")[0], email: credentials.email, role: found.role };
+          return {
+            id: credentials.email,
+            name: credentials.email.split("@")[0],
+            email: credentials.email,
+            role: found.role,
+          };
         }
+
         return null;
       },
     }),

@@ -289,13 +289,13 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
           />
           <label
             htmlFor="csv-import"
-            className="cursor-pointer rounded border px-3 py-2 text-sm hover:bg-gray-50"
+            className="cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
           >
             Importar CSV
           </label>
           <button
             onClick={onExportCsv}
-            className="rounded border px-3 py-2 text-sm hover:bg-gray-50"
+            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
           >
             Exportar CSV
           </button>
@@ -336,7 +336,7 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
                         type="number"
                         step={col.key.includes("metragem") || col.key.includes("preco") ? "0.01" : "1"}
                         min="0"
-                        className="w-full border-none bg-transparent text-center focus:bg-white focus:ring-1 focus:ring-blue-500"
+                        className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-center text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={l[col.key as keyof LinhaPreco] || 0}
                         onChange={(e) => onChange(l.medida_cm, col.key as keyof LinhaPreco, e.target.value)}
                         readOnly={col.readonly}
@@ -351,7 +351,7 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
                   <td className="border px-1">
                     <button
                       onClick={() => deleteLinha(l.medida_cm)}
-                      className="rounded border px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                      className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50"
                     >
                       Excluir
                     </button>

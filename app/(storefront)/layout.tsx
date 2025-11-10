@@ -1,7 +1,7 @@
 import "../../styles/globals.css";
 import "../../styles/tailwind.css";
-import SiteHeader from "@/components/site-header";
-import SiteFooter from "@/components/site-footer";
+import Navbar from "@/components/storefront/Navbar";
+import Footer from "@/components/storefront/Footer";
 import { Providers } from "@/components/providers";
 
 export default function StorefrontLayout({ children }: { children: React.ReactNode }) {
@@ -9,9 +9,11 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
     <html lang="pt-BR">
       <body>
         <Providers>
-          <SiteHeader />
-          <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
-          <SiteFooter />
+          <div className="flex min-h-screen flex-col bg-white">
+            <Navbar />
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </div>
         </Providers>
       </body>
     </html>

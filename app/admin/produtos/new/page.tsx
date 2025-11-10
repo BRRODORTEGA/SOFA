@@ -30,64 +30,81 @@ export default function NewProdutoPage() {
   }
 
   return (
-    <FormShell title="Novo Produto">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+    <FormShell 
+      title="Novo Produto"
+      actions={
+        <>
+          <button 
+            type="button" 
+            className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2" 
+            onClick={()=>router.back()}
+          >
+            Cancelar
+          </button>
+          <button 
+            type="submit" 
+            disabled={isSubmitting} 
+            form="produto-form"
+            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            {isSubmitting ? "Salvando..." : "Salvar"}
+          </button>
+        </>
+      }
+    >
+      <form id="produto-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div>
-          <label className="block text-sm font-medium">Categoria</label>
-          <select {...register("categoriaId")} className="mt-1 w-full rounded border p-2">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Categoria</label>
+          <select {...register("categoriaId")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">Selecione...</option>
             {categorias.map((c:any)=>(<option key={c.id} value={c.id}>{c.nome}</option>))}
           </select>
-          {errors.categoriaId && <p className="text-sm text-red-600">{String(errors.categoriaId.message)}</p>}
+          {errors.categoriaId && <p className="mt-2 text-sm font-medium text-red-600">{String(errors.categoriaId.message)}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium">Família</label>
-          <select {...register("familiaId")} className="mt-1 w-full rounded border p-2">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Família</label>
+          <select {...register("familiaId")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">Selecione...</option>
             {familiasFiltradas.map((f:any)=>(<option key={f.id} value={f.id}>{f.nome}</option>))}
           </select>
-          {errors.familiaId && <p className="text-sm text-red-600">{String(errors.familiaId.message)}</p>}
+          {errors.familiaId && <p className="mt-2 text-sm font-medium text-red-600">{String(errors.familiaId.message)}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium">Nome</label>
-          <input {...register("nome")} className="mt-1 w-full rounded border p-2" />
-          {errors.nome && <p className="text-sm text-red-600">{String(errors.nome.message)}</p>}
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Nome</label>
+          <input {...register("nome")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          {errors.nome && <p className="mt-2 text-sm font-medium text-red-600">{String(errors.nome.message)}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium">Tipo</label>
-          <input {...register("tipo")} className="mt-1 w-full rounded border p-2" placeholder="ex.: Modular" />
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo</label>
+          <input {...register("tipo")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ex.: Modular" />
         </div>
         <div>
-          <label className="block text-sm font-medium">Abertura</label>
-          <input {...register("abertura")} className="mt-1 w-full rounded border p-2" placeholder="ex.: Retrátil" />
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Abertura</label>
+          <input {...register("abertura")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ex.: Retrátil" />
         </div>
         <div>
-          <label className="block text-sm font-medium">Acionamento</label>
-          <input {...register("acionamento")} className="mt-1 w-full rounded border p-2" placeholder="ex.: Manual" />
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Acionamento</label>
+          <input {...register("acionamento")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ex.: Manual" />
         </div>
         <div>
-          <label className="block text-sm font-medium">Configuração</label>
-          <input {...register("configuracao")} className="mt-1 w-full rounded border p-2" placeholder="ex.: Módulo com braço" />
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Configuração</label>
+          <input {...register("configuracao")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ex.: Módulo com braço" />
         </div>
         <div>
-          <label className="block text-sm font-medium">Imagens (URLs)</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Imagens (URLs)</label>
           <div className="space-y-2">
             {fields.map((f, idx)=>(
               <div key={f.id} className="flex items-center gap-2">
-                <input {...register(`imagens.${idx}` as const)} className="flex-1 rounded border p-2" placeholder="https://..." />
-                <button type="button" onClick={()=>remove(idx)} className="rounded border px-2 py-1 text-sm">Remover</button>
+                <input {...register(`imagens.${idx}` as const)} className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://..." />
+                <button type="button" onClick={()=>remove(idx)} className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-red-50 hover:border-red-300 hover:text-red-700">Remover</button>
               </div>
             ))}
           </div>
-          <button type="button" onClick={()=>append("")} className="mt-2 rounded border px-3 py-1 text-sm">+ Adicionar URL</button>
+          <button type="button" onClick={()=>append("")} className="mt-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700">+ Adicionar URL</button>
         </div>
-        <div className="flex items-center gap-2">
-          <input type="checkbox" id="status" {...register("status")} />
-          <label htmlFor="status" className="text-sm">Status (Ativo)</label>
-        </div>
-        <div className="flex items-center justify-end gap-2">
-          <button type="button" className="rounded border px-3 py-2 text-sm" onClick={()=>router.back()}>Cancelar</button>
-          <button type="submit" disabled={isSubmitting} className="rounded bg-black px-3 py-2 text-sm text-white">Salvar</button>
+        <div className="flex items-center gap-3">
+          <input type="checkbox" id="status" {...register("status")} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500" />
+          <label htmlFor="status" className="text-sm font-medium text-gray-700">Status (Ativo)</label>
         </div>
       </form>
     </FormShell>

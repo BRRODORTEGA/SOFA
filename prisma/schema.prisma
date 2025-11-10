@@ -42,7 +42,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  pedidos Pedido[]
+  pedidos  Pedido[]
+  carrinho Carrinho?
 }
 
 /**
@@ -91,10 +92,11 @@ model Produto {
 
   categoria Categoria          @relation(fields: [categoriaId], references: [id])
   familia   Familia            @relation(fields: [familiaId], references: [id])
-  tecidos   ProdutoTecido[]
-  variacoes Variacao[]
-  precos    TabelaPrecoLinha[]
-  itens     PedidoItem[]
+  tecidos       ProdutoTecido[]
+  variacoes     Variacao[]
+  precos        TabelaPrecoLinha[]
+  itens         PedidoItem[]
+  carrinhoItems CarrinhoItem[]
 
   @@index([familiaId, categoriaId])
 }
@@ -112,8 +114,9 @@ model Tecido {
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
-  produtos    ProdutoTecido[]
-  pedidoItems PedidoItem[]
+  produtos      ProdutoTecido[]
+  pedidoItems   PedidoItem[]
+  carrinhoItems CarrinhoItem[]
 
   @@index([grade])
 }
@@ -209,6 +212,7 @@ model Pedido {
   cliente   User                  @relation(fields: [clienteId], references: [id])
   itens     PedidoItem[]
   historico PedidoStatusHistory[]
+  mensagens MensagemPedido[]
 }
 
 model PedidoItem {
@@ -231,6 +235,56 @@ model PedidoStatusHistory {
   status    String
   reason    String?
   userId    String?
+  createdAt DateTime @default(now())
+
+  pedido Pedido @relation(fields: [pedidoId], references: [id])
+
+  @@index([pedidoId, createdAt])
+}
+
+/**
+ * ===== Carrinho de Compras =====
+ */
+
+model Carrinho {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User          @relation(fields: [userId], references: [id])
+  itens CarrinhoItem[]
+}
+
+model CarrinhoItem {
+  id                String   @id @default(cuid())
+  carrinhoId        String
+  produtoId         String
+  tecidoId          String
+  variacaoMedida_cm Int
+  quantidade        Int      @default(1)
+
+  // snapshot opcional (apenas para exibir carrinho rápido; o preço "oficial" será resolvido no checkout)
+  previewPrecoUnit  Decimal? @db.Decimal(10, 2)
+
+  carrinho Carrinho @relation(fields: [carrinhoId], references: [id])
+  produto  Produto  @relation(fields: [produtoId], references: [id])
+  tecido   Tecido   @relation(fields: [tecidoId], references: [id])
+
+  @@index([carrinhoId])
+  @@index([produtoId, variacaoMedida_cm, tecidoId])
+}
+
+/**
+ * ===== Mensagens de Pedido =====
+ */
+
+model MensagemPedido {
+  id        String   @id @default(cuid())
+  pedidoId  String
+  userId    String?  // null = mensagem do sistema
+  role      Role?    // redundante para exibição (ADMIN/OPERADOR/CLIENTE/FABRICA)
+  texto     String
   createdAt DateTime @default(now())
 
   pedido Pedido @relation(fields: [pedidoId], references: [id])
