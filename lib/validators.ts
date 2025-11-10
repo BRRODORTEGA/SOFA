@@ -17,6 +17,8 @@ export const tecidoSchema = z.object({
   nome: z.string().min(2),
   grade: z.enum(["G1000","G2000","G3000","G4000","G5000","G6000","G7000","COURO"]),
   imagemUrl: z.union([z.string().url(), z.literal("")]).optional().nullable(),
+  fornecedorNome: z.string().optional().nullable(),
+  valor_m2: z.coerce.number().nonnegative().optional().nullable(),
   ativo: z.boolean().default(true),
 });
 
@@ -38,11 +40,11 @@ export const produtoTecidosSchema = z.object({
 
 export const variacaoSchema = z.object({
   medida_cm: z.coerce.number().int().positive(),
-  largura_cm: z.coerce.number().int().positive(),
-  profundidade_cm: z.coerce.number().int().positive(),
-  altura_cm: z.coerce.number().int().positive(),
-  metragem_tecido_m: z.coerce.number().positive(),
-  metragem_couro_m: z.coerce.number().positive(),
+  largura_cm: z.coerce.number().int().nonnegative(), // Permite 0
+  profundidade_cm: z.coerce.number().int().nonnegative(), // Permite 0
+  altura_cm: z.coerce.number().int().nonnegative(), // Permite 0
+  metragem_tecido_m: z.coerce.number().nonnegative(), // Permite 0
+  metragem_couro_m: z.coerce.number().nonnegative(), // Permite 0
 });
 
 export const variacoesGenerateSchema = z.object({

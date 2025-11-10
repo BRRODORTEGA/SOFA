@@ -15,12 +15,22 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const json = await req.json();
+    console.log("POST /api/tecidos - Recebido:", json); // Debug
+    
     const parsed = tecidoSchema.safeParse(json);
-    if (!parsed.success) return unprocessable(parsed.error.flatten());
+    if (!parsed.success) {
+      console.log("Erro de validação:", parsed.error.flatten()); // Debug
+      return unprocessable(parsed.error.flatten());
+    }
+    
+    console.log("Dados validados:", parsed.data); // Debug
+    
     const createdItem = await prisma.tecido.create({ data: parsed.data });
+    console.log("Tecido criado:", createdItem); // Debug
     return created(createdItem);
-  } catch (e) {
-    return serverError();
+  } catch (e: any) {
+    console.error("Erro ao criar tecido:", e); // Debug
+    return serverError(e?.message || "Erro interno do servidor");
   }
 }
 

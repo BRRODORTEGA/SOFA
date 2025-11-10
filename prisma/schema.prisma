@@ -106,13 +106,15 @@ model Produto {
  */
 
 model Tecido {
-  id        String         @id @default(cuid())
-  nome      String
-  grade     CategoriaGrade
-  imagemUrl String?
-  ativo     Boolean        @default(true)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  id            String         @id @default(cuid())
+  nome          String
+  grade         CategoriaGrade
+  imagemUrl     String?
+  fornecedorNome String?        // Nome do fornecedor
+  valor_m2      Decimal?        @db.Decimal(10, 2) // Valor do tecido por m²
+  ativo         Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   produtos      ProdutoTecido[]
   pedidoItems   PedidoItem[]

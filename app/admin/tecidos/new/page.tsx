@@ -11,33 +11,39 @@ export default function NewTecidoPage() {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(tecidoSchema), defaultValues: { ativo: true } });
 
   async function onSubmit(values:any) {
-    const res = await fetch("/api/tecidos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
-    if (res.ok) router.push("/admin/tecidos");
-    else alert("Erro ao criar");
+    try {
+      const payload = {
+        nome: values.nome,
+        grade: values.grade,
+        imagemUrl: values.imagemUrl || null,
+        fornecedorNome: values.fornecedorNome || null,
+        valor_m2: values.valor_m2 ? Number(values.valor_m2) : null,
+        ativo: Boolean(values.ativo),
+      };
+      
+      const res = await fetch("/api/tecidos", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(payload) 
+      });
+      
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        router.push("/admin/tecidos");
+        router.refresh();
+      } else {
+        const errorMsg = data.error || data.details || "Erro ao criar";
+        alert(`Erro ao criar: ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error("Erro ao criar tecido:", error);
+      alert("Erro ao criar. Verifique o console para mais detalhes.");
+    }
   }
 
   return (
     <FormShell 
       title="Novo Tecido"
-      actions={
-        <>
-          <button 
-            type="button" 
-            className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2" 
-            onClick={()=>router.back()}
-          >
-            Cancelar
-          </button>
-          <button 
-            type="submit" 
-            disabled={isSubmitting} 
-            form="tecido-form"
-            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            {isSubmitting ? "Salvando..." : "Salvar"}
-          </button>
-        </>
-      }
     >
       <form id="tecido-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div>
@@ -56,9 +62,35 @@ export default function NewTecidoPage() {
           <label className="block text-sm font-semibold text-gray-700 mb-2">URL da Imagem</label>
           <input {...register("imagemUrl")} type="url" className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://..." />
         </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Nome do Fornecedor</label>
+          <input {...register("fornecedorNome")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: Tecidos ABC Ltda" />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Valor do Tecido (m²)</label>
+          <input {...register("valor_m2")} type="number" step="0.01" min="0" className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0.00" />
+          {errors.valor_m2 && <p className="mt-2 text-sm font-medium text-red-600">{String(errors.valor_m2.message)}</p>}
+        </div>
         <div className="flex items-center gap-3">
-          <input type="checkbox" id="ativo" {...register("ativo")} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500" />
+          <input type="checkbox" id="ativo" {...register("ativo", { setValueAs: (value) => Boolean(value) })} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500" />
           <label htmlFor="ativo" className="text-sm font-medium text-gray-700">Ativo</label>
+        </div>
+        {/* Botões dentro do form para garantir que o submit funcione */}
+        <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-6">
+          <button 
+            type="button" 
+            className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2" 
+            onClick={()=>router.back()}
+          >
+            Cancelar
+          </button>
+          <button 
+            type="submit" 
+            disabled={isSubmitting} 
+            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            {isSubmitting ? "Salvando..." : "Salvar"}
+          </button>
         </div>
       </form>
     </FormShell>

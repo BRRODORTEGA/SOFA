@@ -49,25 +49,51 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
   async function saveChanges() {
     if (changedRef.current.size === 0) return;
     setSaving(true);
-    const toSave = variacoes.filter(v => changedRef.current.has(v.medida_cm));
-    const res = await fetch(`/api/produtos/${produtoId}/variacoes`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(toSave),
-    });
-    if (res.ok) {
-      setSaved(true);
-      changedRef.current.clear();
-      setTimeout(() => setSaved(false), 3000);
-    } else {
-      alert("Erro ao salvar");
+    try {
+      const toSave = variacoes
+        .filter(v => changedRef.current.has(v.medida_cm))
+        .map(v => ({
+          medida_cm: Number(v.medida_cm),
+          largura_cm: Number(v.largura_cm),
+          profundidade_cm: Number(v.profundidade_cm),
+          altura_cm: Number(v.altura_cm),
+          metragem_tecido_m: Number(v.metragem_tecido_m),
+          metragem_couro_m: Number(v.metragem_couro_m),
+        }));
+      
+      console.log("Salvando variações:", toSave); // Debug
+      
+      const res = await fetch(`/api/produtos/${produtoId}/variacoes`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(toSave),
+      });
+      
+      const data = await res.json();
+      console.log("Resposta da API:", data); // Debug
+      
+      if (res.ok && data.ok) {
+        setSaved(true);
+        changedRef.current.clear();
+        setTimeout(() => setSaved(false), 3000);
+      } else {
+        const errorMsg = data.error?.message || data.details || "Erro ao salvar";
+        alert(`Erro ao salvar: ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error("Erro ao salvar variações:", error);
+      alert("Erro ao salvar. Verifique o console para mais detalhes.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   function handleFieldChange(medida: number, field: keyof Variacao, value: string) {
+    const numValue = value === "" ? 0 : Number(value);
+    if (isNaN(numValue)) return; // Ignora valores inválidos
+    
     setVariacoes(prev => prev.map(v => 
-      v.medida_cm === medida ? { ...v, [field]: Number(value) } : v
+      v.medida_cm === medida ? { ...v, [field]: numValue } : v
     ));
     changedRef.current.add(medida);
     if (debounceRef.current) clearTimeout(debounceRef.current);

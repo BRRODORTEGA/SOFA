@@ -40,27 +40,40 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
     const json = await req.json();
-    if (!Array.isArray(json)) return unprocessable({ message: "Payload deve ser uma lista" });
+    console.log("PUT /api/produtos/[id]/variacoes - Recebido:", json); // Debug
+    
+    if (!Array.isArray(json)) {
+      console.log("Erro: Payload não é uma lista"); // Debug
+      return unprocessable({ message: "Payload deve ser uma lista" });
+    }
 
     // valida cada item
     for (const item of json) {
       const parsed = variacaoSchema.safeParse(item);
-      if (!parsed.success) return unprocessable(parsed.error.flatten());
+      if (!parsed.success) {
+        console.log("Erro de validação:", parsed.error.flatten()); // Debug
+        return unprocessable(parsed.error.flatten());
+      }
     }
 
     const results = [];
     for (const item of json) {
       const { medida_cm, ...rest } = item;
+      console.log(`Atualizando variação medida ${medida_cm} com dados:`, rest); // Debug
+      
       const updated = await prisma.variacao.update({
         where: { produtoId_medida_cm: { produtoId: params.id, medida_cm } },
         data: rest,
       });
       results.push(updated);
     }
+    
+    console.log(`Variações atualizadas: ${results.length}`); // Debug
     return ok({ updated: results.length });
   } catch (e: any) {
+    console.error("Erro ao atualizar variações:", e); // Debug
     if (e?.code === "P2025") return notFound("Uma ou mais variações não existem");
-    return serverError();
+    return serverError(e?.message || "Erro interno do servidor");
   }
 }
 

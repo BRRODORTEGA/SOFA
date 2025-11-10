@@ -20,7 +20,9 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
     // Processar dados no servidor antes de passar para o Client Component
     const rowsWithFormatted = items.map(item => ({
       ...item,
-      ativoFormatted: item.ativo ? "Sim" : "Não"
+      ativoFormatted: item.ativo ? "Sim" : "Não",
+      fornecedorNomeFormatted: item.fornecedorNome || "-",
+      valor_m2Formatted: item.valor_m2 ? `R$ ${Number(item.valor_m2).toFixed(2)}` : "-"
     }));
 
     return (
@@ -31,6 +33,8 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
           columns={[
             { key: "nome", header: "Nome" },
             { key: "grade", header: "Grade" },
+            { key: "fornecedorNomeFormatted", header: "Fornecedor" },
+            { key: "valor_m2Formatted", header: "Valor (m²)" },
             { key: "ativoFormatted", header: "Ativo" },
           ]}
           rows={rowsWithFormatted}
