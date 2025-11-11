@@ -40,7 +40,7 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
   const [searchQuery, setSearchQuery] = useState("");
   const [showImportPreview, setShowImportPreview] = useState(false);
   const [importData, setImportData] = useState<LinhaPreco[]>([]);
-  const dirtyRef = useRef<Set<string>>(new Set()); // Chave: produtoId_medida_cm
+  const dirtyRef = useRef<Set<string>>(new Set()); // Chave: produtoId::medida::field
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Map<string, Set<string>>>(new Map()); // Chave: produtoId_medida_cm, Set de campos com erro
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -85,21 +85,39 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
         if (link && link.href) {
           const isExternal = link.href.startsWith("http") && !link.href.includes(window.location.host);
           const isHash = link.href.includes("#");
-          if (!isExternal && !isHash) {
+          const currentUrl = window.location.pathname;
+          const targetUrl = new URL(link.href).pathname;
+          const isSamePage = targetUrl === currentUrl || targetUrl === currentUrl + "/" || targetUrl + "/" === currentUrl;
+          
+          if (!isExternal && !isHash && !isSamePage) {
+            // Prevenir navegação imediatamente
             e.preventDefault();
-            if (confirm("Você tem alterações não salvas. Deseja realmente sair sem salvar?")) {
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            
+            // Perguntar ao usuário
+            const confirmar = window.confirm("Você tem alterações não salvas. Deseja realmente sair sem salvar?");
+            if (confirmar) {
+              // Se confirmar, limpar estado e navegar
               dirtyRef.current.clear();
               setHasUnsavedChanges(false);
-              window.location.href = link.href;
+              pendingNavigationRef.current = null;
+              // Usar router.push para navegação do Next.js
+              router.push(targetUrl);
+            } else {
+              // Se cancelar, garantir que não navegue
+              pendingNavigationRef.current = null;
             }
+            return false;
           }
         }
       }
     };
 
-    document.addEventListener("click", handleRouteChange);
-    return () => document.removeEventListener("click", handleRouteChange);
-  }, [hasUnsavedChanges]);
+    // Usar capture phase para interceptar antes de outros listeners (incluindo Next.js Link)
+    document.addEventListener("click", handleRouteChange, true);
+    return () => document.removeEventListener("click", handleRouteChange, true);
+  }, [hasUnsavedChanges, router]);
 
   async function loadLinhas(q?: string) {
     setLoading(true);
@@ -142,8 +160,13 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
     return `${produtoId}_${medida_cm}`;
   }
 
+  function getFieldKey(produtoId: string, medida: number, field: string): string {
+    return `${produtoId}::${medida}::${field}`;
+  }
+
   function handleFieldChange(produtoId: string, medida_cm: number, field: keyof LinhaPreco, value: string | number) {
     const key = getKey(produtoId, medida_cm);
+    const fieldKey = getFieldKey(produtoId, medida_cm, field as string);
     const numValue = typeof value === "string" ? parseFloat(value) : value;
     
     if (isNaN(numValue) && value !== "") return;
@@ -157,7 +180,8 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
       })
     );
 
-    dirtyRef.current.add(key);
+    // Marcar campo específico como alterado
+    dirtyRef.current.add(fieldKey);
     setHasUnsavedChanges(true);
 
     // Remover erro de validação deste campo se existir
@@ -188,8 +212,20 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
     setError(null);
 
     try {
+      // Coletar todas as linhas que têm pelo menos um campo alterado
+      const linhasComAlteracoes = new Set<string>();
+      dirtyRef.current.forEach((fieldKey) => {
+        const parts = fieldKey.split("::");
+        if (parts.length === 3) {
+          const produtoId = parts[0];
+          const medida = Number(parts[1]);
+          const linhaKey = getKey(produtoId, medida);
+          linhasComAlteracoes.add(linhaKey);
+        }
+      });
+
       const linhasParaSalvar = linhas.filter((linha) =>
-        dirtyRef.current.has(getKey(linha.produtoId, linha.medida_cm))
+        linhasComAlteracoes.has(getKey(linha.produtoId, linha.medida_cm))
       );
 
       const res = await fetch(`/api/tabelas-preco/${tabelaPrecoId}/linhas`, {
@@ -680,6 +716,8 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                       const value = linha[col.key as keyof LinhaPreco];
                       const isReadonly = col.readonly;
                       const errorClass = getCellErrorClass(linha.produtoId, linha.medida_cm, col.key as keyof LinhaPreco);
+                      const fieldKey = getFieldKey(linha.produtoId, linha.medida_cm, col.key);
+                      const isFieldDirty = dirtyRef.current.has(fieldKey) && !col.isText && !col.readonly;
 
                       return (
                         <td key={col.key} className="border-r border-gray-100 px-4 py-2 last:border-r-0">
@@ -692,7 +730,15 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                               onChange={(e) =>
                                 handleFieldChange(linha.produtoId, linha.medida_cm, col.key as keyof LinhaPreco, e.target.value)
                               }
-                              className={`w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${errorClass}`}
+                              className={`w-full rounded border px-2 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 ${
+                                errorClass
+                                  ? "border-red-500 bg-red-100 text-red-900 focus:ring-red-500"
+                                  : isFieldDirty
+                                  ? "border-yellow-400 bg-yellow-50 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500"
+                                  : isReadonly
+                                  ? "border-gray-300 bg-gray-50 text-gray-900 cursor-not-allowed"
+                                  : "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+                              }`}
                             />
                           )}
                         </td>

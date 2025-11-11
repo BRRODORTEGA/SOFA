@@ -28,7 +28,10 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     if (!produto) return notFound("Produto não encontrado");
 
     const linhasPreco = await prisma.tabelaPrecoLinha.findMany({
-      where: { produtoId: params.id },
+      where: { 
+        produtoId: params.id,
+        tabelaPrecoId: null, // Apenas linhas da tabela global
+      },
       select: { medida_cm: true },
     });
 
@@ -97,18 +100,51 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       preco_couro: new Decimal(0),
     }));
 
-    // Upsert por (produtoId, medida_cm)
+    // Criar linhas na tabela global (tabelaPrecoId: null)
+    let createdCount = 0;
+    const medidasCriadas: number[] = [];
+
     for (const l of linhas) {
-      await prisma.tabelaPrecoLinha.upsert({
-        where: { produtoId_medida_cm: { produtoId: l.produtoId, medida_cm: l.medida_cm } },
-        update: {}, // não sobrescrever se já existir
-        create: l,
-      });
+      try {
+        // Verificar se já existe uma linha para este produto e medida na tabela global
+        const linhaExistente = await prisma.tabelaPrecoLinha.findFirst({
+          where: {
+            produtoId: l.produtoId,
+            medida_cm: l.medida_cm,
+            tabelaPrecoId: null,
+          },
+        });
+
+        if (linhaExistente) {
+          // Não sobrescrever se já existir
+          continue;
+        }
+
+        // Criar nova linha na tabela global (tabelaPrecoId: null)
+        await prisma.tabelaPrecoLinha.create({
+          data: {
+            ...l,
+            tabelaPrecoId: null, // Tabela global
+          },
+        });
+
+        createdCount++;
+        medidasCriadas.push(l.medida_cm);
+      } catch (error: any) {
+        // Se for erro de constraint único, a linha já existe (pode ter sido criada por outro processo)
+        if (error?.code === "P2002") {
+          console.log(`Linha já existe para produto ${l.produtoId}, medida ${l.medida_cm}`);
+          continue;
+        }
+        // Re-lançar outros erros
+        throw error;
+      }
     }
 
-    return ok({ created: linhas.length, medidas: linhas.map((l) => l.medida_cm) });
-  } catch (e) {
-    return serverError();
+    return ok({ created: createdCount, medidas: medidasCriadas });
+  } catch (e: any) {
+    console.error("Erro ao criar skeleton de preços:", e);
+    return serverError(e?.message || "Erro ao criar skeleton de preços");
   }
 }
 

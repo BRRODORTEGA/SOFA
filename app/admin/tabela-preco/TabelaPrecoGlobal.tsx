@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import { AdminToolbar } from "@/components/admin/toolbar";
 
@@ -30,6 +31,7 @@ type LinhaPreco = {
 };
 
 export default function TabelaPrecoGlobal() {
+  const router = useRouter();
   const [linhas, setLinhas] = useState<LinhaPreco[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -38,10 +40,11 @@ export default function TabelaPrecoGlobal() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showImportPreview, setShowImportPreview] = useState(false);
   const [importData, setImportData] = useState<LinhaPreco[]>([]);
-  const dirtyRef = useRef<Set<string>>(new Set()); // Chave: produtoId_medida_cm
+  const dirtyRef = useRef<Set<string>>(new Set()); // Chave: produtoId_medida_cm_field
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Map<string, Set<string>>>(new Map()); // Chave: produtoId_medida_cm, Set de campos com erro
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingNavigationRef = useRef<string | null>(null);
 
   useEffect(() => {
     loadLinhas();
@@ -78,21 +81,39 @@ export default function TabelaPrecoGlobal() {
         if (link && link.href) {
           const isExternal = link.href.startsWith("http") && !link.href.includes(window.location.host);
           const isHash = link.href.includes("#");
-          if (!isExternal && !isHash) {
+          const currentUrl = window.location.pathname;
+          const targetUrl = new URL(link.href).pathname;
+          const isSamePage = targetUrl === currentUrl || targetUrl === currentUrl + "/" || targetUrl + "/" === currentUrl;
+          
+          if (!isExternal && !isHash && !isSamePage) {
+            // Prevenir navegação imediatamente
             e.preventDefault();
-            if (confirm("Você tem alterações não salvas. Deseja realmente sair sem salvar?")) {
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            
+            // Perguntar ao usuário
+            const confirmar = window.confirm("Você tem alterações não salvas. Deseja realmente sair sem salvar?");
+            if (confirmar) {
+              // Se confirmar, limpar estado e navegar
               dirtyRef.current.clear();
               setHasUnsavedChanges(false);
-              window.location.href = link.href;
+              pendingNavigationRef.current = null;
+              // Usar router.push para navegação do Next.js
+              router.push(targetUrl);
+            } else {
+              // Se cancelar, garantir que não navegue
+              pendingNavigationRef.current = null;
             }
+            return false;
           }
         }
       }
     };
 
-    document.addEventListener("click", handleRouteChange);
-    return () => document.removeEventListener("click", handleRouteChange);
-  }, [hasUnsavedChanges]);
+    // Usar capture phase para interceptar antes de outros listeners (incluindo Next.js Link)
+    document.addEventListener("click", handleRouteChange, true);
+    return () => document.removeEventListener("click", handleRouteChange, true);
+  }, [hasUnsavedChanges, router]);
 
   async function loadLinhas(q?: string) {
     setLoading(true);
@@ -126,8 +147,20 @@ export default function TabelaPrecoGlobal() {
 
   // Função manual para salvar alterações (não é mais automática)
   async function salvarAlteracoes() {
+    // Coletar todas as linhas que têm pelo menos um campo alterado
+    const linhasComAlteracoes = new Set<string>();
+    dirtyRef.current.forEach((fieldKey) => {
+      const parts = fieldKey.split("::");
+      if (parts.length === 3) {
+        const produtoId = parts[0];
+        const medida = Number(parts[1]);
+        const linhaKey = getKey(produtoId, medida);
+        linhasComAlteracoes.add(linhaKey);
+      }
+    });
+
     const toSave = linhas.filter((l) => 
-      dirtyRef.current.has(getKey(l.produtoId, l.medida_cm))
+      linhasComAlteracoes.has(getKey(l.produtoId, l.medida_cm))
     );
     
     if (toSave.length === 0) {
@@ -140,13 +173,17 @@ export default function TabelaPrecoGlobal() {
     setError(null);
     
     try {
+      console.log("Salvando alterações:", toSave.length, "linhas");
       const res = await fetch(`/api/tabela-preco`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(toSave),
       });
       
-      if (res.ok) {
+      const data = await res.json();
+      console.log("Resposta da API:", data);
+      
+      if (res.ok && data.ok) {
         setSaved(true);
         dirtyRef.current.clear();
         setHasUnsavedChanges(false);
@@ -154,18 +191,27 @@ export default function TabelaPrecoGlobal() {
         // Recarregar dados para garantir sincronização
         await loadLinhas(searchQuery || undefined);
       } else {
-        const data = await res.json();
-        setError(data.error || "Erro ao salvar");
+        const errorMsg = data.error || data.details || "Erro ao salvar";
+        console.error("Erro ao salvar:", errorMsg);
+        setError(errorMsg);
+        alert(`Erro ao salvar: ${errorMsg}`);
       }
-    } catch (e) {
-      setError("Erro ao salvar");
+    } catch (e: any) {
+      console.error("Erro ao salvar:", e);
+      const errorMsg = e?.message || "Erro ao salvar";
+      setError(errorMsg);
+      alert(`Erro ao salvar: ${errorMsg}`);
+    } finally {
+      setSaving(false);
     }
-    
-    setSaving(false);
   }
 
   function getKey(produtoId: string, medida: number): string {
     return `${produtoId}_${medida}`;
+  }
+
+  function getFieldKey(produtoId: string, medida: number, field: string): string {
+    return `${produtoId}::${medida}::${field}`;
   }
 
   function getProdutoKey(linha: LinhaPreco): string {
@@ -326,6 +372,7 @@ export default function TabelaPrecoGlobal() {
       : Math.max(0, Number(value) || 0);
     
     const key = getKey(produtoId, medida);
+    const fieldKey = getFieldKey(produtoId, medida, field as string);
     
     setLinhas((prev) =>
       prev.map((l) => {
@@ -336,8 +383,8 @@ export default function TabelaPrecoGlobal() {
       })
     );
     
-    // Marcar como alterado (sem salvar automaticamente)
-    dirtyRef.current.add(key);
+    // Marcar campo específico como alterado (sem salvar automaticamente)
+    dirtyRef.current.add(fieldKey);
     setHasUnsavedChanges(true);
   }
 
@@ -756,6 +803,8 @@ export default function TabelaPrecoGlobal() {
                   <tr key={linhaKey} className="bg-white transition-colors hover:bg-blue-50">
                     {columns.map((col) => {
                       const hasError = linhaErrors.has(col.key);
+                      const fieldKey = getFieldKey(l.produtoId, l.medida_cm, col.key);
+                      const isFieldDirty = dirtyRef.current.has(fieldKey) && !col.isText && !col.readonly;
                       return (
                         <td key={col.key} className="border-r border-gray-200 px-2 py-2 last:border-r-0">
                           {col.isText ? (
@@ -770,6 +819,8 @@ export default function TabelaPrecoGlobal() {
                               className={`w-full rounded-lg border px-2 py-2 text-center text-sm font-medium focus:outline-none focus:ring-2 ${
                                 hasError
                                   ? "border-red-500 bg-red-100 text-red-900 focus:ring-red-500"
+                                  : isFieldDirty
+                                  ? "border-yellow-400 bg-yellow-50 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500"
                                   : col.readonly
                                   ? "border-gray-300 bg-gray-50 text-gray-900 cursor-not-allowed"
                                   : "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500"

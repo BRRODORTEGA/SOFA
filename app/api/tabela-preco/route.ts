@@ -127,6 +127,7 @@ export async function PUT(req: Request) {
 
         const dataToSave = {
           produtoId,
+          tabelaPrecoId: null, // Tabela geral sempre tem tabelaPrecoId = null
           medida_cm,
           largura_cm: rest.largura_cm,
           profundidade_cm: rest.profundidade_cm,
@@ -150,11 +151,26 @@ export async function PUT(req: Request) {
           acionamentoTxt: produto?.acionamento || null,
         };
 
-        const updated = await prisma.tabelaPrecoLinha.upsert({
-          where: { produtoId_medida_cm: { produtoId, medida_cm } },
-          update: dataToSave,
-          create: dataToSave,
+        // Buscar linha existente na tabela geral (tabelaPrecoId = null)
+        const linhaExistente = await prisma.tabelaPrecoLinha.findFirst({
+          where: {
+            produtoId,
+            medida_cm,
+            tabelaPrecoId: null,
+          },
         });
+
+        let updated;
+        if (linhaExistente) {
+          updated = await prisma.tabelaPrecoLinha.update({
+            where: { id: linhaExistente.id },
+            data: dataToSave,
+          });
+        } else {
+          updated = await prisma.tabelaPrecoLinha.create({
+            data: dataToSave,
+          });
+        }
         results.push(updated);
       }
     }

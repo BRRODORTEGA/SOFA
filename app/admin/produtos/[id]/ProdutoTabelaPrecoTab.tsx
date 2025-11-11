@@ -311,10 +311,14 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
         setVariacoesFaltantes([]);
         loadLinhas(); // Recarrega a tabela
       } else {
-        alert("Erro ao criar skeleton de preços");
+        const errorMsg = data.error || data.details || data.message || "Erro ao criar skeleton de preços";
+        console.error("Erro na API:", errorMsg);
+        alert(`Erro ao criar skeleton de preços: ${errorMsg}`);
       }
-    } catch (e) {
-      alert("Erro ao criar skeleton de preços");
+    } catch (e: any) {
+      console.error("Erro ao criar skeleton:", e);
+      const errorMsg = e?.message || "Erro ao criar skeleton de preços";
+      alert(`Erro ao criar skeleton de preços: ${errorMsg}`);
     } finally {
       setSyncing(false);
     }
