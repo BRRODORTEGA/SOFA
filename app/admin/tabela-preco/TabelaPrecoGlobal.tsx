@@ -40,6 +40,7 @@ export default function TabelaPrecoGlobal() {
   const [importData, setImportData] = useState<LinhaPreco[]>([]);
   const dirtyRef = useRef<Set<string>>(new Set()); // Chave: produtoId_medida_cm
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Map<string, Set<string>>>(new Map()); // Chave: produtoId_medida_cm, Set de campos com erro
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -165,6 +166,158 @@ export default function TabelaPrecoGlobal() {
 
   function getKey(produtoId: string, medida: number): string {
     return `${produtoId}_${medida}`;
+  }
+
+  function getProdutoKey(linha: LinhaPreco): string {
+    return `${linha.categoriaNome || ""}_${linha.familiaNome || ""}_${linha.produtoNome || ""}`;
+  }
+
+  // Função de validação
+  function validarTabela(): { errors: Map<string, Set<string>>; messages: string[] } {
+    const errors = new Map<string, Set<string>>();
+    const messages: string[] = [];
+
+    // Agrupar linhas por chave do produto (Categoria_Família_Nome)
+    const linhasPorProduto = new Map<string, LinhaPreco[]>();
+    linhas.forEach((linha) => {
+      const key = getProdutoKey(linha);
+      if (!linhasPorProduto.has(key)) {
+        linhasPorProduto.set(key, []);
+      }
+      linhasPorProduto.get(key)!.push(linha);
+    });
+
+    // VALIDAÇÃO 1: Valores das grades crescentes (1000 < 2000 < 3000 < 4000 < 5000 < 6000 < 7000 < Couro)
+    linhas.forEach((linha) => {
+      const key = getKey(linha.produtoId, linha.medida_cm);
+      const linhaErrors = new Set<string>();
+
+      const precos = [
+        { field: "preco_grade_1000", value: linha.preco_grade_1000 },
+        { field: "preco_grade_2000", value: linha.preco_grade_2000 },
+        { field: "preco_grade_3000", value: linha.preco_grade_3000 },
+        { field: "preco_grade_4000", value: linha.preco_grade_4000 },
+        { field: "preco_grade_5000", value: linha.preco_grade_5000 },
+        { field: "preco_grade_6000", value: linha.preco_grade_6000 },
+        { field: "preco_grade_7000", value: linha.preco_grade_7000 },
+        { field: "preco_couro", value: linha.preco_couro },
+      ];
+
+      for (let i = 0; i < precos.length - 1; i++) {
+        if (precos[i].value >= precos[i + 1].value) {
+          linhaErrors.add(precos[i].field);
+          linhaErrors.add(precos[i + 1].field);
+          messages.push(
+            `[${linha.categoriaNome}/${linha.familiaNome}/${linha.produtoNome} - ${linha.medida_cm}cm] ` +
+            `Preço ${precos[i].field.replace("preco_grade_", "").replace("preco_", "")} (${precos[i].value}) ` +
+            `não pode ser maior ou igual a ${precos[i + 1].field.replace("preco_grade_", "").replace("preco_", "")} (${precos[i + 1].value})`
+          );
+        }
+      }
+
+      if (linhaErrors.size > 0) {
+        errors.set(key, linhaErrors);
+      }
+    });
+
+    // VALIDAÇÃO 2: Metragem de tecido e couro crescente conforme medida aumenta
+    linhasPorProduto.forEach((linhasProduto, produtoKey) => {
+      // Ordenar por medida
+      const linhasOrdenadas = [...linhasProduto].sort((a, b) => a.medida_cm - b.medida_cm);
+
+      for (let i = 0; i < linhasOrdenadas.length - 1; i++) {
+        const linhaMenor = linhasOrdenadas[i];
+        const linhaMaior = linhasOrdenadas[i + 1];
+
+        if (linhaMenor.medida_cm >= linhaMaior.medida_cm) continue;
+
+        const keyMenor = getKey(linhaMenor.produtoId, linhaMenor.medida_cm);
+        const keyMaior = getKey(linhaMaior.produtoId, linhaMaior.medida_cm);
+
+        // Validar metragem de tecido
+        if (linhaMenor.metragem_tecido_m >= linhaMaior.metragem_tecido_m) {
+          if (!errors.has(keyMenor)) errors.set(keyMenor, new Set());
+          if (!errors.has(keyMaior)) errors.set(keyMaior, new Set());
+          errors.get(keyMenor)!.add("metragem_tecido_m");
+          errors.get(keyMaior)!.add("metragem_tecido_m");
+          messages.push(
+            `[${produtoKey}] Metragem de tecido deve ser crescente: ` +
+            `medida ${linhaMenor.medida_cm}cm (${linhaMenor.metragem_tecido_m}m) ` +
+            `deve ser menor que medida ${linhaMaior.medida_cm}cm (${linhaMaior.metragem_tecido_m}m)`
+          );
+        }
+
+        // Validar metragem de couro
+        if (linhaMenor.metragem_couro_m >= linhaMaior.metragem_couro_m) {
+          if (!errors.has(keyMenor)) errors.set(keyMenor, new Set());
+          if (!errors.has(keyMaior)) errors.set(keyMaior, new Set());
+          errors.get(keyMenor)!.add("metragem_couro_m");
+          errors.get(keyMaior)!.add("metragem_couro_m");
+          messages.push(
+            `[${produtoKey}] Metragem de couro deve ser crescente: ` +
+            `medida ${linhaMenor.medida_cm}cm (${linhaMenor.metragem_couro_m}m) ` +
+            `deve ser menor que medida ${linhaMaior.medida_cm}cm (${linhaMaior.metragem_couro_m}m)`
+          );
+        }
+      }
+    });
+
+    // VALIDAÇÃO 3: Profundidade, Altura e altura_assento devem ser iguais para o mesmo produto
+    linhasPorProduto.forEach((linhasProduto, produtoKey) => {
+      if (linhasProduto.length < 2) return; // Precisa de pelo menos 2 medidas para comparar
+
+      // Pegar valores da primeira linha como referência
+      const primeira = linhasProduto[0];
+      const refProfundidade = primeira.profundidade_cm;
+      const refAltura = primeira.altura_cm;
+      const refAlturaAssento = primeira.altura_assento_cm;
+
+      linhasProduto.forEach((linha) => {
+        const key = getKey(linha.produtoId, linha.medida_cm);
+        const linhaErrors = new Set<string>();
+
+        if (linha.profundidade_cm !== refProfundidade) {
+          linhaErrors.add("profundidade_cm");
+        }
+        if (linha.altura_cm !== refAltura) {
+          linhaErrors.add("altura_cm");
+        }
+        if (linha.altura_assento_cm !== refAlturaAssento) {
+          linhaErrors.add("altura_assento_cm");
+        }
+
+        if (linhaErrors.size > 0) {
+          if (!errors.has(key)) errors.set(key, new Set());
+          linhaErrors.forEach((field) => errors.get(key)!.add(field));
+          
+          const camposErrados: string[] = [];
+          if (linha.profundidade_cm !== refProfundidade) camposErrados.push(`Profundidade: ${linha.profundidade_cm} (esperado: ${refProfundidade})`);
+          if (linha.altura_cm !== refAltura) camposErrados.push(`Altura: ${linha.altura_cm} (esperado: ${refAltura})`);
+          if (linha.altura_assento_cm !== refAlturaAssento) camposErrados.push(`Alt. Assento: ${linha.altura_assento_cm} (esperado: ${refAlturaAssento})`);
+          
+          messages.push(
+            `[${produtoKey} - ${linha.medida_cm}cm] Dimensões inconsistentes: ${camposErrados.join(", ")}`
+          );
+        }
+      });
+    });
+
+    return { errors, messages };
+  }
+
+  function executarValidacao() {
+    const { errors, messages } = validarTabela();
+    setValidationErrors(errors);
+
+    if (errors.size === 0) {
+      alert("✅ Validação concluída! Nenhuma inconsistência encontrada.");
+    } else {
+      const mensagemCompleta = 
+        `❌ Foram encontradas ${errors.size} linha(s) com inconsistências:\n\n` +
+        messages.slice(0, 20).join("\n") +
+        (messages.length > 20 ? `\n\n... e mais ${messages.length - 20} erro(s)` : "");
+      alert(mensagemCompleta);
+    }
   }
 
   function onChange(produtoId: string, medida: number, field: keyof LinhaPreco, value: string) {
@@ -533,8 +686,33 @@ export default function TabelaPrecoGlobal() {
           >
             Exportar CSV
           </button>
+          <button
+            onClick={executarValidacao}
+            className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+          >
+            Validar Tabela
+          </button>
         </div>
       </div>
+
+      {validationErrors.size > 0 && (
+        <div className="rounded-lg border border-red-300 bg-red-50 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold text-red-900">
+              ⚠️ {validationErrors.size} linha(s) com inconsistências encontradas
+            </h3>
+            <button
+              onClick={() => setValidationErrors(new Map())}
+              className="text-sm font-medium text-red-700 hover:text-red-900"
+            >
+              Limpar validação
+            </button>
+          </div>
+          <p className="text-sm text-red-700">
+            Os campos com erro estão destacados em vermelho na tabela abaixo.
+          </p>
+        </div>
+      )}
 
       <div className="flex items-center gap-3">
         <input
@@ -570,34 +748,59 @@ export default function TabelaPrecoGlobal() {
                 </td>
               </tr>
             ) : (
-              linhas.map((l) => (
-                <tr key={`${l.produtoId}_${l.medida_cm}`} className="bg-white transition-colors hover:bg-blue-50">
-                  {columns.map((col) => (
-                    <td key={col.key} className="border-r border-gray-200 px-2 py-2 last:border-r-0">
-                      {col.isText ? (
-                        <div className="px-2 py-2 text-center text-sm font-medium text-gray-900">
-                          {String(l[col.key as keyof LinhaPreco] || "")}
-                        </div>
-                      ) : (
-                        <input
-                          type="number"
-                          step={col.key.includes("metragem") || col.key.includes("preco") ? "0.01" : "1"}
-                          min="0"
-                          className={`w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-center text-sm font-medium text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                            col.readonly ? "bg-gray-50 cursor-not-allowed" : ""
-                          }`}
-                          value={l[col.key as keyof LinhaPreco] || 0}
-                          onChange={(e) => onChange(l.produtoId, l.medida_cm, col.key as keyof LinhaPreco, e.target.value)}
-                          readOnly={col.readonly}
-                          onDoubleClick={(e) => {
-                            if (!col.readonly) {
-                              (e.target as HTMLInputElement).select();
-                            }
-                          }}
-                        />
-                      )}
-                    </td>
-                  ))}
+              linhas.map((l) => {
+                const linhaKey = getKey(l.produtoId, l.medida_cm);
+                const linhaErrors = validationErrors.get(linhaKey) || new Set<string>();
+                
+                return (
+                  <tr key={linhaKey} className="bg-white transition-colors hover:bg-blue-50">
+                    {columns.map((col) => {
+                      const hasError = linhaErrors.has(col.key);
+                      return (
+                        <td key={col.key} className="border-r border-gray-200 px-2 py-2 last:border-r-0">
+                          {col.isText ? (
+                            <div className="px-2 py-2 text-center text-sm font-medium text-gray-900">
+                              {String(l[col.key as keyof LinhaPreco] || "")}
+                            </div>
+                          ) : (
+                            <input
+                              type="number"
+                              step={col.key.includes("metragem") || col.key.includes("preco") ? "0.01" : "1"}
+                              min="0"
+                              className={`w-full rounded-lg border px-2 py-2 text-center text-sm font-medium focus:outline-none focus:ring-2 ${
+                                hasError
+                                  ? "border-red-500 bg-red-100 text-red-900 focus:ring-red-500"
+                                  : col.readonly
+                                  ? "border-gray-300 bg-gray-50 text-gray-900 cursor-not-allowed"
+                                  : "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+                              }`}
+                              value={l[col.key as keyof LinhaPreco] || 0}
+                              onChange={(e) => {
+                                onChange(l.produtoId, l.medida_cm, col.key as keyof LinhaPreco, e.target.value);
+                                // Remover erro ao editar
+                                if (hasError) {
+                                  const newErrors = new Map(validationErrors);
+                                  const linhaErros = new Set(linhaErrors);
+                                  linhaErros.delete(col.key);
+                                  if (linhaErros.size === 0) {
+                                    newErrors.delete(linhaKey);
+                                  } else {
+                                    newErrors.set(linhaKey, linhaErros);
+                                  }
+                                  setValidationErrors(newErrors);
+                                }
+                              }}
+                              readOnly={col.readonly}
+                              onDoubleClick={(e) => {
+                                if (!col.readonly) {
+                                  (e.target as HTMLInputElement).select();
+                                }
+                              }}
+                            />
+                          )}
+                        </td>
+                      );
+                    })}
                   <td className="border-r border-gray-200 px-3 py-2 text-center">
                     <button
                       onClick={() => deleteLinha(l.produtoId, l.medida_cm)}
@@ -607,7 +810,8 @@ export default function TabelaPrecoGlobal() {
                     </button>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
