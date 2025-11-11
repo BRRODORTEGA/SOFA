@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import Papa from "papaparse";
-import { debounce } from "lodash";
+import { AdminToolbar } from "@/components/admin/toolbar";
 
 type LinhaPreco = {
   id?: string;
+  produtoId: string;
   categoriaNome?: string;
   familiaNome?: string;
   produtoNome?: string;
@@ -28,29 +29,75 @@ type LinhaPreco = {
   preco_couro: number;
 };
 
-export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string }) {
+export default function TabelaPrecoGlobal() {
   const [linhas, setLinhas] = useState<LinhaPreco[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [showImportPreview, setShowImportPreview] = useState(false);
   const [importData, setImportData] = useState<LinhaPreco[]>([]);
-  const [variacoesFaltantes, setVariacoesFaltantes] = useState<any[]>([]);
-  const [selectedMedidas, setSelectedMedidas] = useState<Set<number>>(new Set());
-  const [syncing, setSyncing] = useState(false);
-  const dirtyRef = useRef<Set<number>>(new Set());
+  const dirtyRef = useRef<Set<string>>(new Set()); // Chave: produtoId_medida_cm
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadLinhas();
-  }, [produtoId]);
+  }, []);
 
-  async function loadLinhas() {
+  useEffect(() => {
+    if (searchQuery) {
+      loadLinhas(searchQuery);
+    } else {
+      loadLinhas();
+    }
+  }, [searchQuery]);
+
+  // Avisar antes de fechar a aba/janela se houver alterações pendentes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "Você tem alterações não salvas. Deseja realmente sair?";
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Interceptar navegação do Next.js
+  useEffect(() => {
+    const handleRouteChange = (e: MouseEvent) => {
+      if (hasUnsavedChanges) {
+        const target = e.target as HTMLElement;
+        const link = target.closest("a");
+        if (link && link.href) {
+          const isExternal = link.href.startsWith("http") && !link.href.includes(window.location.host);
+          const isHash = link.href.includes("#");
+          if (!isExternal && !isHash) {
+            e.preventDefault();
+            if (confirm("Você tem alterações não salvas. Deseja realmente sair sem salvar?")) {
+              dirtyRef.current.clear();
+              setHasUnsavedChanges(false);
+              window.location.href = link.href;
+            }
+          }
+        }
+      }
+    };
+
+    document.addEventListener("click", handleRouteChange);
+    return () => document.removeEventListener("click", handleRouteChange);
+  }, [hasUnsavedChanges]);
+
+  async function loadLinhas(q?: string) {
     setLoading(true);
     try {
-      const res = await fetch(`/api/produtos/${produtoId}/tabela-preco`);
+      const url = q ? `/api/tabela-preco?q=${encodeURIComponent(q)}` : `/api/tabela-preco`;
+      const res = await fetch(url);
       const data = await res.json();
       if (data.ok) {
         // Converter Decimal para number
@@ -66,6 +113,9 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
           preco_couro: Number(item.preco_couro || 0),
         }));
         setLinhas(items);
+        // Resetar alterações pendentes ao carregar dados
+        dirtyRef.current.clear();
+        setHasUnsavedChanges(false);
       }
     } catch (e) {
       setError("Erro ao carregar dados");
@@ -73,97 +123,79 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
     setLoading(false);
   }
 
-  const saveChanges = useCallback(
-    debounce(async (rows: LinhaPreco[]) => {
-      if (rows.length === 0) return;
-      setSaving(true);
-      setSaved(false);
-      setError(null);
-      try {
-        const res = await fetch(`/api/produtos/${produtoId}/tabela-preco`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(rows),
-        });
-        if (res.ok) {
-          setSaved(true);
-          dirtyRef.current.clear();
-          setTimeout(() => setSaved(false), 3000);
-        } else {
-          const data = await res.json();
-          setError(data.error || "Erro ao salvar");
-        }
-      } catch (e) {
-        setError("Erro ao salvar");
-      }
-      setSaving(false);
-    }, 500),
-    [produtoId]
-  );
+  // Função manual para salvar alterações (não é mais automática)
+  async function salvarAlteracoes() {
+    const toSave = linhas.filter((l) => 
+      dirtyRef.current.has(getKey(l.produtoId, l.medida_cm))
+    );
+    
+    if (toSave.length === 0) {
+      alert("Nenhuma alteração para salvar");
+      return;
+    }
 
-  function onChange(medida: number, field: keyof LinhaPreco, value: string) {
+    setSaving(true);
+    setSaved(false);
+    setError(null);
+    
+    try {
+      const res = await fetch(`/api/tabela-preco`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(toSave),
+      });
+      
+      if (res.ok) {
+        setSaved(true);
+        dirtyRef.current.clear();
+        setHasUnsavedChanges(false);
+        setTimeout(() => setSaved(false), 3000);
+        // Recarregar dados para garantir sincronização
+        await loadLinhas(searchQuery || undefined);
+      } else {
+        const data = await res.json();
+        setError(data.error || "Erro ao salvar");
+      }
+    } catch (e) {
+      setError("Erro ao salvar");
+    }
+    
+    setSaving(false);
+  }
+
+  function getKey(produtoId: string, medida: number): string {
+    return `${produtoId}_${medida}`;
+  }
+
+  function onChange(produtoId: string, medida: number, field: keyof LinhaPreco, value: string) {
     const numValue = field === "medida_cm" || field.includes("_cm") 
       ? Math.max(0, Math.floor(Number(value) || 0))
       : Math.max(0, Number(value) || 0);
     
-    setLinhas((prev) =>
-      prev.map((l) => (l.medida_cm === medida ? { ...l, [field]: numValue } : l))
-    );
-    dirtyRef.current.add(medida);
+    const key = getKey(produtoId, medida);
     
-    // Envia todas as linhas modificadas
-    const toSave = linhas
-      .map((l) => (l.medida_cm === medida ? { ...l, [field]: numValue } : l))
-      .filter((l) => dirtyRef.current.has(l.medida_cm));
-    saveChanges(toSave);
+    setLinhas((prev) =>
+      prev.map((l) => {
+        if (getKey(l.produtoId, l.medida_cm) === key) {
+          return { ...l, [field]: numValue };
+        }
+        return l;
+      })
+    );
+    
+    // Marcar como alterado (sem salvar automaticamente)
+    dirtyRef.current.add(key);
+    setHasUnsavedChanges(true);
   }
 
-  async function addLinha() {
-    const medida = window.prompt("Informe a nova medida (cm):");
-    if (!medida) return;
-    const n = Number(medida);
-    if (isNaN(n) || n <= 0) {
-      alert("Medida inválida. Informe um número maior que zero.");
-      return;
-    }
-    if (linhas.some((l) => l.medida_cm === n)) {
-      alert("Já existe uma linha com esta medida. Escolha outra medida.");
-      return;
-    }
-
-    const nova: LinhaPreco = {
-      medida_cm: n,
-      largura_cm: 0,
-      profundidade_cm: 0,
-      altura_cm: 0,
-      largura_assento_cm: 0,
-      altura_assento_cm: 0,
-      largura_braco_cm: 0,
-      metragem_tecido_m: 0,
-      metragem_couro_m: 0,
-      preco_grade_1000: 0,
-      preco_grade_2000: 0,
-      preco_grade_3000: 0,
-      preco_grade_4000: 0,
-      preco_grade_5000: 0,
-      preco_grade_6000: 0,
-      preco_grade_7000: 0,
-      preco_couro: 0,
-    };
-
-    setLinhas([...linhas, nova].sort((a, b) => a.medida_cm - b.medida_cm));
-    dirtyRef.current.add(n);
-    saveChanges([nova]);
-  }
-
-  async function deleteLinha(medida: number) {
-    if (!confirm(`Excluir linha de ${medida}cm?`)) return;
+  async function deleteLinha(produtoId: string, medida: number) {
+    if (!confirm(`Excluir linha de ${medida}cm do produto?`)) return;
     const res = await fetch(`/api/produtos/${produtoId}/tabela-preco?medida=${medida}`, {
       method: "DELETE",
     });
     if (res.ok) {
-      setLinhas(linhas.filter((l) => l.medida_cm !== medida));
-      dirtyRef.current.delete(medida);
+      setLinhas(linhas.filter((l) => !(l.produtoId === produtoId && l.medida_cm === medida)));
+      dirtyRef.current.delete(getKey(produtoId, medida));
     } else {
       alert("Erro ao excluir");
     }
@@ -173,13 +205,13 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
     if (dirtyRef.current.size === 0) return true;
     
     const toSave = linhas.filter((l) => 
-      dirtyRef.current.has(l.medida_cm)
+      dirtyRef.current.has(getKey(l.produtoId, l.medida_cm))
     );
     
     if (toSave.length === 0) return true;
     
     try {
-      const res = await fetch(`/api/produtos/${produtoId}/tabela-preco`, {
+      const res = await fetch(`/api/tabela-preco`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(toSave),
@@ -187,6 +219,7 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
       
       if (res.ok) {
         dirtyRef.current.clear();
+        setHasUnsavedChanges(false);
         return true;
       } else {
         const data = await res.json();
@@ -197,6 +230,66 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
       alert("Erro ao salvar alterações pendentes");
       return false;
     }
+  }
+
+  // Função para verificar se um campo mudou comparando com dados atuais
+  function isFieldChanged(importedLine: LinhaPreco, fieldKey: string): boolean {
+    // Campos textuais e readonly não devem ser comparados
+    const col = columns.find((c) => c.key === fieldKey);
+    if (!col || col.readonly || col.isText) {
+      return false;
+    }
+
+    // Encontrar linha correspondente nos dados atuais
+    const currentLine = linhas.find(
+      (l) => l.produtoId === importedLine.produtoId && l.medida_cm === importedLine.medida_cm
+    );
+
+    // Se não existe linha atual, é uma nova linha (todos os campos editáveis são "mudanças")
+    if (!currentLine) {
+      return true;
+    }
+
+    const importedValue = importedLine[fieldKey as keyof LinhaPreco];
+    const currentValue = currentLine[fieldKey as keyof LinhaPreco];
+
+    // Comparar valores numéricos (tratando 0, null, undefined)
+    const importedNum = Number(importedValue) || 0;
+    const currentNum = Number(currentValue) || 0;
+
+    return Math.abs(importedNum - currentNum) > 0.01; // Tolerância para decimais
+  }
+
+  async function confirmarImport() {
+    if (importData.length === 0) return;
+
+    try {
+      const res = await fetch(`/api/tabela-preco`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(importData),
+      });
+
+      if (res.ok) {
+        setShowImportPreview(false);
+        setImportData([]);
+        loadLinhas();
+        alert("CSV importado com sucesso!");
+      } else {
+        const errorData = await res.json();
+        alert(`Erro ao importar CSV: ${errorData.error || "Erro desconhecido"}`);
+      }
+    } catch (e) {
+      alert("Erro ao importar CSV");
+    }
+    
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function cancelarImport() {
+    setShowImportPreview(false);
+    setImportData([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function onImportCsv(e: React.ChangeEvent<HTMLInputElement>) {
@@ -231,31 +324,72 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
       skipEmptyLines: true,
       complete: async (results) => {
         try {
-          const data = results.data.map((row: any) => ({
-            medida_cm: Number(row.medida_cm || row["Medida (cm)"] || 0),
-            largura_cm: Number(row.largura_cm || row["Largura (cm)"] || 0),
-            profundidade_cm: Number(row.profundidade_cm || row["Profundidade (cm)"] || 0),
-            altura_cm: Number(row.altura_cm || row["Altura (cm)"] || 0),
-            largura_assento_cm: Number(row.largura_assento_cm || row["Larg. Assento (cm)"] || row["Largura Assento (cm)"] || 0),
-            altura_assento_cm: Number(row.altura_assento_cm || row["Alt. Assento (cm)"] || row["Altura Assento (cm)"] || 0),
-            largura_braco_cm: Number(row.largura_braco_cm || row["Larg. Braço (cm)"] || row["Largura Braço (cm)"] || 0),
-            metragem_tecido_m: Number(row.metragem_tecido_m || row["Metragem Tecido (m)"] || row["Met. Tecido (m)"] || 0),
-            metragem_couro_m: Number(row.metragem_couro_m || row["Metragem Couro (m)"] || row["Met. Couro (m)"] || 0),
-            preco_grade_1000: Number(row.preco_grade_1000 || row["1000"] || row["G1000"] || 0),
-            preco_grade_2000: Number(row.preco_grade_2000 || row["2000"] || row["G2000"] || 0),
-            preco_grade_3000: Number(row.preco_grade_3000 || row["3000"] || row["G3000"] || 0),
-            preco_grade_4000: Number(row.preco_grade_4000 || row["4000"] || row["G4000"] || 0),
-            preco_grade_5000: Number(row.preco_grade_5000 || row["5000"] || row["G5000"] || 0),
-            preco_grade_6000: Number(row.preco_grade_6000 || row["6000"] || row["G6000"] || 0),
-            preco_grade_7000: Number(row.preco_grade_7000 || row["7000"] || row["G7000"] || 0),
-            preco_couro: Number(row.preco_couro || row["Couro"] || 0),
-          }));
+          // Para importação global, precisamos identificar o produto
+          // Vamos usar categoria, família e nome do produto para identificar
+          const produtosMap = new Map<string, string>(); // chave: categoria_familia_nome -> produtoId
+          
+          // Primeiro, buscar todos os produtos para mapear
+          const produtosRes = await fetch("/api/produtos?limit=1000");
+          const produtosData = await produtosRes.json();
+          if (produtosData.ok) {
+            produtosData.data.items.forEach((p: any) => {
+              const categoriaNome = p.categoria?.nome || p.categoriaNome || "";
+              const familiaNome = p.familia?.nome || p.familiaNome || "";
+              const produtoNome = p.nome || "";
+              const key = `${categoriaNome}_${familiaNome}_${produtoNome}`;
+              produtosMap.set(key, p.id);
+            });
+          }
+
+          const data = results.data.map((row: any) => {
+            const categoria = row["Categoria"] || row.categoria || "";
+            const familia = row["Família"] || row.familia || "";
+            const produtoNome = row["Nome Produto"] || row.produtoNome || row["Nome do Produto"] || "";
+            const key = `${categoria}_${familia}_${produtoNome}`;
+            const produtoId = produtosMap.get(key);
+
+            if (!produtoId) {
+              throw new Error(`Produto não encontrado: ${categoria} / ${familia} / ${produtoNome}`);
+            }
+
+            return {
+              produtoId,
+              medida_cm: Number(row["Medida (cm)"] || row.medida_cm || 0),
+              largura_cm: Number(row["Largura (cm)"] || row.largura_cm || 0),
+              profundidade_cm: Number(row["Profundidade (cm)"] || row.profundidade_cm || 0),
+              altura_cm: Number(row["Altura (cm)"] || row.altura_cm || 0),
+              largura_assento_cm: Number(row["Larg. Assento (cm)"] || row.largura_assento_cm || row["Largura Assento (cm)"] || 0),
+              altura_assento_cm: Number(row["Alt. Assento (cm)"] || row.altura_assento_cm || row["Altura Assento (cm)"] || 0),
+              largura_braco_cm: Number(row["Larg. Braço (cm)"] || row.largura_braco_cm || row["Largura Braço (cm)"] || 0),
+              metragem_tecido_m: Number(row["Met. Tecido (m)"] || row.metragem_tecido_m || row["Metragem Tecido (m)"] || 0),
+              metragem_couro_m: Number(row["Met. Couro (m)"] || row.metragem_couro_m || row["Metragem Couro (m)"] || 0),
+              preco_grade_1000: Number(row["1000"] || row.preco_grade_1000 || row["G1000"] || 0),
+              preco_grade_2000: Number(row["2000"] || row.preco_grade_2000 || row["G2000"] || 0),
+              preco_grade_3000: Number(row["3000"] || row.preco_grade_3000 || row["G3000"] || 0),
+              preco_grade_4000: Number(row["4000"] || row.preco_grade_4000 || row["G4000"] || 0),
+              preco_grade_5000: Number(row["5000"] || row.preco_grade_5000 || row["G5000"] || 0),
+              preco_grade_6000: Number(row["6000"] || row.preco_grade_6000 || row["G6000"] || 0),
+              preco_grade_7000: Number(row["7000"] || row.preco_grade_7000 || row["G7000"] || 0),
+              preco_couro: Number(row["Couro"] || row.preco_couro || 0),
+            };
+          });
+
+          // Enriquecer dados com nomes de categoria, família e produto para exibição
+          const dataEnriquecida = data.map((item) => {
+            const produto = produtosData.data.items.find((p: any) => p.id === item.produtoId);
+            return {
+              ...item,
+              categoriaNome: produto?.categoria?.nome || produto?.categoriaNome || "",
+              familiaNome: produto?.familia?.nome || produto?.familiaNome || "",
+              produtoNome: produto?.nome || "",
+            };
+          });
 
           // Mostrar preview dos dados importados
-          setImportData(data);
+          setImportData(dataEnriquecida);
           setShowImportPreview(true);
-        } catch (e) {
-          alert("Erro ao processar CSV");
+        } catch (e: any) {
+          alert(`Erro ao processar CSV: ${e.message || "Erro desconhecido"}`);
         }
         if (fileInputRef.current) fileInputRef.current.value = "";
       },
@@ -263,112 +397,6 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
         alert(`Erro ao ler CSV: ${error.message}`);
       },
     });
-  }
-
-  async function checkVariacoesFaltantes() {
-    try {
-      const res = await fetch(`/api/produtos/${produtoId}/tabela-preco/sync`);
-      const data = await res.json();
-      
-      if (data.ok) {
-        const faltantes = data.data.faltantes || [];
-        if (faltantes.length === 0) {
-          alert("Todas as variações já estão contempladas na tabela de preço.");
-          return;
-        }
-        
-        setVariacoesFaltantes(faltantes);
-        setSelectedMedidas(new Set(faltantes.map((v: any) => v.medida_cm)));
-        setShowSyncModal(true);
-      } else {
-        alert("Erro ao verificar variações faltantes");
-      }
-    } catch (e) {
-      alert("Erro ao verificar variações faltantes");
-    }
-  }
-
-  async function syncSkeleton() {
-    if (selectedMedidas.size === 0) {
-      alert("Selecione pelo menos uma variação para incluir");
-      return;
-    }
-
-    setSyncing(true);
-    try {
-      const res = await fetch(`/api/produtos/${produtoId}/tabela-preco/sync`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ medidas: Array.from(selectedMedidas) }),
-      });
-
-      const data = await res.json();
-      
-      if (res.ok && data.ok) {
-        alert(`${data.data.created} linha(s) de preço criada(s) com sucesso!`);
-        setShowSyncModal(false);
-        setSelectedMedidas(new Set());
-        setVariacoesFaltantes([]);
-        loadLinhas(); // Recarrega a tabela
-      } else {
-        alert("Erro ao criar skeleton de preços");
-      }
-    } catch (e) {
-      alert("Erro ao criar skeleton de preços");
-    } finally {
-      setSyncing(false);
-    }
-  }
-
-  function toggleMedida(medida: number) {
-    setSelectedMedidas((prev) => {
-      const next = new Set(prev);
-      if (next.has(medida)) {
-        next.delete(medida);
-      } else {
-        next.add(medida);
-      }
-      return next;
-    });
-  }
-
-  function toggleAll() {
-    if (selectedMedidas.size === variacoesFaltantes.length) {
-      setSelectedMedidas(new Set());
-    } else {
-      setSelectedMedidas(new Set(variacoesFaltantes.map((v: any) => v.medida_cm)));
-    }
-  }
-
-  async function confirmarImport() {
-    if (importData.length === 0) return;
-
-    try {
-      const res = await fetch(`/api/produtos/${produtoId}/tabela-preco`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(importData),
-      });
-
-      if (res.ok) {
-        setShowImportPreview(false);
-        setImportData([]);
-        loadLinhas();
-        alert("CSV importado com sucesso!");
-      } else {
-        alert("Erro ao importar CSV");
-      }
-    } catch (e) {
-      alert("Erro ao importar CSV");
-    }
-    
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  }
-
-  function cancelarImport() {
-    setShowImportPreview(false);
-    setImportData([]);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function onExportCsv() {
@@ -427,7 +455,7 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `produto_${produtoId}_tabela.csv`;
+    a.download = `tabela_preco_global_${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -463,40 +491,28 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
     { key: "preco_couro", label: "Couro", readonly: false },
   ];
 
-  // Função para verificar se um campo mudou comparando com dados atuais
-  function isFieldChanged(importedLine: LinhaPreco, fieldKey: string): boolean {
-    // Campos textuais e readonly não devem ser comparados
-    const col = columns.find((c) => c.key === fieldKey);
-    if (!col || col.readonly || col.isText) {
-      return false;
-    }
-
-    // Encontrar linha correspondente nos dados atuais
-    const currentLine = linhas.find((l) => l.medida_cm === importedLine.medida_cm);
-
-    // Se não existe linha atual, é uma nova linha (todos os campos editáveis são "mudanças")
-    if (!currentLine) {
-      return true;
-    }
-
-    const importedValue = importedLine[fieldKey as keyof LinhaPreco];
-    const currentValue = currentLine[fieldKey as keyof LinhaPreco];
-
-    // Comparar valores numéricos (tratando 0, null, undefined)
-    const importedNum = Number(importedValue) || 0;
-    const currentNum = Number(currentValue) || 0;
-
-    return Math.abs(importedNum - currentNum) > 0.01; // Tolerância para decimais
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Tabela de Preço</h2>
+        <h1 className="text-3xl font-bold text-gray-900">Tabela de Preço - Gestão Global</h1>
         <div className="flex items-center gap-3">
+          {hasUnsavedChanges && (
+            <span className="text-sm font-medium text-orange-600">
+              {dirtyRef.current.size} alteração(ões) não salva(s)
+            </span>
+          )}
           {saving && <span className="text-sm font-medium text-gray-500">Salvando...</span>}
           {saved && <span className="text-sm font-semibold text-green-600">Salvo ✓</span>}
           {error && <span className="text-sm font-semibold text-red-600">Erro ✕</span>}
+          {hasUnsavedChanges && (
+            <button
+              onClick={salvarAlteracoes}
+              disabled={saving}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? "Salvando..." : "Salvar Alterações"}
+            </button>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -517,88 +533,22 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
           >
             Exportar CSV
           </button>
-          <button
-            onClick={addLinha}
-            className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-          >
-            + Adicionar Medida
-          </button>
-          <button
-            onClick={checkVariacoesFaltantes}
-            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            Atualizar Skeleton
-          </button>
         </div>
       </div>
 
-      {showSyncModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="rounded-lg border border-gray-200 bg-white p-6 max-w-2xl w-full shadow-xl">
-            <h3 className="mb-4 text-xl font-bold text-gray-900">Variações Faltantes na Tabela de Preço</h3>
-            <p className="mb-4 text-sm text-gray-600">
-              Selecione as variações que deseja incluir na tabela de preço:
-            </p>
-            
-            <div className="mb-4 max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
-              <div className="sticky top-0 bg-gray-50 border-b border-gray-200 px-4 py-2 flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={selectedMedidas.size === variacoesFaltantes.length && variacoesFaltantes.length > 0}
-                  onChange={toggleAll}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
-                />
-                <span className="text-sm font-semibold text-gray-700">Selecionar Todas</span>
-              </div>
-              <div className="divide-y divide-gray-200">
-                {variacoesFaltantes.map((v: any) => (
-                  <label
-                    key={v.medida_cm}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedMedidas.has(v.medida_cm)}
-                      onChange={() => toggleMedida(v.medida_cm)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-gray-900">
-                        Medida: {v.medida_cm}cm
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        L: {v.largura_cm}cm × P: {v.profundidade_cm}cm × A: {v.altura_cm}cm
-                        {v.largura_assento_cm > 0 && ` | Assento: ${v.largura_assento_cm}×${v.altura_assento_cm}cm`}
-                        {v.largura_braco_cm > 0 && ` | Braço: ${v.largura_braco_cm}cm`}
-                      </div>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
+      <div className="flex items-center gap-3">
+        <input
+          type="text"
+          placeholder="Buscar por categoria, família, produto ou medida..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
 
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => {
-                  setShowSyncModal(false);
-                  setSelectedMedidas(new Set());
-                  setVariacoesFaltantes([]);
-                }}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={syncSkeleton}
-                disabled={selectedMedidas.size === 0 || syncing}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                {syncing ? "Criando..." : `Incluir ${selectedMedidas.size} variação(ões)`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="text-base font-medium text-gray-700">
+        Total: <span className="font-semibold text-gray-900">{linhas.length}</span> linha(s) de preço
+      </div>
 
       <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
         <table className="min-w-full text-base">
@@ -616,12 +566,12 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
             {linhas.length === 0 ? (
               <tr>
                 <td colSpan={columns.length + 1} className="px-4 py-8 text-center text-base text-gray-500">
-                  Nenhuma linha cadastrada. Use "Criar variações" na aba Variações ou adicione manualmente.
+                  {searchQuery ? "Nenhuma linha encontrada para a busca." : "Nenhuma linha cadastrada."}
                 </td>
               </tr>
             ) : (
               linhas.map((l) => (
-                <tr key={l.medida_cm} className="bg-white transition-colors hover:bg-blue-50">
+                <tr key={`${l.produtoId}_${l.medida_cm}`} className="bg-white transition-colors hover:bg-blue-50">
                   {columns.map((col) => (
                     <td key={col.key} className="border-r border-gray-200 px-2 py-2 last:border-r-0">
                       {col.isText ? (
@@ -637,7 +587,7 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
                             col.readonly ? "bg-gray-50 cursor-not-allowed" : ""
                           }`}
                           value={l[col.key as keyof LinhaPreco] || 0}
-                          onChange={(e) => onChange(l.medida_cm, col.key as keyof LinhaPreco, e.target.value)}
+                          onChange={(e) => onChange(l.produtoId, l.medida_cm, col.key as keyof LinhaPreco, e.target.value)}
                           readOnly={col.readonly}
                           onDoubleClick={(e) => {
                             if (!col.readonly) {
@@ -650,7 +600,7 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
                   ))}
                   <td className="border-r border-gray-200 px-3 py-2 text-center">
                     <button
-                      onClick={() => deleteLinha(l.medida_cm)}
+                      onClick={() => deleteLinha(l.produtoId, l.medida_cm)}
                       className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                     >
                       Excluir
@@ -740,7 +690,4 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
     </div>
   );
 }
-
-
-
 

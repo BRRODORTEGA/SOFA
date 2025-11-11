@@ -37,6 +37,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/produtos">
                   📦 Produtos
                 </Link>
+                <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/tabela-preco">
+                  💰 Tabela de Preço
+                </Link>
 
                 <div className="mt-6 mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">Operação</div>
                 <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/pedidos">

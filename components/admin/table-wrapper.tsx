@@ -9,13 +9,15 @@ type Props<T> = {
   rows: T[];
   basePath: string; // ex: "/admin/categorias"
   emptyText?: string;
+  customRowLink?: (row: T) => string; // Função opcional para link customizado
 };
 
-export function AdminTableWrapper<T extends { id?: string }>({ columns, rows, basePath, emptyText }: Props<T>) {
+export function AdminTableWrapper<T extends { id?: string }>({ columns, rows, basePath, emptyText, customRowLink }: Props<T>) {
   const router = useRouter();
 
   const handleRowClick = (row: T) => {
-    router.push(`${basePath}/${row.id}`);
+    const link = customRowLink ? customRowLink(row) : `${basePath}/${row.id}`;
+    router.push(link);
   };
 
   return (

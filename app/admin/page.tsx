@@ -5,6 +5,7 @@ const tiles = [
   { href: "/admin/familias", label: "Famílias" },
   { href: "/admin/tecidos", label: "Tecidos" },
   { href: "/admin/produtos", label: "Produtos" },
+  { href: "/admin/tabela-preco", label: "Tabela de Preço" },
   { href: "/admin/pedidos", label: "Pedidos" },
 ];
 
