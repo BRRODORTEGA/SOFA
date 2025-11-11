@@ -144,6 +144,9 @@ model Variacao {
   largura_cm        Int
   profundidade_cm   Int
   altura_cm         Int
+  largura_assento_cm Int   @default(0)
+  altura_assento_cm  Int   @default(0)
+  largura_braco_cm   Int   @default(0)
   metragem_tecido_m Float
   metragem_couro_m  Float
 
@@ -176,6 +179,9 @@ model TabelaPrecoLinha {
   largura_cm      Int
   profundidade_cm Int
   altura_cm       Int
+  largura_assento_cm Int @default(0)
+  altura_assento_cm  Int @default(0)
+  largura_braco_cm   Int @default(0)
 
   // Consumos
   metragem_tecido_m Float // aparece como "Metragem Tecido (m)" na planilha

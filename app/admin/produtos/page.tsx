@@ -31,9 +31,9 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
         <AdminToolbar createHref="/admin/produtos/new" />
         <AdminTableWrapper
           columns={[
-            { key: "nome", header: "Nome" },
             { key: "categoriaNome", header: "Categoria" },
             { key: "familiaNome", header: "Família" },
+            { key: "nome", header: "Nome" },
             { key: "statusFormatted", header: "Status" },
           ]}
           rows={rowsWithFormatted}

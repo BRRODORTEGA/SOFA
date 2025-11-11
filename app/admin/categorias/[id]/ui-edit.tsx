@@ -49,9 +49,21 @@ export default function EditCategoria({ item }: { item: any }) {
   }
   async function onDelete() {
     if (!confirm("Excluir esta categoria?")) return;
-    const res = await fetch(`/api/categorias/${item.id}`, { method: "DELETE" });
-    if (res.ok) router.push("/admin/categorias");
-    else alert("Erro ao excluir");
+    try {
+      const res = await fetch(`/api/categorias/${item.id}`, { method: "DELETE" });
+      const data = await res.json();
+      
+      if (res.ok && data.ok) {
+        router.push("/admin/categorias");
+        router.refresh();
+      } else {
+        const errorMsg = data.error || data.details || "Erro ao excluir";
+        alert(`Erro ao excluir: ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error("Erro ao excluir categoria:", error);
+      alert("Erro ao excluir. Verifique o console para mais detalhes.");
+    }
   }
 
   return (

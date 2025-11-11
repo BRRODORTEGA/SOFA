@@ -43,6 +43,9 @@ export const variacaoSchema = z.object({
   largura_cm: z.coerce.number().int().nonnegative(), // Permite 0
   profundidade_cm: z.coerce.number().int().nonnegative(), // Permite 0
   altura_cm: z.coerce.number().int().nonnegative(), // Permite 0
+  largura_assento_cm: z.coerce.number().int().nonnegative().default(0), // Permite 0
+  altura_assento_cm: z.coerce.number().int().nonnegative().default(0), // Permite 0
+  largura_braco_cm: z.coerce.number().int().nonnegative().default(0), // Permite 0
   metragem_tecido_m: z.coerce.number().nonnegative(), // Permite 0
   metragem_couro_m: z.coerce.number().nonnegative(), // Permite 0
 });
@@ -62,6 +65,9 @@ export const tabelaPrecoLinhaSchema = z.object({
   largura_cm: z.coerce.number().int().positive(),
   profundidade_cm: z.coerce.number().int().positive(),
   altura_cm: z.coerce.number().int().positive(),
+  largura_assento_cm: z.coerce.number().int().nonnegative().default(0),
+  altura_assento_cm: z.coerce.number().int().nonnegative().default(0),
+  largura_braco_cm: z.coerce.number().int().nonnegative().default(0),
   metragem_tecido_m: z.coerce.number().nonnegative(),
   metragem_couro_m: z.coerce.number().nonnegative(),
   preco_grade_1000: z.coerce.number().nonnegative(),

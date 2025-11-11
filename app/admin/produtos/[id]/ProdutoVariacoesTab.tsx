@@ -8,6 +8,9 @@ type Variacao = {
   largura_cm: number;
   profundidade_cm: number;
   altura_cm: number;
+  largura_assento_cm: number;
+  altura_assento_cm: number;
+  largura_braco_cm: number;
   metragem_tecido_m: number;
   metragem_couro_m: number;
 };
@@ -28,6 +31,9 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
     largura_cm: "",
     profundidade_cm: "",
     altura_cm: "",
+    largura_assento_cm: "",
+    altura_assento_cm: "",
+    largura_braco_cm: "",
     metragem_tecido_m: "",
     metragem_couro_m: "",
   });
@@ -57,6 +63,9 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
           largura_cm: Number(v.largura_cm),
           profundidade_cm: Number(v.profundidade_cm),
           altura_cm: Number(v.altura_cm),
+          largura_assento_cm: Number(v.largura_assento_cm),
+          altura_assento_cm: Number(v.altura_assento_cm),
+          largura_braco_cm: Number(v.largura_braco_cm),
           metragem_tecido_m: Number(v.metragem_tecido_m),
           metragem_couro_m: Number(v.metragem_couro_m),
         }));
@@ -109,6 +118,9 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
         largura_cm: Number(newVariacao.largura_cm),
         profundidade_cm: Number(newVariacao.profundidade_cm),
         altura_cm: Number(newVariacao.altura_cm),
+        largura_assento_cm: Number(newVariacao.largura_assento_cm) || 0,
+        altura_assento_cm: Number(newVariacao.altura_assento_cm) || 0,
+        largura_braco_cm: Number(newVariacao.largura_braco_cm) || 0,
         metragem_tecido_m: Number(newVariacao.metragem_tecido_m),
         metragem_couro_m: Number(newVariacao.metragem_couro_m),
       }),
@@ -117,6 +129,7 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
       setShowAddForm(false);
       setNewVariacao({
         medida_cm: "", largura_cm: "", profundidade_cm: "", altura_cm: "",
+        largura_assento_cm: "", altura_assento_cm: "", largura_braco_cm: "",
         metragem_tecido_m: "", metragem_couro_m: "",
       });
       loadVariacoes();
@@ -228,6 +241,27 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
             />
             <input
               type="number"
+              placeholder="Largura Assento (cm)"
+              value={newVariacao.largura_assento_cm}
+              onChange={(e) => setNewVariacao({...newVariacao, largura_assento_cm: e.target.value})}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              type="number"
+              placeholder="Altura Assento (cm)"
+              value={newVariacao.altura_assento_cm}
+              onChange={(e) => setNewVariacao({...newVariacao, altura_assento_cm: e.target.value})}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              type="number"
+              placeholder="Largura Braço (cm)"
+              value={newVariacao.largura_braco_cm}
+              onChange={(e) => setNewVariacao({...newVariacao, largura_braco_cm: e.target.value})}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              type="number"
               step="0.1"
               placeholder="Metragem Tecido (m)"
               value={newVariacao.metragem_tecido_m}
@@ -258,6 +292,9 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Largura (cm)</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Profundidade (cm)</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Altura (cm)</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Larg. Assento (cm)</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Alt. Assento (cm)</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Larg. Braço (cm)</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Met. Tecido (m)</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Met. Couro (m)</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Ações</th>
@@ -265,7 +302,7 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
           </thead>
           <tbody className="divide-y divide-gray-200">
             {variacoes.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-base text-gray-500">Nenhuma variação cadastrada</td></tr>
+              <tr><td colSpan={10} className="px-4 py-8 text-center text-base text-gray-500">Nenhuma variação cadastrada</td></tr>
             ) : (
               variacoes.map((v) => (
                 <tr key={v.id} className="bg-white transition-colors hover:bg-blue-50">
@@ -291,6 +328,30 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                       type="number"
                       value={v.altura_cm}
                       onChange={(e) => handleFieldChange(v.medida_cm, "altura_cm", e.target.value)}
+                      className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="number"
+                      value={v.largura_assento_cm || 0}
+                      onChange={(e) => handleFieldChange(v.medida_cm, "largura_assento_cm", e.target.value)}
+                      className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="number"
+                      value={v.altura_assento_cm || 0}
+                      onChange={(e) => handleFieldChange(v.medida_cm, "altura_assento_cm", e.target.value)}
+                      className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="number"
+                      value={v.largura_braco_cm || 0}
+                      onChange={(e) => handleFieldChange(v.medida_cm, "largura_braco_cm", e.target.value)}
                       className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </td>

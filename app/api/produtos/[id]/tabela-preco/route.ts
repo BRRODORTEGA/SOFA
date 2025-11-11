@@ -6,11 +6,30 @@ import { Decimal } from "@prisma/client/runtime/library";
 /** GET — retorna todas as linhas do produto */
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   try {
+    const produto = await prisma.produto.findUnique({
+      where: { id: params.id },
+      include: {
+        categoria: { select: { nome: true } },
+        familia: { select: { nome: true } },
+      },
+    });
+    
+    if (!produto) return notFound();
+    
     const linhas = await prisma.tabelaPrecoLinha.findMany({
       where: { produtoId: params.id },
       orderBy: { medida_cm: "asc" },
     });
-    return ok({ items: linhas });
+    
+    // Enriquecer linhas com dados do produto
+    const linhasEnriquecidas = linhas.map(linha => ({
+      ...linha,
+      categoriaNome: produto.categoria.nome,
+      familiaNome: produto.familia.nome,
+      produtoNome: produto.nome,
+    }));
+    
+    return ok({ items: linhasEnriquecidas });
   } catch {
     return serverError();
   }
@@ -35,6 +54,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             largura_cm: item.largura_cm,
             profundidade_cm: item.profundidade_cm,
             altura_cm: item.altura_cm,
+            largura_assento_cm: item.largura_assento_cm || 0,
+            altura_assento_cm: item.altura_assento_cm || 0,
+            largura_braco_cm: item.largura_braco_cm || 0,
             metragem_tecido_m: item.metragem_tecido_m,
             metragem_couro_m: item.metragem_couro_m,
             preco_grade_1000: new Decimal(item.preco_grade_1000 || 0),
@@ -51,6 +73,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             largura_cm: item.largura_cm,
             profundidade_cm: item.profundidade_cm,
             altura_cm: item.altura_cm,
+            largura_assento_cm: item.largura_assento_cm || 0,
+            altura_assento_cm: item.altura_assento_cm || 0,
+            largura_braco_cm: item.largura_braco_cm || 0,
             metragem_tecido_m: item.metragem_tecido_m,
             metragem_couro_m: item.metragem_couro_m,
             produtoId: params.id,

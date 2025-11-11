@@ -6,10 +6,16 @@ import { debounce } from "lodash";
 
 type LinhaPreco = {
   id?: string;
+  categoriaNome?: string;
+  familiaNome?: string;
+  produtoNome?: string;
   medida_cm: number;
   largura_cm: number;
   profundidade_cm: number;
   altura_cm: number;
+  largura_assento_cm: number;
+  altura_assento_cm: number;
+  largura_braco_cm: number;
   metragem_tecido_m: number;
   metragem_couro_m: number;
   preco_grade_1000: number;
@@ -124,6 +130,9 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
       largura_cm: 0,
       profundidade_cm: 0,
       altura_cm: 0,
+      largura_assento_cm: 0,
+      altura_assento_cm: 0,
+      largura_braco_cm: 0,
       metragem_tecido_m: 0,
       metragem_couro_m: 0,
       preco_grade_1000: 0,
@@ -168,8 +177,11 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
             largura_cm: Number(row.largura_cm || row["Largura (cm)"] || 0),
             profundidade_cm: Number(row.profundidade_cm || row["Profundidade (cm)"] || 0),
             altura_cm: Number(row.altura_cm || row["Altura (cm)"] || 0),
-            metragem_tecido_m: Number(row.metragem_tecido_m || row["Metragem Tecido (m)"] || 0),
-            metragem_couro_m: Number(row.metragem_couro_m || row["Metragem Couro (m)"] || 0),
+            largura_assento_cm: Number(row.largura_assento_cm || row["Larg. Assento (cm)"] || row["Largura Assento (cm)"] || 0),
+            altura_assento_cm: Number(row.altura_assento_cm || row["Alt. Assento (cm)"] || row["Altura Assento (cm)"] || 0),
+            largura_braco_cm: Number(row.largura_braco_cm || row["Larg. Braço (cm)"] || row["Largura Braço (cm)"] || 0),
+            metragem_tecido_m: Number(row.metragem_tecido_m || row["Metragem Tecido (m)"] || row["Met. Tecido (m)"] || 0),
+            metragem_couro_m: Number(row.metragem_couro_m || row["Metragem Couro (m)"] || row["Met. Couro (m)"] || 0),
             preco_grade_1000: Number(row.preco_grade_1000 || row["1000"] || row["G1000"] || 0),
             preco_grade_2000: Number(row.preco_grade_2000 || row["2000"] || row["G2000"] || 0),
             preco_grade_3000: Number(row.preco_grade_3000 || row["3000"] || row["G3000"] || 0),
@@ -205,11 +217,18 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
 
   function onExportCsv() {
     const headers = [
+      "Categoria",
+      "Família",
+      "Nome Produto",
       "Medida (cm)",
       "Largura (cm)",
       "Profundidade (cm)",
       "Altura (cm)",
-      "Metragem Tecido (m)",
+      "Larg. Assento (cm)",
+      "Alt. Assento (cm)",
+      "Larg. Braço (cm)",
+      "Met. Tecido (m)",
+      "Met. Couro (m)",
       "1000",
       "2000",
       "3000",
@@ -218,15 +237,21 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
       "6000",
       "7000",
       "Couro",
-      "Metragem Couro (m)",
     ];
 
     const csvData = linhas.map((l) => [
+      l.categoriaNome || "",
+      l.familiaNome || "",
+      l.produtoNome || "",
       l.medida_cm,
       l.largura_cm,
       l.profundidade_cm,
       l.altura_cm,
+      l.largura_assento_cm || 0,
+      l.altura_assento_cm || 0,
+      l.largura_braco_cm || 0,
       l.metragem_tecido_m,
+      l.metragem_couro_m,
       l.preco_grade_1000,
       l.preco_grade_2000,
       l.preco_grade_3000,
@@ -235,7 +260,6 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
       l.preco_grade_6000,
       l.preco_grade_7000,
       l.preco_couro,
-      l.metragem_couro_m,
     ]);
 
     const csv = Papa.unparse({
@@ -261,11 +285,18 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
   }
 
   const columns = [
-    { key: "medida_cm", label: "Medida", readonly: true },
-    { key: "largura_cm", label: "Larg.", readonly: false },
-    { key: "profundidade_cm", label: "Prof.", readonly: false },
-    { key: "altura_cm", label: "Alt.", readonly: false },
-    { key: "metragem_tecido_m", label: "Met.Tec.", readonly: false },
+    { key: "categoriaNome", label: "Categoria", readonly: true, isText: true },
+    { key: "familiaNome", label: "Família", readonly: true, isText: true },
+    { key: "produtoNome", label: "Nome Produto", readonly: true, isText: true },
+    { key: "medida_cm", label: "Medida (cm)", readonly: true },
+    { key: "largura_cm", label: "Largura (cm)", readonly: false },
+    { key: "profundidade_cm", label: "Profundidade (cm)", readonly: false },
+    { key: "altura_cm", label: "Altura (cm)", readonly: false },
+    { key: "largura_assento_cm", label: "Larg. Assento (cm)", readonly: false },
+    { key: "altura_assento_cm", label: "Alt. Assento (cm)", readonly: false },
+    { key: "largura_braco_cm", label: "Larg. Braço (cm)", readonly: false },
+    { key: "metragem_tecido_m", label: "Met. Tecido (m)", readonly: false },
+    { key: "metragem_couro_m", label: "Met. Couro (m)", readonly: false },
     { key: "preco_grade_1000", label: "1000", readonly: false },
     { key: "preco_grade_2000", label: "2000", readonly: false },
     { key: "preco_grade_3000", label: "3000", readonly: false },
@@ -274,7 +305,6 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
     { key: "preco_grade_6000", label: "6000", readonly: false },
     { key: "preco_grade_7000", label: "7000", readonly: false },
     { key: "preco_couro", label: "Couro", readonly: false },
-    { key: "metragem_couro_m", label: "Met.Cou.", readonly: false },
   ];
 
   return (
@@ -338,22 +368,28 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
                 <tr key={l.medida_cm} className="bg-white transition-colors hover:bg-blue-50">
                   {columns.map((col) => (
                     <td key={col.key} className="border-r border-gray-200 px-2 py-2 last:border-r-0">
-                      <input
-                        type="number"
-                        step={col.key.includes("metragem") || col.key.includes("preco") ? "0.01" : "1"}
-                        min="0"
-                        className={`w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-center text-sm font-medium text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          col.readonly ? "bg-gray-50 cursor-not-allowed" : ""
-                        }`}
-                        value={l[col.key as keyof LinhaPreco] || 0}
-                        onChange={(e) => onChange(l.medida_cm, col.key as keyof LinhaPreco, e.target.value)}
-                        readOnly={col.readonly}
-                        onDoubleClick={(e) => {
-                          if (!col.readonly) {
-                            (e.target as HTMLInputElement).select();
-                          }
-                        }}
-                      />
+                      {col.isText ? (
+                        <div className="px-2 py-2 text-center text-sm font-medium text-gray-900">
+                          {String(l[col.key as keyof LinhaPreco] || "")}
+                        </div>
+                      ) : (
+                        <input
+                          type="number"
+                          step={col.key.includes("metragem") || col.key.includes("preco") ? "0.01" : "1"}
+                          min="0"
+                          className={`w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-center text-sm font-medium text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            col.readonly ? "bg-gray-50 cursor-not-allowed" : ""
+                          }`}
+                          value={l[col.key as keyof LinhaPreco] || 0}
+                          onChange={(e) => onChange(l.medida_cm, col.key as keyof LinhaPreco, e.target.value)}
+                          readOnly={col.readonly}
+                          onDoubleClick={(e) => {
+                            if (!col.readonly) {
+                              (e.target as HTMLInputElement).select();
+                            }
+                          }}
+                        />
+                      )}
                     </td>
                   ))}
                   <td className="border-r border-gray-200 px-3 py-2 text-center">

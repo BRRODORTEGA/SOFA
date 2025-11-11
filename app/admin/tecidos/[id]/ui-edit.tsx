@@ -56,9 +56,24 @@ export default function EditTecido({ item }: { item: any }) {
   }
   async function onDelete() {
     if (!confirm("Excluir este tecido?")) return;
-    const res = await fetch(`/api/tecidos/${item.id}`, { method: "DELETE" });
-    if (res.ok) router.push("/admin/tecidos");
-    else alert("Erro ao excluir");
+    try {
+      const res = await fetch(`/api/tecidos/${item.id}`, { method: "DELETE" });
+      const data = await res.json();
+      
+      console.log("Resposta da exclusão:", data); // Debug
+      
+      if (res.ok && data.ok) {
+        router.push("/admin/tecidos");
+        router.refresh();
+      } else {
+        // Tenta extrair a mensagem de erro de diferentes formatos
+        const errorMsg = data.error?.message || data.error || data.details?.message || data.details || "Erro ao excluir";
+        alert(`Erro ao excluir: ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error("Erro ao excluir tecido:", error);
+      alert("Erro ao excluir. Verifique o console para mais detalhes.");
+    }
   }
 
   return (
