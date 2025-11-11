@@ -34,6 +34,10 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [variacoesFaltantes, setVariacoesFaltantes] = useState<any[]>([]);
+  const [selectedMedidas, setSelectedMedidas] = useState<Set<number>>(new Set());
+  const [syncing, setSyncing] = useState(false);
   const dirtyRef = useRef<Set<number>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -215,6 +219,81 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
     });
   }
 
+  async function checkVariacoesFaltantes() {
+    try {
+      const res = await fetch(`/api/produtos/${produtoId}/tabela-preco/sync`);
+      const data = await res.json();
+      
+      if (data.ok) {
+        const faltantes = data.data.faltantes || [];
+        if (faltantes.length === 0) {
+          alert("Todas as variações já estão contempladas na tabela de preço.");
+          return;
+        }
+        
+        setVariacoesFaltantes(faltantes);
+        setSelectedMedidas(new Set(faltantes.map((v: any) => v.medida_cm)));
+        setShowSyncModal(true);
+      } else {
+        alert("Erro ao verificar variações faltantes");
+      }
+    } catch (e) {
+      alert("Erro ao verificar variações faltantes");
+    }
+  }
+
+  async function syncSkeleton() {
+    if (selectedMedidas.size === 0) {
+      alert("Selecione pelo menos uma variação para incluir");
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      const res = await fetch(`/api/produtos/${produtoId}/tabela-preco/sync`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ medidas: Array.from(selectedMedidas) }),
+      });
+
+      const data = await res.json();
+      
+      if (res.ok && data.ok) {
+        alert(`${data.data.created} linha(s) de preço criada(s) com sucesso!`);
+        setShowSyncModal(false);
+        setSelectedMedidas(new Set());
+        setVariacoesFaltantes([]);
+        loadLinhas(); // Recarrega a tabela
+      } else {
+        alert("Erro ao criar skeleton de preços");
+      }
+    } catch (e) {
+      alert("Erro ao criar skeleton de preços");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  function toggleMedida(medida: number) {
+    setSelectedMedidas((prev) => {
+      const next = new Set(prev);
+      if (next.has(medida)) {
+        next.delete(medida);
+      } else {
+        next.add(medida);
+      }
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (selectedMedidas.size === variacoesFaltantes.length) {
+      setSelectedMedidas(new Set());
+    } else {
+      setSelectedMedidas(new Set(variacoesFaltantes.map((v: any) => v.medida_cm)));
+    }
+  }
+
   function onExportCsv() {
     const headers = [
       "Categoria",
@@ -341,8 +420,82 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
           >
             + Adicionar Medida
           </button>
+          <button
+            onClick={checkVariacoesFaltantes}
+            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            Atualizar Skeleton
+          </button>
         </div>
       </div>
+
+      {showSyncModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="rounded-lg border border-gray-200 bg-white p-6 max-w-2xl w-full shadow-xl">
+            <h3 className="mb-4 text-xl font-bold text-gray-900">Variações Faltantes na Tabela de Preço</h3>
+            <p className="mb-4 text-sm text-gray-600">
+              Selecione as variações que deseja incluir na tabela de preço:
+            </p>
+            
+            <div className="mb-4 max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
+              <div className="sticky top-0 bg-gray-50 border-b border-gray-200 px-4 py-2 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={selectedMedidas.size === variacoesFaltantes.length && variacoesFaltantes.length > 0}
+                  onChange={toggleAll}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-sm font-semibold text-gray-700">Selecionar Todas</span>
+              </div>
+              <div className="divide-y divide-gray-200">
+                {variacoesFaltantes.map((v: any) => (
+                  <label
+                    key={v.medida_cm}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedMedidas.has(v.medida_cm)}
+                      onChange={() => toggleMedida(v.medida_cm)}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                    />
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold text-gray-900">
+                        Medida: {v.medida_cm}cm
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        L: {v.largura_cm}cm × P: {v.profundidade_cm}cm × A: {v.altura_cm}cm
+                        {v.largura_assento_cm > 0 && ` | Assento: ${v.largura_assento_cm}×${v.altura_assento_cm}cm`}
+                        {v.largura_braco_cm > 0 && ` | Braço: ${v.largura_braco_cm}cm`}
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowSyncModal(false);
+                  setSelectedMedidas(new Set());
+                  setVariacoesFaltantes([]);
+                }}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={syncSkeleton}
+                disabled={selectedMedidas.size === 0 || syncing}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                {syncing ? "Criando..." : `Incluir ${selectedMedidas.size} variação(ões)`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
         <table className="min-w-full text-base">
