@@ -65,15 +65,23 @@ Sistema completo de gestão de produtos, pedidos e tabela de preços para móvei
 - **Tabela de Preço - Gestão Global** — módulo completo para:
   - Visualização de todos os preços cadastrados
   - Edição em massa
+  - **Destaque visual de campos alterados** (fundo amarelo claro)
   - Import/Export CSV
   - Preview de import com highlight de alterações
   - Salvamento manual (sem autosave)
-  - Proteção contra perda de dados
+  - Proteção contra perda de dados (navegação interceptada)
   - **Validações automáticas:**
     - Valores de grades crescentes (1000 < 2000 < 3000 < 4000 < 5000 < 6000 < 7000 < Couro)
     - Metragem crescente conforme medida aumenta
     - Consistência de dimensões (profundidade, altura, altura assento) entre medidas do mesmo produto
   - Highlight visual de erros em vermelho
+- **Gestão de Tabelas de Preços** — módulo para criar múltiplas tabelas de preços:
+  - Criação de tabelas personalizadas com nome e descrição
+  - Seleção hierárquica de categorias, famílias, produtos e variações
+  - Geração automática de linhas a partir da tabela global ou variações
+  - Edição completa com destaque visual de campos alterados
+  - Import/Export CSV
+  - Validações automáticas
 - **Pedidos** — Gestão completa:
   - Lista de pedidos com filtros
   - Detalhes do pedido
@@ -162,6 +170,8 @@ Campos com erro são destacados em vermelho na interface.
 - ✅ **Fase 8**: Storefront completo (Catálogo, PDP, Login, UX)
 - ✅ **Fase 9**: Gestão Global de Tabela de Preço
 - ✅ **Fase 10**: Validações e melhorias de UX
+- ✅ **Fase 11**: Gestão de Múltiplas Tabelas de Preços
+- ✅ **Fase 12**: Destaque visual de campos alterados e melhorias de UX
 
 ## Licença
 
