@@ -60,6 +60,12 @@ export const variacoesGenerateSchema = z.object({
   path: ["medidasFixas"],
 });
 
+export const tabelaPrecoSchema = z.object({
+  nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
+  ativo: z.boolean().default(true),
+  descricao: z.string().optional().nullable(),
+});
+
 export const tabelaPrecoLinhaSchema = z.object({
   medida_cm: z.coerce.number().int().positive(),
   largura_cm: z.coerce.number().int().positive(),

@@ -10,6 +10,9 @@ export async function GET(req: Request) {
     const q = url.searchParams.get("q")?.trim() || "";
     
     const linhas = await prisma.tabelaPrecoLinha.findMany({
+      where: {
+        tabelaPrecoId: null, // Apenas linhas da tabela geral (não vinculadas a tabelas específicas)
+      },
       include: {
         produto: {
           include: {

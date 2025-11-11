@@ -77,21 +77,21 @@ model Familia {
 }
 
 model Produto {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   categoriaId  String
   familiaId    String
   nome         String
-  tipo         String?   // ex.: Modular
-  abertura     String?   // ex.: Retrátil
-  acionamento  String?   // ex.: Manual
-  configuracao String?   // ex.: Módulo com braço
-  status       Boolean   @default(true)
-  imagens      String[]  // URLs
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  tipo         String? // ex.: Modular
+  abertura     String? // ex.: Retrátil
+  acionamento  String? // ex.: Manual
+  configuracao String? // ex.: Módulo com braço
+  status       Boolean  @default(true)
+  imagens      String[] // URLs
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  categoria Categoria          @relation(fields: [categoriaId], references: [id])
-  familia   Familia            @relation(fields: [familiaId], references: [id])
+  categoria     Categoria          @relation(fields: [categoriaId], references: [id])
+  familia       Familia            @relation(fields: [familiaId], references: [id])
   tecidos       ProdutoTecido[]
   variacoes     Variacao[]
   precos        TabelaPrecoLinha[]
@@ -106,15 +106,15 @@ model Produto {
  */
 
 model Tecido {
-  id            String         @id @default(cuid())
-  nome          String
-  grade         CategoriaGrade
-  imagemUrl     String?
-  fornecedorNome String?        // Nome do fornecedor
-  valor_m2      Decimal?        @db.Decimal(10, 2) // Valor do tecido por m²
-  ativo         Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id             String         @id @default(cuid())
+  nome           String
+  grade          CategoriaGrade
+  imagemUrl      String?
+  fornecedorNome String? // Nome do fornecedor
+  valor_m2       Decimal?       @db.Decimal(10, 2) // Valor do tecido por m²
+  ativo          Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   produtos      ProdutoTecido[]
   pedidoItems   PedidoItem[]
@@ -138,22 +138,40 @@ model ProdutoTecido {
  */
 
 model Variacao {
-  id                String @id @default(cuid())
-  produtoId         String
-  medida_cm         Int
-  largura_cm        Int
-  profundidade_cm   Int
-  altura_cm         Int
-  largura_assento_cm Int   @default(0)
-  altura_assento_cm  Int   @default(0)
-  largura_braco_cm   Int   @default(0)
-  metragem_tecido_m Float
-  metragem_couro_m  Float
+  id                 String @id @default(cuid())
+  produtoId          String
+  medida_cm          Int
+  largura_cm         Int
+  profundidade_cm    Int
+  altura_cm          Int
+  largura_assento_cm Int    @default(0)
+  altura_assento_cm  Int    @default(0)
+  largura_braco_cm   Int    @default(0)
+  metragem_tecido_m  Float
+  metragem_couro_m   Float
 
   produto Produto @relation(fields: [produtoId], references: [id])
 
   // Cada produto só pode ter uma variação por medida
   @@unique([produtoId, medida_cm])
+}
+
+/**
+ * ===== Gestão de Tabelas de Preços =====
+ * Permite criar múltiplas tabelas de preços distintas
+ */
+model TabelaPreco {
+  id        String  @id @default(cuid())
+  nome      String // Nome da tabela de preços
+  ativo     Boolean @default(true) // Status ativo/inativo
+  descricao String? // Descrição opcional
+
+  linhas TabelaPrecoLinha[] // Linhas de preço vinculadas a esta tabela
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ativo])
 }
 
 /**
@@ -164,7 +182,8 @@ model Variacao {
 model TabelaPrecoLinha {
   id String @id @default(cuid())
 
-  produtoId String
+  produtoId     String
+  tabelaPrecoId String? // Vinculação opcional a uma tabela de preços específica
 
   // Campos textuais redundantes para CSV/planilha (facilita export/import e UI sem JOIN)
   nomeProduto    String?
@@ -175,10 +194,10 @@ model TabelaPrecoLinha {
   acionamentoTxt String?
 
   // Chave de linha
-  medida_cm       Int
-  largura_cm      Int
-  profundidade_cm Int
-  altura_cm       Int
+  medida_cm          Int
+  largura_cm         Int
+  profundidade_cm    Int
+  altura_cm          Int
   largura_assento_cm Int @default(0)
   altura_assento_cm  Int @default(0)
   largura_braco_cm   Int @default(0)
@@ -197,12 +216,17 @@ model TabelaPrecoLinha {
   preco_grade_7000 Decimal @db.Decimal(10, 2)
   preco_couro      Decimal @db.Decimal(10, 2)
 
-  produto Produto @relation(fields: [produtoId], references: [id])
+  produto     Produto      @relation(fields: [produtoId], references: [id])
+  tabelaPreco TabelaPreco? @relation(fields: [tabelaPrecoId], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
-  @@unique([produtoId, medida_cm]) // 1 linha por medida
+  // Unique constraint: permite múltiplas linhas com mesmo produto+medida se tabelaPrecoId for diferente
+  // Para linhas sem tabela específica (tabelaPrecoId = NULL): único por produtoId+medida_cm
+  // Para linhas com tabela específica: único por tabelaPrecoId+produtoId+medida_cm
+  @@unique([produtoId, medida_cm, tabelaPrecoId])
   @@index([produtoId, medida_cm])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  @@index([tabelaPrecoId])
 }
 
 /**
@@ -260,20 +284,20 @@ model Carrinho {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user  User          @relation(fields: [userId], references: [id])
+  user  User           @relation(fields: [userId], references: [id])
   itens CarrinhoItem[]
 }
 
 model CarrinhoItem {
-  id                String   @id @default(cuid())
+  id                String @id @default(cuid())
   carrinhoId        String
   produtoId         String
   tecidoId          String
   variacaoMedida_cm Int
-  quantidade        Int      @default(1)
+  quantidade        Int    @default(1)
 
   // snapshot opcional (apenas para exibir carrinho rápido; o preço "oficial" será resolvido no checkout)
-  previewPrecoUnit  Decimal? @db.Decimal(10, 2)
+  previewPrecoUnit Decimal? @db.Decimal(10, 2)
 
   carrinho Carrinho @relation(fields: [carrinhoId], references: [id])
   produto  Produto  @relation(fields: [produtoId], references: [id])
@@ -290,8 +314,8 @@ model CarrinhoItem {
 model MensagemPedido {
   id        String   @id @default(cuid())
   pedidoId  String
-  userId    String?  // null = mensagem do sistema
-  role      Role?    // redundante para exibição (ADMIN/OPERADOR/CLIENTE/FABRICA)
+  userId    String? // null = mensagem do sistema
+  role      Role? // redundante para exibição (ADMIN/OPERADOR/CLIENTE/FABRICA)
   texto     String
   createdAt DateTime @default(now())
 
