@@ -62,7 +62,7 @@ model Categoria {
 
 model Familia {
   id            String   @id @default(cuid())
-  categoriaId   String
+  categoriaId   String?
   nome          String
   descricao     String?
   ativo         Boolean  @default(true)
@@ -72,7 +72,7 @@ model Familia {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  categoria Categoria @relation(fields: [categoriaId], references: [id])
+  categoria Categoria? @relation(fields: [categoriaId], references: [id])
   produtos  Produto[]
 }
 

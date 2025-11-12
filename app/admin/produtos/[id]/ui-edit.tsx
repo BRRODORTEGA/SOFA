@@ -60,7 +60,11 @@ export default function EditProduto({ item }: { item: any }) {
     }
   }, [familias, item.familiaId, setValue]);
 
-  const familiasFiltradas = categoriaId ? familias.filter((f:any)=>f.categoriaId === categoriaId) : familias;
+  // Filtrar famílias: se categoriaId estiver selecionado, mostrar apenas famílias dessa categoria
+  // Se categoriaId for null/undefined na família, mostrar também (famílias sem categoria)
+  const familiasFiltradas = categoriaId 
+    ? familias.filter((f:any) => !f.categoriaId || f.categoriaId === categoriaId)
+    : familias;
 
   async function onSubmit(values:any) {
     try {
@@ -100,10 +104,22 @@ export default function EditProduto({ item }: { item: any }) {
     }
   }
   async function onDelete() {
-    if (!confirm("Excluir este produto?")) return;
-    const res = await fetch(`/api/produtos/${item.id}`, { method: "DELETE" });
-    if (res.ok) router.push("/admin/produtos");
-    else alert("Erro ao excluir");
+    if (!confirm(`Excluir o produto "${item.nome}"?`)) return;
+    try {
+      const res = await fetch(`/api/produtos/${item.id}`, { method: "DELETE" });
+      const result = await res.json();
+      
+      if (res.ok && result.ok) {
+        router.push("/admin/produtos");
+        router.refresh();
+      } else {
+        const errorMsg = result.error || result.details || result.message || "Erro ao excluir produto";
+        alert(`Erro ao excluir: ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error("Erro ao excluir produto:", error);
+      alert("Erro ao excluir produto. Verifique o console para mais detalhes.");
+    }
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {

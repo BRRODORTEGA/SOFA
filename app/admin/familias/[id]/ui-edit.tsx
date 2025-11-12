@@ -5,25 +5,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { familiaSchema } from "@/lib/validators";
 import { FormShell } from "@/components/admin/form-shell";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 
 export default function EditFamilia({ item }: { item: any }) {
   const router = useRouter();
-  const [categorias, setCategorias] = useState<any[]>([]);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(familiaSchema),
     defaultValues: { 
-      categoriaId: item.categoriaId || "",
       nome: item.nome || "",
       descricao: item.descricao || "",
       perfilMedidas: item.perfilMedidas ? JSON.stringify(item.perfilMedidas, null, 2) : "",
       ativo: item.ativo ?? true,
     },
   });
-
-  useEffect(() => {
-    fetch("/api/categorias").then(r=>r.json()).then(d=>setCategorias(d.data?.items || []));
-  }, []);
 
   async function onSubmit(values:any) {
     try {
@@ -38,7 +31,6 @@ export default function EditFamilia({ item }: { item: any }) {
       }
       
       const payload = {
-        categoriaId: values.categoriaId,
         nome: values.nome,
         descricao: values.descricao || null,
         perfilMedidas: perfilMedidas,
@@ -70,9 +62,22 @@ export default function EditFamilia({ item }: { item: any }) {
   }
   async function onDelete() {
     if (!confirm("Excluir esta família?")) return;
-    const res = await fetch(`/api/familias/${item.id}`, { method: "DELETE" });
-    if (res.ok) router.push("/admin/familias");
-    else alert("Erro ao excluir");
+    try {
+      const res = await fetch(`/api/familias/${item.id}`, { method: "DELETE" });
+      const result = await res.json();
+      
+      if (res.ok && result.ok) {
+        router.push("/admin/familias");
+        router.refresh();
+      } else {
+        // Tratar erros de validação (422) ou outros erros
+        const errorMsg = result.error || result.details || result.message || "Erro ao excluir família";
+        alert(`Erro ao excluir: ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error("Erro ao excluir família:", error);
+      alert("Erro ao excluir. Verifique o console para mais detalhes.");
+    }
   }
 
   return (
@@ -80,14 +85,6 @@ export default function EditFamilia({ item }: { item: any }) {
       title="Editar Família"
     >
       <form id="edit-familia-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Categoria</label>
-          <select {...register("categoriaId")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Selecione...</option>
-            {categorias.map((c:any)=>(<option key={c.id} value={c.id}>{c.nome}</option>))}
-          </select>
-          {errors.categoriaId && <p className="mt-2 text-sm font-medium text-red-600">{String(errors.categoriaId.message)}</p>}
-        </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Nome</label>
           <input {...register("nome")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />

@@ -45,6 +45,8 @@ export default function TabelaPrecoGlobal() {
   const [validationErrors, setValidationErrors] = useState<Map<string, Set<string>>>(new Map()); // Chave: produtoId_medida_cm, Set de campos com erro
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingNavigationRef = useRef<string | null>(null);
+  const [selectedLines, setSelectedLines] = useState<Set<string>>(new Set()); // Chave: produtoId_medida_cm
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadLinhas();
@@ -396,8 +398,93 @@ export default function TabelaPrecoGlobal() {
     if (res.ok) {
       setLinhas(linhas.filter((l) => !(l.produtoId === produtoId && l.medida_cm === medida)));
       dirtyRef.current.delete(getKey(produtoId, medida));
+      // Remover da seleção se estiver selecionada
+      const key = getKey(produtoId, medida);
+      setSelectedLines((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
     } else {
       alert("Erro ao excluir");
+    }
+  }
+
+  function toggleSelectLine(produtoId: string, medida: number) {
+    const key = getKey(produtoId, medida);
+    setSelectedLines((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedLines.size === linhas.length) {
+      setSelectedLines(new Set());
+    } else {
+      setSelectedLines(new Set(linhas.map((l) => getKey(l.produtoId, l.medida_cm))));
+    }
+  }
+
+  async function deleteSelected() {
+    if (selectedLines.size === 0) {
+      alert("Nenhuma linha selecionada");
+      return;
+    }
+
+    const count = selectedLines.size;
+    if (!confirm(`Excluir ${count} linha(s) selecionada(s)?`)) return;
+
+    setDeleting(true);
+    try {
+      // Preparar dados para exclusão
+      const linesToDelete = Array.from(selectedLines).map((key) => {
+        const [produtoId, medida] = key.split("_");
+        return { produtoId, medida_cm: Number(medida) };
+      });
+
+      const res = await fetch("/api/tabela-preco", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(linesToDelete),
+      });
+
+      const result = await res.json();
+
+      if (res.ok && result.ok) {
+        // Remover linhas excluídas do estado
+        setLinhas((prev) =>
+          prev.filter((l) => !selectedLines.has(getKey(l.produtoId, l.medida_cm)))
+        );
+
+        // Limpar campos dirty das linhas excluídas
+        selectedLines.forEach((key) => {
+          const [produtoId, medida] = key.split("_");
+          // Remover todos os campos dirty desta linha
+          Array.from(dirtyRef.current.keys()).forEach((fieldKey) => {
+            if (fieldKey.startsWith(`${produtoId}_${medida}_`)) {
+              dirtyRef.current.delete(fieldKey);
+            }
+          });
+        });
+
+        // Limpar seleção
+        setSelectedLines(new Set());
+        alert(`${result.data.deleted || count} linha(s) excluída(s) com sucesso!`);
+      } else {
+        const errorMsg = result.error || result.details || "Erro ao excluir linhas";
+        alert(`Erro ao excluir: ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error("Erro ao excluir linhas:", error);
+      alert("Erro ao excluir linhas. Verifique o console para mais detalhes.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -771,14 +858,39 @@ export default function TabelaPrecoGlobal() {
         />
       </div>
 
-      <div className="text-base font-medium text-gray-700">
-        Total: <span className="font-semibold text-gray-900">{linhas.length}</span> linha(s) de preço
+      <div className="flex items-center justify-between">
+        <div className="text-base font-medium text-gray-700">
+          Total: <span className="font-semibold text-gray-900">{linhas.length}</span> linha(s) de preço
+          {selectedLines.size > 0 && (
+            <span className="ml-4 text-blue-600">
+              • <span className="font-semibold">{selectedLines.size}</span> selecionada(s)
+            </span>
+          )}
+        </div>
+        {selectedLines.size > 0 && (
+          <button
+            onClick={deleteSelected}
+            disabled={deleting}
+            className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {deleting ? "Excluindo..." : `Excluir ${selectedLines.size} selecionada(s)`}
+          </button>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
         <table className="min-w-full text-base">
           <thead>
             <tr className="bg-gradient-to-r from-gray-50 to-gray-100">
+              <th className="border-b border-gray-200 px-3 py-3 text-center text-xs font-semibold text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={linhas.length > 0 && selectedLines.size === linhas.length}
+                  onChange={toggleSelectAll}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  title="Selecionar todas"
+                />
+              </th>
               {columns.map((col) => (
                 <th key={col.key} className="border-b border-gray-200 px-3 py-3 text-center text-xs font-semibold text-gray-700">
                   {col.label}
@@ -790,7 +902,7 @@ export default function TabelaPrecoGlobal() {
           <tbody className="divide-y divide-gray-200">
             {linhas.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + 1} className="px-4 py-8 text-center text-base text-gray-500">
+                <td colSpan={columns.length + 2} className="px-4 py-8 text-center text-base text-gray-500">
                   {searchQuery ? "Nenhuma linha encontrada para a busca." : "Nenhuma linha cadastrada."}
                 </td>
               </tr>
@@ -798,9 +910,18 @@ export default function TabelaPrecoGlobal() {
               linhas.map((l) => {
                 const linhaKey = getKey(l.produtoId, l.medida_cm);
                 const linhaErrors = validationErrors.get(linhaKey) || new Set<string>();
+                const isSelected = selectedLines.has(linhaKey);
                 
                 return (
-                  <tr key={linhaKey} className="bg-white transition-colors hover:bg-blue-50">
+                  <tr key={linhaKey} className={`bg-white transition-colors hover:bg-blue-50 ${isSelected ? "bg-blue-100" : ""}`}>
+                    <td className="border-r border-gray-200 px-3 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelectLine(l.produtoId, l.medida_cm)}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                      />
+                    </td>
                     {columns.map((col) => {
                       const hasError = linhaErrors.has(col.key);
                       const fieldKey = getFieldKey(l.produtoId, l.medida_cm, col.key);

@@ -5,9 +5,20 @@ import { categoriaSchema } from "@/lib/validators";
 export async function GET(req: Request) {
   try {
     const { limit, offset, q } = paginateParams(new URL(req.url).searchParams);
-    const where = q ? { nome: { contains: q, mode: "insensitive" } } : {};
+    
+    // Construir filtro: sempre incluir ativo: true, e adicionar busca se houver
+    const where: any = { ativo: true };
+    if (q) {
+      where.nome = { contains: q, mode: "insensitive" };
+    }
+    
     const [items, total] = await Promise.all([
-      prisma.categoria.findMany({ where, take: limit, skip: offset, orderBy: { createdAt: "desc" } }).catch(() => prisma.categoria.findMany({where, take: limit, skip: offset})),
+      prisma.categoria.findMany({ 
+        where, 
+        take: limit, 
+        skip: offset, 
+        orderBy: { nome: "asc" } // Ordenar por nome
+      }).catch(() => prisma.categoria.findMany({where, take: limit, skip: offset})),
       prisma.categoria.count({ where }),
     ]);
     return ok({ items, total, limit, offset });

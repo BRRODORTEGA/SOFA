@@ -182,3 +182,39 @@ export async function PUT(req: Request) {
   }
 }
 
+/** DELETE — exclui múltiplas linhas em massa */
+export async function DELETE(req: Request) {
+  try {
+    const json = await req.json();
+    if (!Array.isArray(json) || json.length === 0) {
+      return unprocessable({ message: "Payload deve ser uma lista não vazia de { produtoId, medida_cm }" });
+    }
+
+    // Validar formato
+    for (const item of json) {
+      if (!item.produtoId || !item.medida_cm) {
+        return unprocessable({ message: "Cada item deve ter produtoId e medida_cm" });
+      }
+    }
+
+    // Excluir todas as linhas em uma transação
+    const deletePromises = json.map((item) =>
+      prisma.tabelaPrecoLinha.deleteMany({
+        where: {
+          produtoId: item.produtoId,
+          medida_cm: Number(item.medida_cm),
+          tabelaPrecoId: null, // Apenas linhas da tabela geral
+        },
+      })
+    );
+
+    const results = await Promise.all(deletePromises);
+    const totalDeleted = results.reduce((sum, r) => sum + r.count, 0);
+
+    return ok({ deleted: totalDeleted, total: json.length });
+  } catch (e: any) {
+    console.error("Erro ao excluir linhas em massa:", e);
+    return serverError(e?.message || "Erro ao excluir linhas");
+  }
+}
+

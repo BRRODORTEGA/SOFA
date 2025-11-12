@@ -6,7 +6,7 @@ export const categoriaSchema = z.object({
 });
 
 export const familiaSchema = z.object({
-  categoriaId: z.string().cuid(),
+  categoriaId: z.string().cuid().optional(),
   nome: z.string().min(2),
   descricao: z.string().optional().nullable(),
   ativo: z.boolean().default(true),

@@ -1,7 +1,7 @@
 import { AdminToolbar } from "@/components/admin/toolbar";
-import { AdminTableWrapper } from "@/components/admin/table-wrapper";
 import { prisma } from "@/lib/prisma";
 import DbError from "@/components/admin/db-error";
+import ProdutosTable from "./ProdutosTable";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,7 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
       <div>
         <h1 className="mb-6 text-3xl font-bold text-gray-900">Produtos</h1>
         <AdminToolbar createHref="/admin/produtos/new" />
-        <AdminTableWrapper
+        <ProdutosTable
           columns={[
             { key: "categoriaNome", header: "Categoria" },
             { key: "familiaNome", header: "Família" },

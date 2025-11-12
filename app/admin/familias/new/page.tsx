@@ -5,16 +5,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { familiaSchema } from "@/lib/validators";
 import { FormShell } from "@/components/admin/form-shell";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 
 export default function NewFamiliaPage() {
   const router = useRouter();
-  const [categorias, setCategorias] = useState<any[]>([]);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(familiaSchema), defaultValues: { ativo: true } });
-
-  useEffect(() => {
-    fetch("/api/categorias").then(r=>r.json()).then(d=>setCategorias(d.data?.items || []));
-  }, []);
 
   async function onSubmit(values:any) {
     let perfilMedidas = null;
@@ -28,8 +22,13 @@ export default function NewFamiliaPage() {
     }
     const data = { ...values, perfilMedidas };
     const res = await fetch("/api/familias", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-    if (res.ok) router.push("/admin/familias");
-    else alert("Erro ao criar");
+    const result = await res.json();
+    if (res.ok && result.ok) {
+      router.push("/admin/familias");
+    } else {
+      const errorMsg = result.error || result.details || "Erro ao criar família";
+      alert(`Erro ao criar: ${errorMsg}`);
+    }
   }
 
   return (
@@ -56,14 +55,6 @@ export default function NewFamiliaPage() {
       }
     >
       <form id="familia-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Categoria</label>
-          <select {...register("categoriaId")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Selecione...</option>
-            {categorias.map((c:any)=>(<option key={c.id} value={c.id}>{c.nome}</option>))}
-          </select>
-          {errors.categoriaId && <p className="mt-2 text-sm font-medium text-red-600">{String(errors.categoriaId.message)}</p>}
-        </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Nome</label>
           <input {...register("nome")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />

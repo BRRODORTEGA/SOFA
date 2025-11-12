@@ -65,11 +65,74 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
 export async function DELETE(_: Request, { params }: { params: { id: string } }) {
   try {
+    // Verificar se o produto existe e tem relacionamentos
+    const produto = await prisma.produto.findUnique({
+      where: { id: params.id },
+      include: {
+        itens: { take: 1 },
+        carrinhoItems: { take: 1 },
+        _count: {
+          select: {
+            itens: true,
+            carrinhoItems: true,
+            variacoes: true,
+            precos: true,
+            tecidos: true,
+          },
+        },
+      },
+    });
+
+    if (!produto) {
+      return notFound();
+    }
+
+    // Verificar se há relacionamentos que impedem a exclusão
+    if (produto._count.itens > 0) {
+      return Response.json({ 
+        ok: false, 
+        error: "Não é possível excluir este produto pois ele está sendo usado em pedidos. Remova os pedidos primeiro." 
+      }, { status: 422 });
+    }
+
+    if (produto._count.carrinhoItems > 0) {
+      return Response.json({ 
+        ok: false, 
+        error: "Não é possível excluir este produto pois ele está no carrinho de compras de algum cliente." 
+      }, { status: 422 });
+    }
+
+    // Excluir relacionamentos que podem ser removidos automaticamente
+    // Primeiro, excluir variações, preços e tecidos vinculados
+    await prisma.$transaction([
+      // Excluir variações
+      prisma.variacao.deleteMany({ where: { produtoId: params.id } }),
+      // Excluir linhas de preço
+      prisma.tabelaPrecoLinha.deleteMany({ where: { produtoId: params.id } }),
+      // Excluir vínculos com tecidos
+      prisma.produtoTecido.deleteMany({ where: { produtoId: params.id } }),
+    ]);
+
+    // Agora excluir o produto
     await prisma.produto.delete({ where: { id: params.id } });
+    console.log("Produto excluído com sucesso:", params.id);
     return ok({ deleted: true });
   } catch (e: any) {
+    console.error("Erro ao excluir produto:", e);
     if (e?.code === "P2025") return notFound();
-    return serverError();
+    
+    // Erro de constraint de foreign key
+    if (e?.code === "P2003" || 
+        e?.message?.includes("foreign key") || 
+        e?.message?.includes("violates") ||
+        e?.message?.includes("referenced from table")) {
+      return Response.json({ 
+        ok: false, 
+        error: "Não é possível excluir este produto pois ele está sendo usado em outros registros (pedidos, carrinho, etc.)." 
+      }, { status: 422 });
+    }
+    
+    return serverError(e?.message || "Erro ao excluir produto");
   }
 }
 

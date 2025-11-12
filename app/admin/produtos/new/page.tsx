@@ -18,11 +18,32 @@ export default function NewProdutoPage() {
   const categoriaId = watch("categoriaId");
 
   useEffect(() => {
-    fetch("/api/categorias").then(r=>r.json()).then(d=>setCategorias(d.data?.items || []));
-    fetch("/api/familias").then(r=>r.json()).then(d=>setFamilias(d.data?.items || []));
+    async function loadData() {
+      try {
+        const [catRes, famRes] = await Promise.all([
+          fetch("/api/categorias").then(r => r.json()),
+          fetch("/api/familias").then(r => r.json())
+        ]);
+        
+        const cats = catRes.data?.items || [];
+        const fams = famRes.data?.items || [];
+        
+        setCategorias(cats);
+        setFamilias(fams);
+        console.log("Famílias carregadas:", fams); // Debug
+      } catch (error) {
+        console.error("Erro ao carregar dados:", error);
+      }
+    }
+    
+    loadData();
   }, []);
 
-  const familiasFiltradas = categoriaId ? familias.filter((f:any)=>f.categoriaId === categoriaId) : familias;
+  // Filtrar famílias: se categoriaId estiver selecionado, mostrar apenas famílias dessa categoria
+  // Se categoriaId for null/undefined na família, mostrar também (famílias sem categoria)
+  const familiasFiltradas = categoriaId 
+    ? familias.filter((f:any) => !f.categoriaId || f.categoriaId === categoriaId)
+    : familias;
 
   async function onSubmit(values:any) {
     const data = { ...values, imagens: values.imagens.filter((url: string) => url.trim() !== "") };
@@ -120,9 +141,20 @@ export default function NewProdutoPage() {
           <label className="block text-sm font-semibold text-gray-700 mb-2">Família</label>
           <select {...register("familiaId")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">Selecione...</option>
-            {familiasFiltradas.map((f:any)=>(<option key={f.id} value={f.id}>{f.nome}</option>))}
+            {familiasFiltradas.length === 0 ? (
+              <option disabled>Nenhuma família disponível</option>
+            ) : (
+              familiasFiltradas.map((f:any) => (
+                <option key={f.id} value={f.id}>
+                  {f.nome} {f.categoriaId ? `(${f.categoria?.nome || ""})` : ""}
+                </option>
+              ))
+            )}
           </select>
           {errors.familiaId && <p className="mt-2 text-sm font-medium text-red-600">{String(errors.familiaId.message)}</p>}
+          {familiasFiltradas.length === 0 && categoriaId && (
+            <p className="mt-2 text-sm text-gray-500">Nenhuma família ativa encontrada para esta categoria.</p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Nome</label>
