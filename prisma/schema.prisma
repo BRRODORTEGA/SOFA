@@ -221,10 +221,10 @@ model TabelaPrecoLinha {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
-  // Unique constraint: permite múltiplas linhas com mesmo produto+medida se tabelaPrecoId for diferente
-  // Para linhas sem tabela específica (tabelaPrecoId = NULL): único por produtoId+medida_cm
-  // Para linhas com tabela específica: único por tabelaPrecoId+produtoId+medida_cm
-  @@unique([produtoId, medida_cm, tabelaPrecoId])
+  // Unique constraint: permite múltiplas linhas com mesmo produto+medida se tabelaPrecoId ou acionamentoTxt for diferente
+  // Para linhas sem tabela específica (tabelaPrecoId = NULL): único por produtoId+medida_cm+acionamentoTxt
+  // Para linhas com tabela específica: único por tabelaPrecoId+produtoId+medida_cm+acionamentoTxt
+  @@unique([produtoId, medida_cm, tabelaPrecoId, acionamentoTxt])
   @@index([produtoId, medida_cm])
   @@index([tabelaPrecoId])
 }

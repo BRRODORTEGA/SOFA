@@ -13,7 +13,22 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
   try {
     const where = q ? { nome: { contains: q, mode: "insensitive" } } : {};
     const [items, total] = await Promise.all([
-      prisma.produto.findMany({ where, take: limit, skip: offset, orderBy: { createdAt: "desc" }, include: { categoria: { select: { nome: true } }, familia: { select: { nome: true } } } }),
+      prisma.produto.findMany({ 
+        where, 
+        take: limit, 
+        skip: offset, 
+        orderBy: { createdAt: "desc" }, 
+        include: { 
+          categoria: { select: { nome: true } }, 
+          familia: { select: { nome: true } },
+          _count: {
+            select: {
+              variacoes: true,
+              precos: true,
+            },
+          },
+        } 
+      }),
       prisma.produto.count({ where }),
     ]);
 
@@ -22,6 +37,13 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
       ...item,
       categoriaNome: item.categoria?.nome || "-",
       familiaNome: item.familia?.nome || "-",
+      tipoFormatted: item.tipo || "-",
+      aberturaFormatted: item.abertura || "-",
+      acionamentoFormatted: item.acionamento 
+        ? item.acionamento.split(",").map(a => a.trim()).join(", ")
+        : "-",
+      variacoesCount: item._count.variacoes ?? 0,
+      precosCount: item._count.precos ?? 0,
       statusFormatted: item.status ? "Ativo" : "Inativo"
     }));
 
@@ -34,6 +56,11 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
             { key: "categoriaNome", header: "Categoria" },
             { key: "familiaNome", header: "Família" },
             { key: "nome", header: "Nome" },
+            { key: "tipoFormatted", header: "Tipo" },
+            { key: "aberturaFormatted", header: "Abertura" },
+            { key: "acionamentoFormatted", header: "Acionamento" },
+            { key: "variacoesCount", header: "Variações" },
+            { key: "precosCount", header: "Preços" },
             { key: "statusFormatted", header: "Status" },
           ]}
           rows={rowsWithFormatted}

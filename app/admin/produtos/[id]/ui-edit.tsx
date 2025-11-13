@@ -13,6 +13,13 @@ export default function EditProduto({ item }: { item: any }) {
   const [familias, setFamilias] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Parse acionamento inicial
+  const acionamentoInicial = item.acionamento || "";
+  const acionamentosIniciais = acionamentoInicial.split(",").map(a => a.trim()).filter(Boolean);
+  const [acionamentoManual, setAcionamentoManual] = useState(acionamentosIniciais.includes("Manual"));
+  const [acionamentoAutomatico, setAcionamentoAutomatico] = useState(acionamentosIniciais.includes("Automático"));
+  
   const { register, handleSubmit, control, watch, setValue, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(produtoSchema),
     defaultValues: { 
@@ -68,13 +75,19 @@ export default function EditProduto({ item }: { item: any }) {
 
   async function onSubmit(values:any) {
     try {
+      // Processar acionamento dos checkboxes
+      const acionamentos: string[] = [];
+      if (acionamentoManual) acionamentos.push("Manual");
+      if (acionamentoAutomatico) acionamentos.push("Automático");
+      const acionamentoValue = acionamentos.length > 0 ? acionamentos.join(",") : null;
+      
       const payload = {
         categoriaId: values.categoriaId,
         familiaId: values.familiaId,
         nome: values.nome,
         tipo: values.tipo || null,
         abertura: values.abertura || null,
-        acionamento: values.acionamento || null,
+        acionamento: acionamentoValue,
         configuracao: values.configuracao || null,
         imagens: values.imagens.filter((url: string) => url.trim() !== ""),
         status: Boolean(values.status),
@@ -203,15 +216,56 @@ export default function EditProduto({ item }: { item: any }) {
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo</label>
-          <input {...register("tipo")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ex.: Modular" />
+          <select {...register("tipo")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Selecione...</option>
+            <option value="INTEIRO">INTEIRO</option>
+            <option value="MODULAR">MODULAR</option>
+            <option value="BIPARTIDO">BIPARTIDO</option>
+            <option value="GIRATORIO">GIRATORIO</option>
+          </select>
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Abertura</label>
-          <input {...register("abertura")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ex.: Retrátil" />
+          <select {...register("abertura")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Selecione...</option>
+            <option value="FIXO">FIXO</option>
+            <option value="RETRATIL">RETRATIL</option>
+            <option value="RECLINAVEL">RECLINAVEL</option>
+          </select>
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Acionamento</label>
-          <input {...register("acionamento")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ex.: Manual" />
+          <div className="flex flex-col gap-3">
+            <label className="flex items-center gap-3 cursor-not-allowed">
+              <input
+                type="checkbox"
+                checked={acionamentoManual}
+                onChange={() => {}} // Não fazer nada ao clicar
+                disabled={true}
+                readOnly={true}
+                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
+              />
+              <span className={`text-base font-medium ${acionamentoManual ? 'text-gray-900' : 'text-gray-500'}`}>
+                Manual
+              </span>
+            </label>
+            <label className="flex items-center gap-3 cursor-not-allowed">
+              <input
+                type="checkbox"
+                checked={acionamentoAutomatico}
+                onChange={() => {}} // Não fazer nada ao clicar
+                disabled={true}
+                readOnly={true}
+                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
+              />
+              <span className={`text-base font-medium ${acionamentoAutomatico ? 'text-gray-900' : 'text-gray-500'}`}>
+                Automático
+              </span>
+            </label>
+            <p className="text-sm text-gray-500 italic">
+              O acionamento não pode ser alterado após a criação do produto.
+            </p>
+          </div>
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Configuração</label>

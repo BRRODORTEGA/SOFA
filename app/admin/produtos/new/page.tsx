@@ -12,6 +12,8 @@ export default function NewProdutoPage() {
   const [categorias, setCategorias] = useState<any[]>([]);
   const [familias, setFamilias] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [acionamentoManual, setAcionamentoManual] = useState(false);
+  const [acionamentoAutomatico, setAcionamentoAutomatico] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { register, handleSubmit, control, watch, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(produtoSchema), defaultValues: { status: true, imagens: [] } });
   const { fields, append, remove } = useFieldArray({ control, name: "imagens" });
@@ -46,10 +48,45 @@ export default function NewProdutoPage() {
     : familias;
 
   async function onSubmit(values:any) {
-    const data = { ...values, imagens: values.imagens.filter((url: string) => url.trim() !== "") };
-    const res = await fetch("/api/produtos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-    if (res.ok) router.push("/admin/produtos");
-    else alert("Erro ao criar");
+    // Processar acionamento dos checkboxes
+    const acionamentos: string[] = [];
+    if (acionamentoManual) acionamentos.push("Manual");
+    if (acionamentoAutomatico) acionamentos.push("Automático");
+    const acionamentoValue = acionamentos.length > 0 ? acionamentos.join(",") : null;
+    
+    const data = { 
+      ...values, 
+      acionamento: acionamentoValue,
+      imagens: values.imagens.filter((url: string) => url.trim() !== "") 
+    };
+    
+    try {
+      const res = await fetch("/api/produtos", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(data) 
+      });
+      
+      const result = await res.json();
+      
+      if (res.ok && result.ok) {
+        // Verificar se múltiplos produtos foram criados
+        const totalCreated = result.data?._meta?.totalCreated || 1;
+        if (totalCreated > 1) {
+          alert(`${totalCreated} produtos criados com sucesso! Um para cada tipo de acionamento selecionado.`);
+        } else {
+          alert("Produto criado com sucesso!");
+        }
+        router.push("/admin/produtos");
+        router.refresh();
+      } else {
+        const errorMsg = result.error || result.details || "Erro ao criar produto";
+        alert(`Erro ao criar: ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error("Erro ao criar produto:", error);
+      alert("Erro ao criar produto. Verifique o console para mais detalhes.");
+    }
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -163,15 +200,48 @@ export default function NewProdutoPage() {
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo</label>
-          <input {...register("tipo")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ex.: Modular" />
+          <select {...register("tipo")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Selecione...</option>
+            <option value="INTEIRO">INTEIRO</option>
+            <option value="MODULAR">MODULAR</option>
+            <option value="BIPARTIDO">BIPARTIDO</option>
+            <option value="GIRATORIO">GIRATORIO</option>
+          </select>
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Abertura</label>
-          <input {...register("abertura")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ex.: Retrátil" />
+          <select {...register("abertura")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Selecione...</option>
+            <option value="FIXO">FIXO</option>
+            <option value="RETRATIL">RETRATIL</option>
+            <option value="RECLINAVEL">RECLINAVEL</option>
+          </select>
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Acionamento</label>
-          <input {...register("acionamento")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ex.: Manual" />
+          <div className="flex flex-col gap-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acionamentoManual}
+                onChange={(e) => setAcionamentoManual(e.target.checked)}
+                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-base font-medium text-gray-700">Manual</span>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acionamentoAutomatico}
+                onChange={(e) => setAcionamentoAutomatico(e.target.checked)}
+                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-base font-medium text-gray-700">Automático</span>
+            </label>
+            {!acionamentoManual && !acionamentoAutomatico && (
+              <p className="text-sm text-gray-500 italic">Nenhum acionamento selecionado. Será criada variação com acionamento "não aplicável".</p>
+            )}
+          </div>
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Configuração</label>

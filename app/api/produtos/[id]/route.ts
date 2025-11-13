@@ -41,6 +41,16 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const json = await req.json();
     console.log("PUT /api/produtos/[id] - Recebido:", json); // Debug
     
+    // Buscar produto atual para preservar o acionamento
+    const produtoAtual = await prisma.produto.findUnique({
+      where: { id: params.id },
+      select: { acionamento: true },
+    });
+    
+    if (!produtoAtual) {
+      return notFound();
+    }
+    
     const parsed = produtoSchema.safeParse(json);
     if (!parsed.success) {
       console.log("Erro de validação:", parsed.error.flatten()); // Debug
@@ -49,9 +59,15 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     
     console.log("Dados validados:", parsed.data); // Debug
     
+    // Preservar o acionamento original (não permitir alteração)
+    const dataToUpdate = {
+      ...parsed.data,
+      acionamento: produtoAtual.acionamento, // Manter o acionamento original
+    };
+    
     const updated = await prisma.produto.update({ 
       where: { id: params.id }, 
-      data: parsed.data 
+      data: dataToUpdate 
     });
     
     console.log("Produto atualizado:", updated); // Debug

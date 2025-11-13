@@ -69,54 +69,65 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     // Opcional: criar/garantir skeleton de preços
     if (criarSkeletonPreco) {
-      const linhas = toCreate.map(v => ({
-        produtoId: v.produtoId,
-        medida_cm: v.medida_cm,
-        largura_cm: v.largura_cm,
-        profundidade_cm: v.profundidade_cm,
-        altura_cm: v.altura_cm,
-        largura_assento_cm: v.largura_assento_cm || 0,
-        altura_assento_cm: v.altura_assento_cm || 0,
-        largura_braco_cm: v.largura_braco_cm || 0,
-        metragem_tecido_m: v.metragem_tecido_m,
-        metragem_couro_m: v.metragem_couro_m,
-        nomeProduto: produto.nome,
-        categoriaTxt: null,
-        familiaTxt: null,
-        tipoTxt: produto.tipo,
-        aberturaTxt: produto.abertura,
-        acionamentoTxt: produto.acionamento,
-        preco_grade_1000: new Decimal(0),
-        preco_grade_2000: new Decimal(0),
-        preco_grade_3000: new Decimal(0),
-        preco_grade_4000: new Decimal(0),
-        preco_grade_5000: new Decimal(0),
-        preco_grade_6000: new Decimal(0),
-        preco_grade_7000: new Decimal(0),
-        preco_couro: new Decimal(0),
-      }));
+      // Processar acionamentos do produto
+      const acionamentos = produto.acionamento 
+        ? produto.acionamento.split(",").map(a => a.trim()).filter(Boolean)
+        : [];
+      
+      // Se não houver acionamentos, usar "não aplicável"
+      const acionamentosParaCriar = acionamentos.length > 0 ? acionamentos : ["não aplicável"];
 
-      // Criar linhas de preço (tabela geral: tabelaPrecoId = null)
-      for (const l of linhas) {
-        // Verificar se já existe linha na tabela geral (tabelaPrecoId = null)
-        const linhaExistente = await prisma.tabelaPrecoLinha.findFirst({
-          where: {
-            produtoId: l.produtoId,
-            medida_cm: l.medida_cm,
-            tabelaPrecoId: null,
-          },
-        });
+      // Criar linhas de preço para cada combinação de medida + acionamento
+      for (const v of toCreate) {
+        for (const acionamento of acionamentosParaCriar) {
+          const linha = {
+            produtoId: v.produtoId,
+            medida_cm: v.medida_cm,
+            largura_cm: v.largura_cm,
+            profundidade_cm: v.profundidade_cm,
+            altura_cm: v.altura_cm,
+            largura_assento_cm: v.largura_assento_cm || 0,
+            altura_assento_cm: v.altura_assento_cm || 0,
+            largura_braco_cm: v.largura_braco_cm || 0,
+            metragem_tecido_m: v.metragem_tecido_m,
+            metragem_couro_m: v.metragem_couro_m,
+            nomeProduto: produto.nome,
+            categoriaTxt: null,
+            familiaTxt: null,
+            tipoTxt: produto.tipo,
+            aberturaTxt: produto.abertura,
+            acionamentoTxt: acionamento,
+            preco_grade_1000: new Decimal(0),
+            preco_grade_2000: new Decimal(0),
+            preco_grade_3000: new Decimal(0),
+            preco_grade_4000: new Decimal(0),
+            preco_grade_5000: new Decimal(0),
+            preco_grade_6000: new Decimal(0),
+            preco_grade_7000: new Decimal(0),
+            preco_couro: new Decimal(0),
+          };
 
-        if (!linhaExistente) {
-          // Criar nova linha apenas se não existir
-          await prisma.tabelaPrecoLinha.create({
-            data: {
-              ...l,
-              tabelaPrecoId: null, // Tabela geral
+          // Verificar se já existe linha na tabela geral (tabelaPrecoId = null) com este acionamento
+          const linhaExistente = await prisma.tabelaPrecoLinha.findFirst({
+            where: {
+              produtoId: linha.produtoId,
+              medida_cm: linha.medida_cm,
+              acionamentoTxt: linha.acionamentoTxt,
+              tabelaPrecoId: null,
             },
           });
+
+          if (!linhaExistente) {
+            // Criar nova linha apenas se não existir
+            await prisma.tabelaPrecoLinha.create({
+              data: {
+                ...linha,
+                tabelaPrecoId: null, // Tabela geral
+              },
+            });
+          }
+          // Se já existir, não sobrescrever (edição virá manualmente)
         }
-        // Se já existir, não sobrescrever (edição virá manualmente)
       }
     }
 
