@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Papa from "papaparse";
-import { debounce } from "lodash";
 
 type LinhaPreco = {
   id?: string;
@@ -29,7 +29,9 @@ type LinhaPreco = {
 };
 
 export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string }) {
+  const router = useRouter();
   const [linhas, setLinhas] = useState<LinhaPreco[]>([]);
+  const [linhasOriginais, setLinhasOriginais] = useState<LinhaPreco[]>([]); // Para comparar alterações
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -40,12 +42,149 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
   const [variacoesFaltantes, setVariacoesFaltantes] = useState<any[]>([]);
   const [selectedMedidas, setSelectedMedidas] = useState<Set<number>>(new Set());
   const [syncing, setSyncing] = useState(false);
-  const dirtyRef = useRef<Set<number>>(new Set());
+  const dirtyRef = useRef<Set<string>>(new Set()); // Chave: medida_cm_field (para persistência)
+  const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set()); // Estado para forçar re-renderização
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingNavigationRef = useRef<string | null>(null);
 
   useEffect(() => {
     loadLinhas();
   }, [produtoId]);
+
+  // Avisar antes de fechar a aba/janela se houver alterações pendentes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "Você tem alterações não salvas. Deseja realmente sair?";
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Interceptar navegação do Next.js
+  useEffect(() => {
+    const handleRouteChange = (e: MouseEvent) => {
+      if (hasUnsavedChanges) {
+        const target = e.target as HTMLElement;
+        const link = target.closest("a");
+        if (link && link.href) {
+          const isExternal = link.href.startsWith("http") && !link.href.includes(window.location.host);
+          const isHash = link.href.includes("#");
+          const currentUrl = window.location.pathname;
+          const targetUrl = new URL(link.href).pathname;
+          const isSamePage = targetUrl === currentUrl || targetUrl === currentUrl + "/" || targetUrl + "/" === currentUrl;
+          
+          if (!isExternal && !isHash && !isSamePage) {
+            // Prevenir navegação imediatamente
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            
+            // Perguntar ao usuário
+            const confirmar = window.confirm("Você tem alterações não salvas. Deseja realmente sair sem salvar?");
+            if (confirmar) {
+              // Se confirmar, limpar estado e navegar
+              dirtyRef.current.clear();
+              setHasUnsavedChanges(false);
+              router.push(targetUrl);
+            }
+          }
+        }
+      }
+    };
+
+    document.addEventListener("click", handleRouteChange, true);
+    return () => document.removeEventListener("click", handleRouteChange, true);
+  }, [hasUnsavedChanges, router]);
+
+  // Escutar eventos de salvamento e descarte vindos do componente pai
+  useEffect(() => {
+    const handleSaveRequest = async (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.produtoId === produtoId && hasUnsavedChanges) {
+        // Salvar alterações
+        setSaving(true);
+        setSaved(false);
+        setError(null);
+
+        try {
+          const medidasComAlteracoes = new Set<number>();
+          dirtyRef.current.forEach((key) => {
+            const [medida] = key.split("::");
+            medidasComAlteracoes.add(Number(medida));
+          });
+
+          const linhasComAlteracoes = linhas.filter((l) =>
+            medidasComAlteracoes.has(l.medida_cm)
+          );
+
+          const res = await fetch(`/api/produtos/${produtoId}/tabela-preco`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(linhasComAlteracoes),
+          });
+
+          const data = await res.json();
+
+          if (res.ok && data.ok) {
+            // Limpar estados ANTES de recarregar para garantir que o evento seja disparado corretamente
+            dirtyRef.current.clear();
+            setDirtyFields(new Set());
+            setHasUnsavedChanges(false);
+            
+            // Pequeno delay para garantir que o evento seja disparado
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            await loadLinhas();
+          }
+        } catch (e) {
+          console.error("Erro ao salvar:", e);
+        } finally {
+          setSaving(false);
+        }
+      }
+    };
+
+    const handleDiscardRequest = async (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.produtoId === produtoId && hasUnsavedChanges) {
+        dirtyRef.current.clear();
+        setDirtyFields(new Set());
+        setHasUnsavedChanges(false);
+        await loadLinhas(); // Recarregar dados originais
+      }
+    };
+
+    window.addEventListener("saveChangesRequest", handleSaveRequest);
+    window.addEventListener("discardChangesRequest", handleDiscardRequest);
+    
+    return () => {
+      window.removeEventListener("saveChangesRequest", handleSaveRequest);
+      window.removeEventListener("discardChangesRequest", handleDiscardRequest);
+    };
+  }, [hasUnsavedChanges, produtoId, linhas]);
+
+  // Expor estado de alterações não salvas para o componente pai
+  useEffect(() => {
+    const event = new CustomEvent("unsavedChangesState", {
+      detail: { hasUnsavedChanges, produtoId, tab: "precos" },
+    });
+    window.dispatchEvent(event);
+    console.log(`[TabelaPreco] Evento disparado: hasUnsavedChanges=${hasUnsavedChanges}, produtoId=${produtoId}`);
+  }, [hasUnsavedChanges, produtoId]);
+
+  // Debug: log quando há alterações
+  useEffect(() => {
+    if (hasUnsavedChanges) {
+      console.log("Alterações não salvas detectadas. Total de campos alterados:", dirtyRef.current.size);
+      console.log("Campos alterados:", Array.from(dirtyRef.current));
+    }
+  }, [hasUnsavedChanges]);
 
   async function loadLinhas() {
     setLoading(true);
@@ -65,7 +204,32 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
           preco_grade_7000: Number(item.preco_grade_7000 || 0),
           preco_couro: Number(item.preco_couro || 0),
         }));
-        setLinhas(items);
+        // Garantir que todos os valores sejam números
+        const itemsNormalizados = items.map((item: any) => ({
+          ...item,
+          preco_grade_1000: Number(item.preco_grade_1000 || 0),
+          preco_grade_2000: Number(item.preco_grade_2000 || 0),
+          preco_grade_3000: Number(item.preco_grade_3000 || 0),
+          preco_grade_4000: Number(item.preco_grade_4000 || 0),
+          preco_grade_5000: Number(item.preco_grade_5000 || 0),
+          preco_grade_6000: Number(item.preco_grade_6000 || 0),
+          preco_grade_7000: Number(item.preco_grade_7000 || 0),
+          preco_couro: Number(item.preco_couro || 0),
+          largura_cm: Number(item.largura_cm || 0),
+          profundidade_cm: Number(item.profundidade_cm || 0),
+          altura_cm: Number(item.altura_cm || 0),
+          largura_assento_cm: Number(item.largura_assento_cm || 0),
+          altura_assento_cm: Number(item.altura_assento_cm || 0),
+          largura_braco_cm: Number(item.largura_braco_cm || 0),
+          metragem_tecido_m: Number(item.metragem_tecido_m || 0),
+          metragem_couro_m: Number(item.metragem_couro_m || 0),
+        }));
+        
+        setLinhas(itemsNormalizados);
+        setLinhasOriginais(JSON.parse(JSON.stringify(itemsNormalizados))); // Deep copy para comparação
+        dirtyRef.current.clear();
+        setDirtyFields(new Set());
+        setHasUnsavedChanges(false);
       }
     } catch (e) {
       setError("Erro ao carregar dados");
@@ -73,88 +237,128 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
     setLoading(false);
   }
 
-  const saveChanges = useCallback(
-    debounce(async (rows: LinhaPreco[]) => {
-      if (rows.length === 0) return;
-      setSaving(true);
-      setSaved(false);
-      setError(null);
-      try {
-        const res = await fetch(`/api/produtos/${produtoId}/tabela-preco`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(rows),
-        });
-        if (res.ok) {
-          setSaved(true);
-          dirtyRef.current.clear();
-          setTimeout(() => setSaved(false), 3000);
-        } else {
-          const data = await res.json();
-          setError(data.error || "Erro ao salvar");
-        }
-      } catch (e) {
-        setError("Erro ao salvar");
+  // Função para obter chave do campo
+  function getFieldKey(medida: number, field: string): string {
+    return `${medida}::${field}`;
+  }
+
+  // Função para verificar se um campo foi alterado
+  function isFieldDirty(medida: number, field: string): boolean {
+    const key = getFieldKey(medida, field);
+    return dirtyFields.has(key);
+  }
+
+  async function saveChanges() {
+    if (dirtyRef.current.size === 0) {
+      alert("Nenhuma alteração para salvar");
+      return;
+    }
+
+    setSaving(true);
+    setSaved(false);
+    setError(null);
+
+    try {
+      // Coletar todas as linhas com alterações
+      const medidasComAlteracoes = new Set<number>();
+      dirtyRef.current.forEach((key) => {
+        const [medida] = key.split("::");
+        medidasComAlteracoes.add(Number(medida));
+      });
+
+      const linhasComAlteracoes = linhas.filter((l) =>
+        medidasComAlteracoes.has(l.medida_cm)
+      );
+
+      const res = await fetch(`/api/produtos/${produtoId}/tabela-preco`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(linhasComAlteracoes),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.ok) {
+        // Limpar estados ANTES de recarregar para garantir que o evento seja disparado corretamente
+        dirtyRef.current.clear();
+        setDirtyFields(new Set());
+        setHasUnsavedChanges(false);
+        setSaved(true);
+        
+        // Pequeno delay para garantir que o evento seja disparado antes de recarregar
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Recarregar dados para atualizar linhasOriginais
+        await loadLinhas();
+        setTimeout(() => setSaved(false), 3000);
+      } else {
+        setError(data.error || "Erro ao salvar");
       }
+    } catch (e) {
+      setError("Erro ao salvar");
+    } finally {
       setSaving(false);
-    }, 500),
-    [produtoId]
-  );
+    }
+  }
+
+  // Campos readonly que não podem ser alterados
+  const readonlyFields = new Set(["categoriaNome", "familiaNome", "produtoNome", "medida_cm"]);
 
   function onChange(medida: number, field: keyof LinhaPreco, value: string) {
-    const numValue = field === "medida_cm" || field.includes("_cm") 
-      ? Math.max(0, Math.floor(Number(value) || 0))
-      : Math.max(0, Number(value) || 0);
+    // Bloquear alteração de campos readonly
+    if (readonlyFields.has(field)) {
+      return; // Não permite alterar campos readonly
+    }
     
+    // Converter valor baseado no tipo de campo
+    let numValue: number;
+    if (field.includes("_cm")) {
+      // Campos de dimensão: inteiros
+      numValue = Math.max(0, Math.floor(Number(value) || 0));
+    } else if (field.includes("metragem") || field.includes("preco")) {
+      // Campos decimais: permitir decimais
+      numValue = Math.max(0, Number(value) || 0);
+    } else {
+      // Outros campos numéricos
+      numValue = Math.max(0, Number(value) || 0);
+    }
+    
+    // Encontrar linha original para comparação
+    const linhaOriginal = linhasOriginais.find((l) => l.medida_cm === medida);
+    if (!linhaOriginal) {
+      console.warn(`Linha original não encontrada para medida ${medida}`);
+      return;
+    }
+    
+    const valorOriginal = Number(linhaOriginal[field as keyof LinhaPreco]) || 0;
+    
+    // Atualizar estado
     setLinhas((prev) =>
       prev.map((l) => (l.medida_cm === medida ? { ...l, [field]: numValue } : l))
     );
-    dirtyRef.current.add(medida);
     
-    // Envia todas as linhas modificadas
-    const toSave = linhas
-      .map((l) => (l.medida_cm === medida ? { ...l, [field]: numValue } : l))
-      .filter((l) => dirtyRef.current.has(l.medida_cm));
-    saveChanges(toSave);
+    // Marcar como alterado se diferente do original (com tolerância para decimais)
+    const fieldKey = getFieldKey(medida, field);
+    const diferenca = Math.abs(valorOriginal - numValue);
+    const tolerancia = field.includes("metragem") || field.includes("preco") ? 0.001 : 0.5;
+    
+    if (diferenca > tolerancia) {
+      dirtyRef.current.add(fieldKey);
+      setDirtyFields(new Set(dirtyRef.current)); // Atualizar estado para forçar re-renderização
+      setHasUnsavedChanges(true);
+      console.log(`Campo ${field} marcado como alterado. Original: ${valorOriginal}, Novo: ${numValue}, Diferença: ${diferenca}`); // Debug
+    } else {
+      dirtyRef.current.delete(fieldKey);
+      setDirtyFields(new Set(dirtyRef.current)); // Atualizar estado para forçar re-renderização
+      // Verificar se ainda há alterações pendentes
+      const aindaTemAlteracoes = dirtyRef.current.size > 0;
+      setHasUnsavedChanges(aindaTemAlteracoes);
+      if (!aindaTemAlteracoes) {
+        console.log("Todas as alterações foram revertidas"); // Debug
+      }
+    }
   }
 
-  async function addLinha() {
-    const medida = window.prompt("Informe a nova medida (cm):");
-    if (!medida) return;
-    const n = Number(medida);
-    if (isNaN(n) || n <= 0) {
-      alert("Medida inválida. Informe um número maior que zero.");
-      return;
-    }
-    if (linhas.some((l) => l.medida_cm === n)) {
-      alert("Já existe uma linha com esta medida. Escolha outra medida.");
-      return;
-    }
-
-    const nova: LinhaPreco = {
-      medida_cm: n,
-      largura_cm: 0,
-      profundidade_cm: 0,
-      altura_cm: 0,
-      largura_assento_cm: 0,
-      altura_assento_cm: 0,
-      largura_braco_cm: 0,
-      metragem_tecido_m: 0,
-      metragem_couro_m: 0,
-      preco_grade_1000: 0,
-      preco_grade_2000: 0,
-      preco_grade_3000: 0,
-      preco_grade_4000: 0,
-      preco_grade_5000: 0,
-      preco_grade_6000: 0,
-      preco_grade_7000: 0,
-      preco_couro: 0,
-    };
-
-    setLinhas([...linhas, nova].sort((a, b) => a.medida_cm - b.medida_cm));
-    dirtyRef.current.add(n);
-    saveChanges([nova]);
-  }
 
   async function deleteLinha(medida: number) {
     if (!confirm(`Excluir linha de ${medida}cm?`)) return;
@@ -163,7 +367,15 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
     });
     if (res.ok) {
       setLinhas(linhas.filter((l) => l.medida_cm !== medida));
-      dirtyRef.current.delete(medida);
+      setLinhasOriginais(linhasOriginais.filter((l) => l.medida_cm !== medida));
+      // Remover todas as chaves relacionadas a esta medida
+      dirtyRef.current.forEach((key) => {
+        if (key.startsWith(`${medida}::`)) {
+          dirtyRef.current.delete(key);
+        }
+      });
+      setDirtyFields(new Set(dirtyRef.current));
+      setHasUnsavedChanges(dirtyRef.current.size > 0);
     } else {
       alert("Erro ao excluir");
     }
@@ -172,8 +384,15 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
   async function salvarAlteracoesPendentes(): Promise<boolean> {
     if (dirtyRef.current.size === 0) return true;
     
-    const toSave = linhas.filter((l) => 
-      dirtyRef.current.has(l.medida_cm)
+    // Coletar todas as linhas com alterações
+    const medidasComAlteracoes = new Set<number>();
+    dirtyRef.current.forEach((key) => {
+      const [medida] = key.split("::");
+      medidasComAlteracoes.add(Number(medida));
+    });
+
+    const toSave = linhas.filter((l) =>
+      medidasComAlteracoes.has(l.medida_cm)
     );
     
     if (toSave.length === 0) return true;
@@ -185,11 +404,20 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
         body: JSON.stringify(toSave),
       });
       
-      if (res.ok) {
+      const data = await res.json();
+      
+      if (res.ok && data.ok) {
+        // Limpar estados ANTES de recarregar para garantir que o evento seja disparado corretamente
         dirtyRef.current.clear();
+        setDirtyFields(new Set());
+        setHasUnsavedChanges(false);
+        
+        // Pequeno delay para garantir que o evento seja disparado
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        await loadLinhas(); // Recarregar para atualizar linhasOriginais
         return true;
       } else {
-        const data = await res.json();
         alert(`Erro ao salvar alterações: ${data.error || "Erro desconhecido"}`);
         return false;
       }
@@ -204,25 +432,27 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
     if (!file) return;
 
     // Verificar se há alterações pendentes
-    if (dirtyRef.current.size > 0) {
+    if (hasUnsavedChanges) {
       const manter = confirm(
-        `Você tem ${dirtyRef.current.size} alteração(ões) não salva(s). Deseja manter essas alterações antes de importar o CSV?\n\n` +
+        `Você tem alterações não salvas. Deseja salvar essas alterações antes de importar o CSV?\n\n` +
         `Clique em "OK" para salvar as alterações e continuar com o import.\n` +
-        `Clique em "Cancelar" para cancelar o import.`
+        `Clique em "Cancelar" para descartar as alterações e continuar com o import.`
       );
       
-      if (!manter) {
-        // Usuário cancelou o import
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        return;
-      }
-      
-      // Salvar alterações pendentes
-      const salvou = await salvarAlteracoesPendentes();
-      if (!salvou) {
-        // Erro ao salvar, cancelar import
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        return;
+      if (manter) {
+        // Salvar alterações pendentes
+        const salvou = await salvarAlteracoesPendentes();
+        if (!salvou) {
+          // Erro ao salvar, cancelar import
+          if (fileInputRef.current) fileInputRef.current.value = "";
+          return;
+        }
+      } else {
+        // Descartar alterações
+        dirtyRef.current.clear();
+        setDirtyFields(new Set());
+        setHasUnsavedChanges(false);
+        await loadLinhas(); // Recarregar dados originais
       }
     }
 
@@ -448,7 +678,7 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
     { key: "categoriaNome", label: "Categoria", readonly: true, isText: true },
     { key: "familiaNome", label: "Família", readonly: true, isText: true },
     { key: "produtoNome", label: "Nome Produto", readonly: true, isText: true },
-    { key: "medida_cm", label: "Medida (cm)", readonly: true },
+    { key: "medida_cm", label: "Medida (cm)", readonly: true, isText: true },
     { key: "largura_cm", label: "Largura (cm)", readonly: false },
     { key: "profundidade_cm", label: "Profundidade (cm)", readonly: false },
     { key: "altura_cm", label: "Altura (cm)", readonly: false },
@@ -501,6 +731,15 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
           {saving && <span className="text-sm font-medium text-gray-500">Salvando...</span>}
           {saved && <span className="text-sm font-semibold text-green-600">Salvo ✓</span>}
           {error && <span className="text-sm font-semibold text-red-600">Erro ✕</span>}
+          {hasUnsavedChanges && (
+            <button
+              onClick={saveChanges}
+              disabled={saving}
+              className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              {saving ? "Salvando..." : "Salvar Alterações"}
+            </button>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -520,12 +759,6 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
             className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
           >
             Exportar CSV
-          </button>
-          <button
-            onClick={addLinha}
-            className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-          >
-            + Adicionar Medida
           </button>
           <button
             onClick={checkVariacoesFaltantes}
@@ -637,8 +870,12 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
                           type="number"
                           step={col.key.includes("metragem") || col.key.includes("preco") ? "0.01" : "1"}
                           min="0"
-                          className={`w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-center text-sm font-medium text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                            col.readonly ? "bg-gray-50 cursor-not-allowed" : ""
+                          className={`w-full rounded-lg border px-2 py-2 text-center text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 ${
+                            col.readonly 
+                              ? "bg-gray-50 cursor-not-allowed border-gray-300" 
+                              : isFieldDirty(l.medida_cm, col.key)
+                              ? "border-yellow-400 bg-yellow-50 focus:border-yellow-500 focus:ring-yellow-500"
+                              : "border-gray-300 bg-white focus:border-blue-500 focus:ring-blue-500"
                           }`}
                           value={l[col.key as keyof LinhaPreco] || 0}
                           onChange={(e) => onChange(l.medida_cm, col.key as keyof LinhaPreco, e.target.value)}

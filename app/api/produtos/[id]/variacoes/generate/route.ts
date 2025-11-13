@@ -96,19 +96,34 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         preco_couro: new Decimal(0),
       }));
 
-      // upsert por (produtoId, medida_cm)
+      // Criar linhas de preço (tabela geral: tabelaPrecoId = null)
       for (const l of linhas) {
-        await prisma.tabelaPrecoLinha.upsert({
-          where: { produtoId_medida_cm: { produtoId: l.produtoId, medida_cm: l.medida_cm } },
-          update: {}, // não sobrescrever se já existir; edição virá na Fase 6
-          create: l,
+        // Verificar se já existe linha na tabela geral (tabelaPrecoId = null)
+        const linhaExistente = await prisma.tabelaPrecoLinha.findFirst({
+          where: {
+            produtoId: l.produtoId,
+            medida_cm: l.medida_cm,
+            tabelaPrecoId: null,
+          },
         });
+
+        if (!linhaExistente) {
+          // Criar nova linha apenas se não existir
+          await prisma.tabelaPrecoLinha.create({
+            data: {
+              ...l,
+              tabelaPrecoId: null, // Tabela geral
+            },
+          });
+        }
+        // Se já existir, não sobrescrever (edição virá manualmente)
       }
     }
 
     return ok({ created: toCreate.length, medidas: aCriar });
-  } catch (e) {
-    return serverError();
+  } catch (e: any) {
+    console.error("Erro ao gerar variações:", e);
+    return serverError(e?.message || "Erro ao gerar variações");
   }
 }
 

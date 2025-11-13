@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 type Variacao = {
   id: string;
@@ -16,7 +17,9 @@ type Variacao = {
 };
 
 export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }) {
+  const router = useRouter();
   const [variacoes, setVariacoes] = useState<Variacao[]>([]);
+  const [variacoesOriginais, setVariacoesOriginais] = useState<Variacao[]>([]); // Para comparar alterações
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -37,28 +40,210 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
     metragem_tecido_m: "",
     metragem_couro_m: "",
   });
-  const debounceRef = useRef<NodeJS.Timeout>();
-  const changedRef = useRef<Set<number>>(new Set());
+  const dirtyRef = useRef<Set<string>>(new Set()); // Chave: medida_cm_field (para persistência)
+  const [dirtyFields, setDirtyFields] = useState<Set<string>>(new Set()); // Estado para forçar re-renderização
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const pendingNavigationRef = useRef<string | null>(null);
+  const variacoesRef = useRef<Variacao[]>([]); // Ref para acessar valor atual sem dependência
 
   useEffect(() => {
     loadVariacoes();
   }, [produtoId]);
 
+  // Avisar antes de fechar a aba/janela se houver alterações pendentes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "Você tem alterações não salvas. Deseja realmente sair?";
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Interceptar navegação do Next.js
+  useEffect(() => {
+    const handleRouteChange = (e: MouseEvent) => {
+      if (hasUnsavedChanges) {
+        const target = e.target as HTMLElement;
+        const link = target.closest("a");
+        if (link && link.href) {
+          const isExternal = link.href.startsWith("http") && !link.href.includes(window.location.host);
+          const isHash = link.href.includes("#");
+          const currentUrl = window.location.pathname;
+          const targetUrl = new URL(link.href).pathname;
+          const isSamePage = targetUrl === currentUrl || targetUrl === currentUrl + "/" || targetUrl + "/" === currentUrl;
+          
+          if (!isExternal && !isHash && !isSamePage) {
+            // Prevenir navegação imediatamente
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            
+            // Perguntar ao usuário
+            const confirmar = window.confirm("Você tem alterações não salvas. Deseja realmente sair sem salvar?");
+            if (confirmar) {
+              // Se confirmar, limpar estado e navegar
+              dirtyRef.current.clear();
+              setHasUnsavedChanges(false);
+              router.push(targetUrl);
+            }
+          }
+        }
+      }
+    };
+
+    document.addEventListener("click", handleRouteChange, true);
+    return () => document.removeEventListener("click", handleRouteChange, true);
+  }, [hasUnsavedChanges, router]);
+
+  // Escutar eventos de salvamento e descarte vindos do componente pai
+  useEffect(() => {
+    const handleSaveRequest = async (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.produtoId === produtoId && hasUnsavedChanges) {
+        // Salvar alterações
+        setSaving(true);
+        setSaved(false);
+
+        try {
+          const medidasComAlteracoes = new Set<number>();
+          dirtyRef.current.forEach((key) => {
+            const [medida] = key.split("::");
+            medidasComAlteracoes.add(Number(medida));
+          });
+
+          const variacoesComAlteracoes = variacoesRef.current.filter((v) =>
+            medidasComAlteracoes.has(v.medida_cm)
+          );
+
+          const res = await fetch(`/api/produtos/${produtoId}/variacoes`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(variacoesComAlteracoes.map(v => ({
+              medida_cm: Number(v.medida_cm),
+              largura_cm: Number(v.largura_cm),
+              profundidade_cm: Number(v.profundidade_cm),
+              altura_cm: Number(v.altura_cm),
+              largura_assento_cm: Number(v.largura_assento_cm),
+              altura_assento_cm: Number(v.altura_assento_cm),
+              largura_braco_cm: Number(v.largura_braco_cm),
+              metragem_tecido_m: Number(v.metragem_tecido_m),
+              metragem_couro_m: Number(v.metragem_couro_m),
+            }))),
+          });
+
+          if (res.ok) {
+            dirtyRef.current.clear();
+            setDirtyFields(new Set());
+            setHasUnsavedChanges(false);
+            await loadVariacoes();
+          }
+        } catch (e) {
+          console.error("Erro ao salvar:", e);
+        } finally {
+          setSaving(false);
+        }
+      }
+    };
+
+    const handleDiscardRequest = async (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.produtoId === produtoId && hasUnsavedChanges) {
+        dirtyRef.current.clear();
+        setDirtyFields(new Set());
+        setHasUnsavedChanges(false);
+        await loadVariacoes(); // Recarregar dados originais
+      }
+    };
+
+    window.addEventListener("saveChangesRequest", handleSaveRequest);
+    window.addEventListener("discardChangesRequest", handleDiscardRequest);
+    
+    return () => {
+      window.removeEventListener("saveChangesRequest", handleSaveRequest);
+      window.removeEventListener("discardChangesRequest", handleDiscardRequest);
+    };
+  }, [hasUnsavedChanges, produtoId]);
+
+  // Expor estado de alterações não salvas para o componente pai
+  useEffect(() => {
+    const event = new CustomEvent("unsavedChangesState", {
+      detail: { hasUnsavedChanges, produtoId, tab: "variacoes" },
+    });
+    window.dispatchEvent(event);
+  }, [hasUnsavedChanges, produtoId]);
+
   async function loadVariacoes() {
     setLoading(true);
-    const res = await fetch(`/api/produtos/${produtoId}/variacoes`);
-    const data = await res.json();
-    if (data.ok) setVariacoes(data.data.items || []);
+    try {
+      const res = await fetch(`/api/produtos/${produtoId}/variacoes`);
+      const data = await res.json();
+      if (data.ok) {
+        const items = (data.data.items || []).map((item: any) => ({
+          ...item,
+          medida_cm: Number(item.medida_cm || 0),
+          largura_cm: Number(item.largura_cm || 0),
+          profundidade_cm: Number(item.profundidade_cm || 0),
+          altura_cm: Number(item.altura_cm || 0),
+          largura_assento_cm: Number(item.largura_assento_cm || 0),
+          altura_assento_cm: Number(item.altura_assento_cm || 0),
+          largura_braco_cm: Number(item.largura_braco_cm || 0),
+          metragem_tecido_m: Number(item.metragem_tecido_m || 0),
+          metragem_couro_m: Number(item.metragem_couro_m || 0),
+        }));
+        setVariacoes(items);
+        variacoesRef.current = items; // Atualizar ref
+        setVariacoesOriginais(JSON.parse(JSON.stringify(items))); // Deep copy para comparação
+        dirtyRef.current.clear();
+        setDirtyFields(new Set());
+        setHasUnsavedChanges(false);
+      }
+    } catch (e) {
+      console.error("Erro ao carregar variações:", e);
+    }
     setLoading(false);
   }
 
+  // Função para obter chave do campo
+  function getFieldKey(medida: number, field: string): string {
+    return `${medida}::${field}`;
+  }
+
+  // Função para verificar se um campo foi alterado
+  function isFieldDirty(medida: number, field: string): boolean {
+    const key = getFieldKey(medida, field);
+    return dirtyFields.has(key);
+  }
+
   async function saveChanges() {
-    if (changedRef.current.size === 0) return;
+    if (dirtyRef.current.size === 0) {
+      alert("Nenhuma alteração para salvar");
+      return;
+    }
+
     setSaving(true);
+    setSaved(false);
+
     try {
-      const toSave = variacoes
-        .filter(v => changedRef.current.has(v.medida_cm))
-        .map(v => ({
+      // Coletar todas as variações com alterações
+      const medidasComAlteracoes = new Set<number>();
+      dirtyRef.current.forEach((key) => {
+        const [medida] = key.split("::");
+        medidasComAlteracoes.add(Number(medida));
+      });
+
+      const variacoesComAlteracoes = variacoesRef.current.filter((v) =>
+        medidasComAlteracoes.has(v.medida_cm)
+      );
+
+      const res = await fetch(`/api/produtos/${produtoId}/variacoes`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(variacoesComAlteracoes.map(v => ({
           medida_cm: Number(v.medida_cm),
           largura_cm: Number(v.largura_cm),
           profundidade_cm: Number(v.profundidade_cm),
@@ -68,22 +253,18 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
           largura_braco_cm: Number(v.largura_braco_cm),
           metragem_tecido_m: Number(v.metragem_tecido_m),
           metragem_couro_m: Number(v.metragem_couro_m),
-        }));
-      
-      console.log("Salvando variações:", toSave); // Debug
-      
-      const res = await fetch(`/api/produtos/${produtoId}/variacoes`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(toSave),
+        }))),
       });
-      
+
       const data = await res.json();
-      console.log("Resposta da API:", data); // Debug
-      
+
       if (res.ok && data.ok) {
         setSaved(true);
-        changedRef.current.clear();
+        dirtyRef.current.clear();
+        setDirtyFields(new Set());
+        setHasUnsavedChanges(false);
+        // Recarregar dados para atualizar variacoesOriginais
+        await loadVariacoes();
         setTimeout(() => setSaved(false), 3000);
       } else {
         const errorMsg = data.error?.message || data.details || "Erro ao salvar";
@@ -98,15 +279,55 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
   }
 
   function handleFieldChange(medida: number, field: keyof Variacao, value: string) {
-    const numValue = value === "" ? 0 : Number(value);
+    // Converter valor baseado no tipo de campo
+    let numValue: number;
+    if (field.includes("_cm")) {
+      // Campos de dimensão: inteiros
+      numValue = Math.max(0, Math.floor(Number(value) || 0));
+    } else if (field.includes("metragem")) {
+      // Campos decimais: permitir decimais
+      numValue = Math.max(0, Number(value) || 0);
+    } else {
+      // Outros campos numéricos
+      numValue = Math.max(0, Number(value) || 0);
+    }
+    
     if (isNaN(numValue)) return; // Ignora valores inválidos
     
-    setVariacoes(prev => prev.map(v => 
-      v.medida_cm === medida ? { ...v, [field]: numValue } : v
-    ));
-    changedRef.current.add(medida);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => saveChanges(), 500);
+    // Encontrar variação original para comparação
+    const variacaoOriginal = variacoesOriginais.find((v) => v.medida_cm === medida);
+    if (!variacaoOriginal) {
+      console.warn(`Variação original não encontrada para medida ${medida}`);
+      return;
+    }
+    
+    const valorOriginal = Number(variacaoOriginal[field]) || 0;
+    
+    // Atualizar estado
+    setVariacoes(prev => {
+      const updated = prev.map(v => 
+        v.medida_cm === medida ? { ...v, [field]: numValue } : v
+      );
+      variacoesRef.current = updated; // Atualizar ref
+      return updated;
+    });
+    
+    // Marcar como alterado se diferente do original (com tolerância para decimais)
+    const fieldKey = getFieldKey(medida, field);
+    const diferenca = Math.abs(valorOriginal - numValue);
+    const tolerancia = field.includes("metragem") ? 0.001 : 0.5;
+    
+    if (diferenca > tolerancia) {
+      dirtyRef.current.add(fieldKey);
+      setDirtyFields(new Set(dirtyRef.current)); // Atualizar estado para forçar re-renderização
+      setHasUnsavedChanges(true);
+    } else {
+      dirtyRef.current.delete(fieldKey);
+      setDirtyFields(new Set(dirtyRef.current)); // Atualizar estado para forçar re-renderização
+      // Verificar se ainda há alterações pendentes
+      const aindaTemAlteracoes = dirtyRef.current.size > 0;
+      setHasUnsavedChanges(aindaTemAlteracoes);
+    }
   }
 
   async function handleAdd() {
@@ -145,6 +366,14 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
       method: "DELETE",
     });
     if (res.ok) {
+      // Remover todas as chaves relacionadas a esta medida
+      dirtyRef.current.forEach((key) => {
+        if (key.startsWith(`${medida}::`)) {
+          dirtyRef.current.delete(key);
+        }
+      });
+      setDirtyFields(new Set(dirtyRef.current));
+      setHasUnsavedChanges(dirtyRef.current.size > 0);
       loadVariacoes();
     } else {
       alert("Erro ao excluir");
@@ -153,25 +382,37 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
 
   async function handleGenerate() {
     const custom = medidasCustom.split(",").map(s => Number(s.trim())).filter(n => !isNaN(n) && n > 0);
-    const res = await fetch(`/api/produtos/${produtoId}/variacoes/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        medidasFixas,
-        medidasCustom: custom,
-        usarPerfilFamilia,
-        criarSkeletonPreco,
-      }),
-    });
-    if (res.ok) {
+    try {
+      const res = await fetch(`/api/produtos/${produtoId}/variacoes/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          medidasFixas,
+          medidasCustom: custom,
+          usarPerfilFamilia,
+          criarSkeletonPreco,
+        }),
+      });
+      
       const data = await res.json();
-      setShowModal(false);
-      if (data.data.created === 0) {
-        alert("Todas as medidas já existem");
+      
+      if (res.ok && data.ok) {
+        setShowModal(false);
+        if (data.data.created === 0) {
+          alert("Todas as medidas já existem");
+        } else {
+          // Mostrar mensagem de sucesso
+          alert(`${data.data.created} variação(ões) criada(s) com sucesso!`);
+        }
+        loadVariacoes();
+      } else {
+        // Se res.ok mas data.ok é false, ou se res.ok é false
+        const errorMsg = data.error || data.message || "Erro ao gerar variações";
+        alert(`Erro ao gerar variações: ${errorMsg}`);
       }
-      loadVariacoes();
-    } else {
-      alert("Erro ao gerar variações");
+    } catch (error) {
+      console.error("Erro ao gerar variações:", error);
+      alert("Erro ao gerar variações. Verifique o console para mais detalhes.");
     }
   }
 
@@ -188,8 +429,17 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Variações</h2>
         <div className="flex items-center gap-3">
-          {saved && <span className="text-sm font-semibold text-green-600">Salvo ✓</span>}
           {saving && <span className="text-sm font-medium text-gray-500">Salvando...</span>}
+          {saved && <span className="text-sm font-semibold text-green-600">Salvo ✓</span>}
+          {hasUnsavedChanges && (
+            <button
+              onClick={saveChanges}
+              disabled={saving}
+              className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              {saving ? "Salvando..." : "Salvar Alterações"}
+            </button>
+          )}
           <button
             onClick={() => setShowAddForm(!showAddForm)}
             className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
@@ -312,7 +562,11 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                       type="number"
                       value={v.largura_cm}
                       onChange={(e) => handleFieldChange(v.medida_cm, "largura_cm", e.target.value)}
-                      className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={`w-24 rounded-lg border px-3 py-2 text-base text-gray-900 focus:outline-none focus:ring-2 ${
+                        isFieldDirty(v.medida_cm, "largura_cm")
+                          ? "border-yellow-400 bg-yellow-50 focus:border-yellow-500 focus:ring-yellow-500"
+                          : "border-gray-300 bg-white focus:border-blue-500 focus:ring-blue-500"
+                      }`}
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -320,7 +574,11 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                       type="number"
                       value={v.profundidade_cm}
                       onChange={(e) => handleFieldChange(v.medida_cm, "profundidade_cm", e.target.value)}
-                      className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={`w-24 rounded-lg border px-3 py-2 text-base text-gray-900 focus:outline-none focus:ring-2 ${
+                        isFieldDirty(v.medida_cm, "profundidade_cm")
+                          ? "border-yellow-400 bg-yellow-50 focus:border-yellow-500 focus:ring-yellow-500"
+                          : "border-gray-300 bg-white focus:border-blue-500 focus:ring-blue-500"
+                      }`}
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -328,7 +586,11 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                       type="number"
                       value={v.altura_cm}
                       onChange={(e) => handleFieldChange(v.medida_cm, "altura_cm", e.target.value)}
-                      className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={`w-24 rounded-lg border px-3 py-2 text-base text-gray-900 focus:outline-none focus:ring-2 ${
+                        isFieldDirty(v.medida_cm, "altura_cm")
+                          ? "border-yellow-400 bg-yellow-50 focus:border-yellow-500 focus:ring-yellow-500"
+                          : "border-gray-300 bg-white focus:border-blue-500 focus:ring-blue-500"
+                      }`}
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -336,7 +598,11 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                       type="number"
                       value={v.largura_assento_cm || 0}
                       onChange={(e) => handleFieldChange(v.medida_cm, "largura_assento_cm", e.target.value)}
-                      className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={`w-24 rounded-lg border px-3 py-2 text-base text-gray-900 focus:outline-none focus:ring-2 ${
+                        isFieldDirty(v.medida_cm, "largura_assento_cm")
+                          ? "border-yellow-400 bg-yellow-50 focus:border-yellow-500 focus:ring-yellow-500"
+                          : "border-gray-300 bg-white focus:border-blue-500 focus:ring-blue-500"
+                      }`}
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -344,7 +610,11 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                       type="number"
                       value={v.altura_assento_cm || 0}
                       onChange={(e) => handleFieldChange(v.medida_cm, "altura_assento_cm", e.target.value)}
-                      className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={`w-24 rounded-lg border px-3 py-2 text-base text-gray-900 focus:outline-none focus:ring-2 ${
+                        isFieldDirty(v.medida_cm, "altura_assento_cm")
+                          ? "border-yellow-400 bg-yellow-50 focus:border-yellow-500 focus:ring-yellow-500"
+                          : "border-gray-300 bg-white focus:border-blue-500 focus:ring-blue-500"
+                      }`}
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -352,7 +622,11 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                       type="number"
                       value={v.largura_braco_cm || 0}
                       onChange={(e) => handleFieldChange(v.medida_cm, "largura_braco_cm", e.target.value)}
-                      className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={`w-24 rounded-lg border px-3 py-2 text-base text-gray-900 focus:outline-none focus:ring-2 ${
+                        isFieldDirty(v.medida_cm, "largura_braco_cm")
+                          ? "border-yellow-400 bg-yellow-50 focus:border-yellow-500 focus:ring-yellow-500"
+                          : "border-gray-300 bg-white focus:border-blue-500 focus:ring-blue-500"
+                      }`}
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -361,7 +635,11 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                       step="0.1"
                       value={v.metragem_tecido_m}
                       onChange={(e) => handleFieldChange(v.medida_cm, "metragem_tecido_m", e.target.value)}
-                      className="w-28 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={`w-28 rounded-lg border px-3 py-2 text-base text-gray-900 focus:outline-none focus:ring-2 ${
+                        isFieldDirty(v.medida_cm, "metragem_tecido_m")
+                          ? "border-yellow-400 bg-yellow-50 focus:border-yellow-500 focus:ring-yellow-500"
+                          : "border-gray-300 bg-white focus:border-blue-500 focus:ring-blue-500"
+                      }`}
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -370,7 +648,11 @@ export default function ProdutoVariacoesTab({ produtoId }: { produtoId: string }
                       step="0.1"
                       value={v.metragem_couro_m}
                       onChange={(e) => handleFieldChange(v.medida_cm, "metragem_couro_m", e.target.value)}
-                      className="w-28 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={`w-28 rounded-lg border px-3 py-2 text-base text-gray-900 focus:outline-none focus:ring-2 ${
+                        isFieldDirty(v.medida_cm, "metragem_couro_m")
+                          ? "border-yellow-400 bg-yellow-50 focus:border-yellow-500 focus:ring-yellow-500"
+                          : "border-gray-300 bg-white focus:border-blue-500 focus:ring-blue-500"
+                      }`}
                     />
                   </td>
                   <td className="px-4 py-3">
