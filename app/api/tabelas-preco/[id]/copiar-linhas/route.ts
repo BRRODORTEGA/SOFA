@@ -185,6 +185,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         });
         console.log(`Criadas ${result.count} linhas para a tabela ${params.id}`);
         
+        // Atualizar a data de última atualização da tabela
+        await prisma.tabelaPreco.update({
+          where: { id: params.id },
+          data: { updatedAt: new Date() },
+        });
+        
         // Verificar se as linhas foram realmente criadas
         const linhasVerificacao = await prisma.tabelaPrecoLinha.findMany({
           where: { tabelaPrecoId: params.id },

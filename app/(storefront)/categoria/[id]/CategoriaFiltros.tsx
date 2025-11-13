@@ -11,7 +11,7 @@ interface Produto {
   abertura: string | null;
   acionamento: string | null;
   imagens: string[];
-  familia: { nome: string } | null;
+  familia: { id: string; nome: string } | null;
   categoria: { nome: string } | null;
 }
 
@@ -46,10 +46,24 @@ function CategoriaFiltrosContent({
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Buscar valores únicos dos produtos para os filtros
-  const tiposDisponiveis = Array.from(new Set(produtosIniciais.map(p => p.tipo).filter(Boolean))) as string[];
-  const aberturasDisponiveis = Array.from(new Set(produtosIniciais.map(p => p.abertura).filter(Boolean))) as string[];
-  const acionamentosDisponiveis = Array.from(new Set(produtosIniciais.map(p => p.acionamento).filter(Boolean))) as string[];
+  // Buscar valores únicos dos produtos para os filtros (usar produtos filtrados quando disponível)
+  const produtosParaFiltros = produtos.length > 0 ? produtos : produtosIniciais;
+  
+  // Usar famílias dos produtos filtrados, ou as famílias iniciais se não houver produtos filtrados ainda
+  const familiasDisponiveis = produtos.length > 0
+    ? Array.from(
+        new Map(
+          produtos
+            .map(p => p.familia)
+            .filter(Boolean)
+            .map(f => [f!.id, f])
+        ).values()
+      ).sort((a, b) => a!.nome.localeCompare(b!.nome))
+    : familias;
+  
+  const tiposDisponiveis = Array.from(new Set(produtosParaFiltros.map(p => p.tipo).filter(Boolean))) as string[];
+  const aberturasDisponiveis = Array.from(new Set(produtosParaFiltros.map(p => p.abertura).filter(Boolean))) as string[];
+  const acionamentosDisponiveis = Array.from(new Set(produtosParaFiltros.map(p => p.acionamento).filter(Boolean))) as string[];
 
   // Função para buscar produtos filtrados
   const buscarProdutos = useCallback(async () => {
@@ -160,9 +174,9 @@ function CategoriaFiltrosContent({
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Todas</option>
-              {familias.map((fam) => (
-                <option key={fam.id} value={fam.id}>
-                  {fam.nome}
+              {familiasDisponiveis.map((fam) => (
+                <option key={fam!.id} value={fam!.id}>
+                  {fam!.nome}
                 </option>
               ))}
             </select>

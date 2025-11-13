@@ -36,11 +36,28 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
     ]);
 
     // Processar dados no servidor antes de passar para o Client Component
-    const rowsWithFormatted = items.map(item => ({
-      ...item,
-      ativoFormatted: item.ativo ? "Ativo" : "Inativo",
-      totalLinhas: item._count.linhas,
-    }));
+    const rowsWithFormatted = items.map(item => {
+      const formatarData = (date: Date) => {
+        const d = new Date(date);
+        const dia = String(d.getDate()).padStart(2, '0');
+        const mes = String(d.getMonth() + 1).padStart(2, '0');
+        const ano = d.getFullYear();
+        const hora = String(d.getHours()).padStart(2, '0');
+        const minuto = String(d.getMinutes()).padStart(2, '0');
+        return `${dia}/${mes}/${ano} ${hora}:${minuto}`;
+      };
+      
+      const dataGeracao = item.createdAt ? formatarData(item.createdAt) : "-";
+      const dataAtualizacao = item.updatedAt ? formatarData(item.updatedAt) : "-";
+      
+      return {
+        ...item,
+        ativoFormatted: item.ativo ? "Ativo" : "Inativo",
+        totalLinhas: item._count.linhas,
+        dataGeracao,
+        dataAtualizacao,
+      };
+    });
 
     return (
       <div>
@@ -51,6 +68,8 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
             { key: "nome", header: "Nome" },
             { key: "ativoFormatted", header: "Status" },
             { key: "totalLinhas", header: "Total de Linhas" },
+            { key: "dataGeracao", header: "Data de Geração" },
+            { key: "dataAtualizacao", header: "Última Atualização" },
             { key: "descricao", header: "Descrição" },
           ]}
           rows={rowsWithFormatted}

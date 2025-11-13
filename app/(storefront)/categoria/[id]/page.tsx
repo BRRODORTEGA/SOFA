@@ -5,9 +5,6 @@ import CategoriaFiltros from "./CategoriaFiltros";
 export default async function CategoriaPage({ params }: { params: { id: string } }) {
   const categoria = await prisma.categoria.findUnique({
     where: { id: params.id },
-    include: {
-      familias: { where: { ativo: true }, orderBy: { nome: "asc" } },
-    },
   });
 
   if (!categoria || !categoria.ativo) {
@@ -18,11 +15,23 @@ export default async function CategoriaPage({ params }: { params: { id: string }
   const produtosIniciais = await prisma.produto.findMany({
     where: { categoriaId: params.id, status: true },
     include: {
-      familia: { select: { nome: true } },
+      familia: { select: { id: true, nome: true } },
       categoria: { select: { nome: true } },
     },
     orderBy: { nome: "asc" },
   });
+
+  // Extrair famílias únicas dos produtos da categoria
+  const familiasMap = new Map<string, { id: string; nome: string }>();
+  produtosIniciais.forEach(produto => {
+    if (produto.familia) {
+      familiasMap.set(produto.familia.id, {
+        id: produto.familia.id,
+        nome: produto.familia.nome,
+      });
+    }
+  });
+  const familias = Array.from(familiasMap.values()).sort((a, b) => a.nome.localeCompare(b.nome));
 
   // Buscar todas as categorias para o seletor
   const categorias = await prisma.categoria.findMany({
@@ -35,7 +44,7 @@ export default async function CategoriaPage({ params }: { params: { id: string }
     <CategoriaFiltros
       categoriaId={categoria.id}
       categoriaNome={categoria.nome}
-      familias={categoria.familias.map(f => ({ id: f.id, nome: f.nome }))}
+      familias={familias}
       categorias={categorias}
       produtosIniciais={produtosIniciais}
     />

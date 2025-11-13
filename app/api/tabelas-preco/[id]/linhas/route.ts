@@ -129,6 +129,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
 
     // Processar cada grupo de produto
+    let linhasModificadas = false;
     for (const [produtoId, produtoItems] of updatesByProduto) {
       for (const item of produtoItems) {
         const { categoriaNome, familiaNome, produtoNome, ...data } = item;
@@ -181,6 +182,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             familiaTxt: familiaNome || undefined,
             },
           });
+          linhasModificadas = true;
         } else {
           await prisma.tabelaPrecoLinha.create({
             data: {
@@ -208,8 +210,17 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
               familiaTxt: familiaNome || undefined,
             },
           });
+          linhasModificadas = true;
         }
       }
+    }
+    
+    // Atualizar a data de última atualização da tabela quando linhas são modificadas
+    if (linhasModificadas) {
+      await prisma.tabelaPreco.update({
+        where: { id: params.id },
+        data: { updatedAt: new Date() },
+      });
     }
 
     return ok({ saved: true, count: items.length });
@@ -240,6 +251,12 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 
     await prisma.tabelaPrecoLinha.delete({
       where: { id: linhaId },
+    });
+    
+    // Atualizar a data de última atualização da tabela quando linha é excluída
+    await prisma.tabelaPreco.update({
+      where: { id: params.id },
+      data: { updatedAt: new Date() },
     });
 
     return ok({ deleted: true });
