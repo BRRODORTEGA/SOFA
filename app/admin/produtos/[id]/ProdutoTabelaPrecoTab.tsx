@@ -123,10 +123,31 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
             medidasComAlteracoes.has(l.medida_cm)
           );
 
+          // Filtrar apenas os campos necessários para a API
+          const payload = linhasComAlteracoes.map(l => ({
+            medida_cm: Number(l.medida_cm),
+            largura_cm: Number(l.largura_cm),
+            profundidade_cm: Number(l.profundidade_cm),
+            altura_cm: Number(l.altura_cm),
+            largura_assento_cm: Number(l.largura_assento_cm || 0),
+            altura_assento_cm: Number(l.altura_assento_cm || 0),
+            largura_braco_cm: Number(l.largura_braco_cm || 0),
+            metragem_tecido_m: Number(l.metragem_tecido_m || 0),
+            metragem_couro_m: Number(l.metragem_couro_m || 0),
+            preco_grade_1000: Number(l.preco_grade_1000 || 0),
+            preco_grade_2000: Number(l.preco_grade_2000 || 0),
+            preco_grade_3000: Number(l.preco_grade_3000 || 0),
+            preco_grade_4000: Number(l.preco_grade_4000 || 0),
+            preco_grade_5000: Number(l.preco_grade_5000 || 0),
+            preco_grade_6000: Number(l.preco_grade_6000 || 0),
+            preco_grade_7000: Number(l.preco_grade_7000 || 0),
+            preco_couro: Number(l.preco_couro || 0),
+          }));
+
           const res = await fetch(`/api/produtos/${produtoId}/tabela-preco`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(linhasComAlteracoes),
+            body: JSON.stringify(payload),
           });
 
           const data = await res.json();
@@ -270,10 +291,31 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
         medidasComAlteracoes.has(l.medida_cm)
       );
 
+      // Filtrar apenas os campos necessários para a API
+      const payload = linhasComAlteracoes.map(l => ({
+        medida_cm: Number(l.medida_cm),
+        largura_cm: Number(l.largura_cm),
+        profundidade_cm: Number(l.profundidade_cm),
+        altura_cm: Number(l.altura_cm),
+        largura_assento_cm: Number(l.largura_assento_cm || 0),
+        altura_assento_cm: Number(l.altura_assento_cm || 0),
+        largura_braco_cm: Number(l.largura_braco_cm || 0),
+        metragem_tecido_m: Number(l.metragem_tecido_m || 0),
+        metragem_couro_m: Number(l.metragem_couro_m || 0),
+        preco_grade_1000: Number(l.preco_grade_1000 || 0),
+        preco_grade_2000: Number(l.preco_grade_2000 || 0),
+        preco_grade_3000: Number(l.preco_grade_3000 || 0),
+        preco_grade_4000: Number(l.preco_grade_4000 || 0),
+        preco_grade_5000: Number(l.preco_grade_5000 || 0),
+        preco_grade_6000: Number(l.preco_grade_6000 || 0),
+        preco_grade_7000: Number(l.preco_grade_7000 || 0),
+        preco_couro: Number(l.preco_couro || 0),
+      }));
+
       const res = await fetch(`/api/produtos/${produtoId}/tabela-preco`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(linhasComAlteracoes),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -292,10 +334,16 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
         await loadLinhas();
         setTimeout(() => setSaved(false), 3000);
       } else {
-        setError(data.error || "Erro ao salvar");
+        const errorMsg = data.error?.message || data.error || data.details || "Erro ao salvar";
+        console.error("Erro ao salvar tabela de preço:", data);
+        setError(errorMsg);
+        alert(`Erro ao salvar: ${errorMsg}`);
       }
-    } catch (e) {
-      setError("Erro ao salvar");
+    } catch (e: any) {
+      console.error("Erro ao salvar tabela de preço:", e);
+      const errorMsg = e?.message || "Erro ao salvar";
+      setError(errorMsg);
+      alert(`Erro ao salvar: ${errorMsg}`);
     } finally {
       setSaving(false);
     }
@@ -397,11 +445,32 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
     
     if (toSave.length === 0) return true;
     
+    // Filtrar apenas os campos necessários para a API
+    const payload = toSave.map(l => ({
+      medida_cm: Number(l.medida_cm),
+      largura_cm: Number(l.largura_cm),
+      profundidade_cm: Number(l.profundidade_cm),
+      altura_cm: Number(l.altura_cm),
+      largura_assento_cm: Number(l.largura_assento_cm || 0),
+      altura_assento_cm: Number(l.altura_assento_cm || 0),
+      largura_braco_cm: Number(l.largura_braco_cm || 0),
+      metragem_tecido_m: Number(l.metragem_tecido_m || 0),
+      metragem_couro_m: Number(l.metragem_couro_m || 0),
+      preco_grade_1000: Number(l.preco_grade_1000 || 0),
+      preco_grade_2000: Number(l.preco_grade_2000 || 0),
+      preco_grade_3000: Number(l.preco_grade_3000 || 0),
+      preco_grade_4000: Number(l.preco_grade_4000 || 0),
+      preco_grade_5000: Number(l.preco_grade_5000 || 0),
+      preco_grade_6000: Number(l.preco_grade_6000 || 0),
+      preco_grade_7000: Number(l.preco_grade_7000 || 0),
+      preco_couro: Number(l.preco_couro || 0),
+    }));
+    
     try {
       const res = await fetch(`/api/produtos/${produtoId}/tabela-preco`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(toSave),
+        body: JSON.stringify(payload),
       });
       
       const data = await res.json();
