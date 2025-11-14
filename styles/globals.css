@@ -1,6 +1,65 @@
-/* estilos globais opcionais */
-:root { color-scheme: light dark; }
-html, body { height: 100%; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  color-scheme: light;
+  
+  /* Cores base inspiradas no template Furnisy */
+  --background: #ffffff;
+  --foreground: #1a1a19;
+  --primary: #1a1a19;
+  --primary-foreground: #ffffff;
+  --secondary: #f7f7f7;
+  --secondary-foreground: #1a1a19;
+  --muted: #fafafa;
+  --muted-foreground: #807e7d;
+  --accent: #f7f4f3;
+  --accent-foreground: #1a1a19;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #4d4c4b;
+  
+  /* Cores de fundo suaves e confortáveis */
+  --bg-1: #fafafa;
+  --bg-2: #f7f4f3;
+  --bg-3: #faf5f0;
+  --bg-4: #f0ebe6;
+  
+  /* Tons de cinza elegantes */
+  --gray-1: #4d4c4b;
+  --gray-2: #CCC9C5;
+  --gray-3: #807e7d;
+  
+  /* Raio de borda */
+  --radius: 0.625rem;
+  
+  /* Espaçamentos */
+  --spacing-15: 60px;
+  --spacing-25: 100px;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  line-height: 1.6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Transições suaves - aplicadas apenas em elementos interativos */
+a, button, [role="button"] {
+  transition-property: color, background-color, border-color, transform, opacity;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
 
 
 
