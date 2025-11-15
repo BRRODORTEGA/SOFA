@@ -13,6 +13,8 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
@@ -39,25 +41,81 @@ export default function RegisterPage() {
       });
 
       const data = await res.json();
+      
+      // Log para depuração
+      if (!res.ok) {
+        console.error("Erro no registro:", data);
+      }
 
       if (!res.ok) {
-        setError(data.error || "Erro ao criar conta");
+        // Tratar diferentes formatos de erro
+        let errorMsg = "Erro ao criar conta";
+        
+        // Verificar se há detalhes de validação
+        if (data.details) {
+          if (data.details.fieldErrors) {
+            // Erro de validação do Zod
+            const fieldErrors = Object.entries(data.details.fieldErrors)
+              .map(([field, errors]) => {
+                const fieldName = field === "name" ? "Nome" : field === "email" ? "E-mail" : field === "password" ? "Senha" : field;
+                const errorText = Array.isArray(errors) ? errors.join(', ') : errors;
+                return `${fieldName}: ${errorText}`;
+              })
+              .join('; ');
+            errorMsg = `Erro de validação: ${fieldErrors}`;
+          } else if (data.details.message) {
+            errorMsg = data.details.message;
+          } else if (typeof data.details === 'string') {
+            errorMsg = data.details;
+          }
+        } else if (data.error) {
+          if (typeof data.error === 'string') {
+            errorMsg = data.error;
+          } else if (data.error.message) {
+            errorMsg = data.error.message;
+          }
+        }
+        
+        setError(errorMsg);
         return;
       }
 
-      // Login automático após registro
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
+      // Salvar email e senha temporariamente para login automático
+      const userEmail = email;
+      const userPassword = password;
+      
+      // Mostrar mensagem de sucesso
+      setSuccess(true);
+      setSuccessMessage(data.message || "Conta criada com sucesso!");
+      
+      // Limpar formulário
+      setName("");
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
+      
+      // Fazer login automático após registro
+      setTimeout(async () => {
+        try {
+          const result = await signIn("credentials", {
+            email: userEmail,
+            password: userPassword,
+            redirect: false,
+          });
 
-      if (result?.error) {
-        setError("Conta criada, mas erro ao fazer login. Tente fazer login manualmente.");
-      } else {
-        router.push("/");
-        router.refresh();
-      }
+          if (result?.error) {
+            // Se não conseguir fazer login automático, redirecionar para login
+            router.push("/auth/login");
+          } else {
+            // Login bem-sucedido, redirecionar para home
+            router.push("/");
+            router.refresh();
+          }
+        } catch (err) {
+          // Em caso de erro, redirecionar para login
+          router.push("/auth/login");
+        }
+      }, 2000);
     } catch (err) {
       setError("Erro ao criar conta. Tente novamente.");
     } finally {
@@ -69,13 +127,44 @@ export default function RegisterPage() {
     <div className="mx-auto max-w-md py-12 px-4">
       <h1 className="mb-6 text-center text-3xl font-bold text-gray-900">Criar Conta</h1>
 
-      {error && (
-        <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">
-          {error}
+      {success ? (
+        <div className="rounded-lg border border-green-300 bg-green-50 p-6 text-center">
+          <div className="mb-4">
+            <svg className="mx-auto h-12 w-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <p className="mb-4 text-lg font-semibold text-green-800">{successMessage}</p>
+          <p className="mb-6 text-sm text-green-700">
+            Redirecionando automaticamente...
+          </p>
+          <div className="space-y-3">
+            <Link
+              href="/"
+              className="inline-block w-full rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700"
+            >
+              Ir para Página Inicial
+            </Link>
+            <button
+              onClick={() => {
+                setSuccess(false);
+                setEmail("");
+              }}
+              className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+            >
+              Criar outra conta
+            </button>
+          </div>
         </div>
-      )}
+      ) : (
+        <>
+          {error && (
+            <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+              {error}
+            </div>
+          )}
 
-      <form onSubmit={handleRegister} className="space-y-4">
+          <form onSubmit={handleRegister} className="space-y-4">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700">
             Nome
@@ -136,21 +225,23 @@ export default function RegisterPage() {
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {loading ? "Criando conta..." : "Criar Conta"}
-        </button>
-      </form>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {loading ? "Criando conta..." : "Criar Conta"}
+            </button>
+          </form>
 
-      <p className="mt-6 text-center text-sm text-gray-600">
-        Já tem conta?{" "}
-        <Link href="/auth/login" className="font-medium text-blue-600 hover:text-blue-700">
-          Entrar
-        </Link>
-      </p>
+          <p className="mt-6 text-center text-sm text-gray-600">
+            Já tem conta?{" "}
+            <Link href="/auth/login" className="font-medium text-blue-600 hover:text-blue-700">
+              Entrar
+            </Link>
+          </p>
+        </>
+      )}
     </div>
   );
 }

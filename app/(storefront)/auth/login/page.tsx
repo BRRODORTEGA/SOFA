@@ -11,10 +11,18 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const { data: session } = useSession();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const messageParam = searchParams.get("message");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  
+  // Mensagem de informação baseada no parâmetro
+  const infoMessage = messageParam === "login_required" 
+    ? "Realize o login para continuar suas compras"
+    : messageParam === "email_verified"
+    ? "E-mail verificado com sucesso! Faça login para continuar."
+    : null;
 
   // Redirecionar automaticamente se já estiver logado
   useEffect(() => {
@@ -75,6 +83,17 @@ export default function LoginPage() {
   return (
     <div className="mx-auto max-w-md py-12 px-4">
       <h1 className="mb-6 text-center text-3xl font-bold text-gray-900">Entrar</h1>
+
+      {infoMessage && (
+        <div className="mb-4 rounded-lg border border-blue-300 bg-blue-50 p-4 text-sm text-blue-800">
+          <div className="flex items-start gap-2">
+            <svg className="h-5 w-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="font-medium">{infoMessage}</p>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">

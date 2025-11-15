@@ -28,7 +28,7 @@ export default function CartPage() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/auth/login?callbackUrl=/cart");
+      router.push("/auth/login?callbackUrl=/cart&message=login_required");
       return;
     }
 

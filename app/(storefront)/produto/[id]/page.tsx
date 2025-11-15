@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -32,6 +32,37 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
   const [qtd, setQtd] = useState(1);
   const [adding, setAdding] = useState(false);
   const [imagemAtual, setImagemAtual] = useState(0);
+  const [pendingCartProcessed, setPendingCartProcessed] = useState(false);
+
+  // Função para adicionar ao carrinho após login
+  const addToCartAfterLogin = useCallback(async (item: { produtoId: string; tecidoId: string; medida: number; quantidade: number }) => {
+    setAdding(true);
+    try {
+      const res = await fetch("/api/cart/items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          produtoId: item.produtoId,
+          tecidoId: item.tecidoId,
+          variacaoMedida_cm: item.medida,
+          quantidade: item.quantidade,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert("Produto adicionado ao carrinho!");
+        router.push("/cart");
+      } else {
+        alert("Erro ao adicionar ao carrinho: " + (data.error || "Erro desconhecido"));
+      }
+    } catch (error) {
+      console.error("Erro:", error);
+      alert("Erro ao adicionar ao carrinho");
+    } finally {
+      setAdding(false);
+    }
+  }, [router]);
 
   useEffect(() => {
     fetch(`/api/produtos/${params.id}`)
@@ -47,6 +78,34 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
       .catch((err) => console.error("Erro ao carregar produto:", err))
       .finally(() => setLoading(false));
   }, [params.id]);
+
+  // Verificar item pendente após login
+  useEffect(() => {
+    if (session && !pendingCartProcessed) {
+      const pendingItem = sessionStorage.getItem('pendingCartItem');
+      if (pendingItem) {
+        try {
+          const item = JSON.parse(pendingItem);
+          if (item.produtoId === params.id) {
+            // Restaurar seleções
+            setTecidoId(item.tecidoId);
+            setMedida(item.medida);
+            setQtd(item.quantidade);
+            // Limpar sessionStorage
+            sessionStorage.removeItem('pendingCartItem');
+            setPendingCartProcessed(true);
+            // Tentar adicionar ao carrinho automaticamente após um pequeno delay
+            setTimeout(() => {
+              addToCartAfterLogin(item);
+            }, 500);
+          }
+        } catch (e) {
+          console.error("Erro ao restaurar item pendente:", e);
+          setPendingCartProcessed(true);
+        }
+      }
+    }
+  }, [session, params.id, pendingCartProcessed, addToCartAfterLogin]);
 
   // Buscar preço dinâmico quando tecido ou medida mudarem
   useEffect(() => {
@@ -76,7 +135,16 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
 
   async function addToCart() {
     if (!session) {
-      router.push("/auth/login?callbackUrl=/produto/" + params.id);
+      // Salvar dados do produto no sessionStorage para restaurar após login
+      if (tecidoId && medida) {
+        sessionStorage.setItem('pendingCartItem', JSON.stringify({
+          produtoId: params.id,
+          tecidoId,
+          medida,
+          quantidade: qtd,
+        }));
+      }
+      router.push("/auth/login?callbackUrl=/produto/" + params.id + "&message=login_required");
       return;
     }
 
