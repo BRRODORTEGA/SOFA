@@ -31,7 +31,28 @@ export const produtoSchema = z.object({
   acionamento: z.string().optional().nullable(),
   configuracao: z.string().optional().nullable(),
   status: z.boolean().default(true),
-  imagens: z.array(z.union([z.string().url(), z.literal("")])).default([]),
+  imagens: z.array(
+    z.string().refine(
+      (val) => {
+        if (!val || val.trim() === "") return true; // Permite string vazia
+        // Aceita URLs completas (http://, https://)
+        if (val.startsWith("http://") || val.startsWith("https://")) {
+          try {
+            new URL(val);
+            return true;
+          } catch {
+            return false;
+          }
+        }
+        // Aceita caminhos relativos que começam com /
+        if (val.startsWith("/")) {
+          return true;
+        }
+        return false;
+      },
+      { message: "Deve ser uma URL válida (http:// ou https://) ou um caminho relativo (começando com /)" }
+    )
+  ).default([]),
 });
 
 export const produtoTecidosSchema = z.object({
