@@ -294,18 +294,48 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
 
           <div className="mt-6">
             <label className="block text-sm font-medium text-gray-900">Selecione o tecido</label>
-            <select
-              className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={tecidoId}
-              onChange={(e) => setTecidoId(e.target.value)}
-            >
-              <option value="">Selecione um tecido</option>
-              {produto.tecidos.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome} ({t.grade})
-                </option>
-              ))}
-            </select>
+            <div className="mt-2 flex gap-4 items-start">
+              <select
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={tecidoId}
+                onChange={(e) => setTecidoId(e.target.value)}
+              >
+                <option value="">Selecione um tecido</option>
+                {produto.tecidos.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome} ({t.grade})
+                  </option>
+                ))}
+              </select>
+              
+              {/* Preview da imagem do tecido selecionado */}
+              {tecidoId && (() => {
+                const tecidoSelecionado = produto.tecidos.find(t => t.id === tecidoId);
+                const imagemTecido = tecidoSelecionado?.imagemUrl;
+                const isValidImage = imagemTecido && (imagemTecido.startsWith("http") || imagemTecido.startsWith("/"));
+                
+                return (
+                  <div className="flex-shrink-0">
+                    {isValidImage ? (
+                      <div className="relative w-24 h-24 rounded-lg border-2 border-gray-300 overflow-hidden bg-gray-100">
+                        <img
+                          src={imagemTecido}
+                          alt={tecidoSelecionado?.nome || "Tecido"}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23ddd' width='100' height='100'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-size='12'%3ESem imagem%3C/text%3E%3C/svg%3E";
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center">
+                        <span className="text-xs text-gray-400 text-center px-2">Sem imagem</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
 
           <div className="mt-4">

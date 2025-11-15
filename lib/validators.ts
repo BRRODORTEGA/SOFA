@@ -16,7 +16,26 @@ export const familiaSchema = z.object({
 export const tecidoSchema = z.object({
   nome: z.string().min(2),
   grade: z.enum(["G1000","G2000","G3000","G4000","G5000","G6000","G7000","COURO"]),
-  imagemUrl: z.union([z.string().url(), z.literal("")]).optional().nullable(),
+  imagemUrl: z.string().refine(
+    (val) => {
+      if (!val || val.trim() === "") return true; // Permite string vazia
+      // Aceita URLs completas (http://, https://)
+      if (val.startsWith("http://") || val.startsWith("https://")) {
+        try {
+          new URL(val);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      // Aceita caminhos relativos que começam com /
+      if (val.startsWith("/")) {
+        return true;
+      }
+      return false;
+    },
+    { message: "Deve ser uma URL válida (http:// ou https://) ou um caminho relativo (começando com /)" }
+  ).optional().nullable(),
   fornecedorNome: z.string().optional().nullable(),
   valor_m2: z.coerce.number().nonnegative().optional().nullable(),
   ativo: z.boolean().default(true),
