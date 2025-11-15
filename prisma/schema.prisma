@@ -167,6 +167,7 @@ model TabelaPreco {
   descricao String? // Descrição opcional
 
   linhas TabelaPrecoLinha[] // Linhas de preço vinculadas a esta tabela
+  siteConfigs SiteConfig[] // Configurações do site que usam esta tabela
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -339,4 +340,35 @@ model EmailLog {
   createdAt  DateTime @default(now())
 
   @@index([createdAt])
+}
+
+/**
+ * ===== Configurações do Site =====
+ * Armazena as configurações de exibição do site (categorias em destaque, produtos em destaque, tabela de preço vigente, etc)
+ */
+model SiteConfig {
+  id String @id @default("site-config") // Sempre o mesmo ID para garantir uma única configuração
+
+  // Categorias selecionadas para exibir na home (IDs das categorias)
+  categoriasDestaque String[] @default([])
+
+  // Produtos selecionados para exibir na home como "Produtos em Destaque" (IDs dos produtos)
+  produtosDestaque String[] @default([])
+
+  // ID da tabela de preço que está vigente/ativa no momento
+  tabelaPrecoVigenteId String?
+
+  // Ordem de exibição das categorias (opcional, para personalizar a ordem)
+  ordemCategorias String[] @default([])
+
+  // Configurações adicionais em JSON (para futuras expansões)
+  configuracoesExtras Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relação opcional com TabelaPreco
+  tabelaPrecoVigente TabelaPreco? @relation(fields: [tabelaPrecoVigenteId], references: [id], onDelete: SetNull)
+
+  @@unique([id])
 }

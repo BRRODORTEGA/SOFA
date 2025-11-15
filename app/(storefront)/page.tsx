@@ -2,24 +2,94 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
 export default async function HomePage() {
-  const categorias = await prisma.categoria.findMany({
-    where: { ativo: true },
-    include: {
-      familias: { where: { ativo: true }, take: 3 },
-      produtos: { where: { status: true }, take: 4 },
-    },
-    take: 6,
+  // Buscar configurações do site
+  let siteConfig = await prisma.siteConfig.findUnique({
+    where: { id: "site-config" },
   });
 
-  const produtosDestaque = await prisma.produto.findMany({
-    where: { status: true },
-    include: {
-      familia: { select: { nome: true } },
-      categoria: { select: { nome: true } },
-    },
-    take: 8,
-    orderBy: { createdAt: "desc" },
-  });
+  // Se não existir, criar configuração padrão
+  if (!siteConfig) {
+    siteConfig = await prisma.siteConfig.create({
+      data: {
+        id: "site-config",
+        categoriasDestaque: [],
+        produtosDestaque: [],
+        ordemCategorias: [],
+      },
+    });
+  }
+
+  // Buscar categorias: usar as selecionadas ou todas as ativas
+  let categorias;
+  if (siteConfig.categoriasDestaque.length > 0) {
+    // Buscar categorias selecionadas na ordem configurada
+    const categoriasMap = new Map();
+    const categoriasEncontradas = await prisma.categoria.findMany({
+      where: {
+        id: { in: siteConfig.categoriasDestaque },
+        ativo: true,
+      },
+      include: {
+        familias: { where: { ativo: true }, take: 3 },
+        produtos: { where: { status: true }, take: 4 },
+      },
+    });
+
+    // Ordenar conforme ordemCategorias
+    categorias = siteConfig.ordemCategorias
+      .map((id) => categoriasEncontradas.find((c) => c.id === id))
+      .filter((c) => c !== undefined);
+    
+    // Adicionar categorias que não estão na ordem (caso tenha sido adicionada depois)
+    categoriasEncontradas.forEach((cat) => {
+      if (!categorias.find((c) => c?.id === cat.id)) {
+        categorias.push(cat);
+      }
+    });
+  } else {
+    // Fallback: buscar todas as categorias ativas (comportamento padrão)
+    categorias = await prisma.categoria.findMany({
+      where: { ativo: true },
+      include: {
+        familias: { where: { ativo: true }, take: 3 },
+        produtos: { where: { status: true }, take: 4 },
+      },
+      take: 6,
+      orderBy: { nome: "asc" },
+    });
+  }
+
+  // Buscar produtos em destaque: usar os selecionados ou os mais recentes
+  let produtosDestaque;
+  if (siteConfig.produtosDestaque.length > 0) {
+    produtosDestaque = await prisma.produto.findMany({
+      where: {
+        id: { in: siteConfig.produtosDestaque },
+        status: true,
+      },
+      include: {
+        familia: { select: { nome: true } },
+        categoria: { select: { nome: true } },
+      },
+    });
+    
+    // Manter a ordem de seleção
+    const produtosMap = new Map(produtosDestaque.map((p) => [p.id, p]));
+    produtosDestaque = siteConfig.produtosDestaque
+      .map((id) => produtosMap.get(id))
+      .filter((p) => p !== undefined);
+  } else {
+    // Fallback: buscar produtos mais recentes (comportamento padrão)
+    produtosDestaque = await prisma.produto.findMany({
+      where: { status: true },
+      include: {
+        familia: { select: { nome: true } },
+        categoria: { select: { nome: true } },
+      },
+      take: 8,
+      orderBy: { createdAt: "desc" },
+    });
+  }
 
   return (
     <div className="overflow-hidden">

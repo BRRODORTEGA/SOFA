@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 const tiles = [
+  { href: "/admin/configuracoes-site", label: "Configurações do Site", description: "Gerenciar exibição da página inicial" },
   { href: "/admin/categorias", label: "Categorias" },
   { href: "/admin/familias", label: "Famílias" },
   { href: "/admin/tecidos", label: "Tecidos" },
@@ -22,7 +23,9 @@ export default function AdminHome() {
             className="group rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-blue-300 hover:shadow-md"
           >
             <div className="text-xl font-semibold text-gray-900 group-hover:text-blue-700">{t.label}</div>
-            <div className="mt-2 text-sm font-medium text-gray-500">{t.href.replace("/admin/", "Gerenciar ")}</div>
+            <div className="mt-2 text-sm font-medium text-gray-500">
+              {t.description || t.href.replace("/admin/", "Gerenciar ")}
+            </div>
           </Link>
         ))}
       </div>
