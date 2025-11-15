@@ -68,9 +68,10 @@ export const tabelaPrecoSchema = z.object({
 
 export const tabelaPrecoLinhaSchema = z.object({
   medida_cm: z.coerce.number().int().positive(),
-  largura_cm: z.coerce.number().int().positive(),
-  profundidade_cm: z.coerce.number().int().positive(),
-  altura_cm: z.coerce.number().int().positive(),
+  // Permitir zero para dimensões (podem ser preenchidas depois)
+  largura_cm: z.coerce.number().int().nonnegative(),
+  profundidade_cm: z.coerce.number().int().nonnegative(),
+  altura_cm: z.coerce.number().int().nonnegative(),
   largura_assento_cm: z.coerce.number().int().nonnegative().default(0),
   altura_assento_cm: z.coerce.number().int().nonnegative().default(0),
   largura_braco_cm: z.coerce.number().int().nonnegative().default(0),

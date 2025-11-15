@@ -292,25 +292,35 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
       );
 
       // Filtrar apenas os campos necessários para a API
-      const payload = linhasComAlteracoes.map(l => ({
-        medida_cm: Number(l.medida_cm),
-        largura_cm: Number(l.largura_cm),
-        profundidade_cm: Number(l.profundidade_cm),
-        altura_cm: Number(l.altura_cm),
-        largura_assento_cm: Number(l.largura_assento_cm || 0),
-        altura_assento_cm: Number(l.altura_assento_cm || 0),
-        largura_braco_cm: Number(l.largura_braco_cm || 0),
-        metragem_tecido_m: Number(l.metragem_tecido_m || 0),
-        metragem_couro_m: Number(l.metragem_couro_m || 0),
-        preco_grade_1000: Number(l.preco_grade_1000 || 0),
-        preco_grade_2000: Number(l.preco_grade_2000 || 0),
-        preco_grade_3000: Number(l.preco_grade_3000 || 0),
-        preco_grade_4000: Number(l.preco_grade_4000 || 0),
-        preco_grade_5000: Number(l.preco_grade_5000 || 0),
-        preco_grade_6000: Number(l.preco_grade_6000 || 0),
-        preco_grade_7000: Number(l.preco_grade_7000 || 0),
-        preco_couro: Number(l.preco_couro || 0),
-      }));
+      // Garantir que todos os valores sejam números válidos
+      const payload = linhasComAlteracoes.map(l => {
+        // Função auxiliar para converter valores de forma segura
+        const toNumber = (val: any, defaultValue: number = 0): number => {
+          if (val === null || val === undefined || val === '') return defaultValue;
+          const num = Number(val);
+          return isNaN(num) ? defaultValue : Math.max(0, num);
+        };
+
+        return {
+          medida_cm: Math.max(1, toNumber(l.medida_cm, 0)), // medida_cm deve ser sempre positiva
+          largura_cm: toNumber(l.largura_cm, 0),
+          profundidade_cm: toNumber(l.profundidade_cm, 0),
+          altura_cm: toNumber(l.altura_cm, 0),
+          largura_assento_cm: toNumber(l.largura_assento_cm, 0),
+          altura_assento_cm: toNumber(l.altura_assento_cm, 0),
+          largura_braco_cm: toNumber(l.largura_braco_cm, 0),
+          metragem_tecido_m: toNumber(l.metragem_tecido_m, 0),
+          metragem_couro_m: toNumber(l.metragem_couro_m, 0),
+          preco_grade_1000: toNumber(l.preco_grade_1000, 0),
+          preco_grade_2000: toNumber(l.preco_grade_2000, 0),
+          preco_grade_3000: toNumber(l.preco_grade_3000, 0),
+          preco_grade_4000: toNumber(l.preco_grade_4000, 0),
+          preco_grade_5000: toNumber(l.preco_grade_5000, 0),
+          preco_grade_6000: toNumber(l.preco_grade_6000, 0),
+          preco_grade_7000: toNumber(l.preco_grade_7000, 0),
+          preco_couro: toNumber(l.preco_couro, 0),
+        };
+      });
 
       const res = await fetch(`/api/produtos/${produtoId}/tabela-preco`, {
         method: "PUT",
@@ -334,7 +344,23 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
         await loadLinhas();
         setTimeout(() => setSaved(false), 3000);
       } else {
-        const errorMsg = data.error?.message || data.error || data.details || "Erro ao salvar";
+        // Tratar diferentes formatos de erro
+        let errorMsg = "Erro ao salvar";
+        
+        if (data.error?.message) {
+          errorMsg = data.error.message;
+        } else if (data.error) {
+          errorMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+        } else if (data.details) {
+          errorMsg = typeof data.details === 'string' ? data.details : JSON.stringify(data.details);
+        } else if (data.fieldErrors) {
+          // Se houver erros de campo específicos, mostrar de forma mais clara
+          const fieldErrors = Object.entries(data.fieldErrors)
+            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+            .join('; ');
+          errorMsg = `Erro de validação: ${fieldErrors}`;
+        }
+        
         console.error("Erro ao salvar tabela de preço:", data);
         setError(errorMsg);
         alert(`Erro ao salvar: ${errorMsg}`);
@@ -410,10 +436,14 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
 
   async function deleteLinha(medida: number) {
     if (!confirm(`Excluir linha de ${medida}cm?`)) return;
+    
     const res = await fetch(`/api/produtos/${produtoId}/tabela-preco?medida=${medida}`, {
       method: "DELETE",
     });
-    if (res.ok) {
+    
+    const data = await res.json();
+    
+    if (res.ok && data.ok) {
       setLinhas(linhas.filter((l) => l.medida_cm !== medida));
       setLinhasOriginais(linhasOriginais.filter((l) => l.medida_cm !== medida));
       // Remover todas as chaves relacionadas a esta medida
@@ -424,8 +454,11 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
       });
       setDirtyFields(new Set(dirtyRef.current));
       setHasUnsavedChanges(dirtyRef.current.size > 0);
+      alert("Linha excluída com sucesso!");
     } else {
-      alert("Erro ao excluir");
+      // Mostrar mensagem de erro específica da API
+      const errorMsg = data.error || data.message || "Erro ao excluir linha";
+      alert(`Não foi possível excluir: ${errorMsg}`);
     }
   }
 

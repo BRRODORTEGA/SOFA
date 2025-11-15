@@ -3,7 +3,7 @@ import { ok, unprocessable, notFound, serverError } from "@/lib/http";
 import { tabelaPrecoLinhaSchema } from "@/lib/validators";
 import { Decimal } from "@prisma/client/runtime/library";
 
-/** GET — retorna todas as linhas do produto */
+/** GET — retorna todas as linhas do produto (priorizando tabela geral, mas incluindo de tabelas específicas) */
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   try {
     const produto = await prisma.produto.findUnique({
@@ -16,13 +16,26 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     
     if (!produto) return notFound();
     
-    const linhas = await prisma.tabelaPrecoLinha.findMany({
-      where: { produtoId: params.id },
+    // Buscar linhas da tabela geral (tabelaPrecoId: null) - estas são editáveis
+    const linhasGerais = await prisma.tabelaPrecoLinha.findMany({
+      where: { 
+        produtoId: params.id,
+        tabelaPrecoId: null,
+      },
       orderBy: { medida_cm: "asc" },
+      include: {
+        tabelaPreco: {
+          select: {
+            id: true,
+            nome: true,
+            ativo: true,
+          },
+        },
+      },
     });
     
     // Enriquecer linhas com dados do produto
-    const linhasEnriquecidas = linhas.map(linha => ({
+    const linhasEnriquecidas = linhasGerais.map(linha => ({
       ...linha,
       categoriaNome: produto.categoria.nome,
       familiaNome: produto.familia.nome,
@@ -41,9 +54,17 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const json = await req.json();
     if (!Array.isArray(json)) return unprocessable({ message: "Payload deve ser lista" });
 
-    for (const item of json) {
+    // Validar todos os itens primeiro
+    for (let i = 0; i < json.length; i++) {
+      const item = json[i];
       const parsed = tabelaPrecoLinhaSchema.safeParse(item);
-      if (!parsed.success) return unprocessable(parsed.error.flatten());
+      if (!parsed.success) {
+        console.error(`Erro de validação no item ${i + 1}:`, parsed.error.flatten());
+        return unprocessable({ 
+          message: `Erro de validação no item ${i + 1} (medida ${item.medida_cm}cm): ${JSON.stringify(parsed.error.flatten().fieldErrors)}`,
+          fieldErrors: parsed.error.flatten().fieldErrors,
+        });
+      }
     }
 
     // Processar cada item individualmente para garantir o constraint correto
@@ -148,6 +169,71 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   try {
     const medida = Number(new URL(req.url).searchParams.get("medida"));
     if (!medida) return unprocessable({ message: "medida obrigatória" });
+    
+    // Validação: Verificar se existe alguma linha desta medida em tabelas de preço ativas
+    const linhasEmTabelasAtivas = await prisma.tabelaPrecoLinha.findFirst({
+      where: {
+        produtoId: params.id,
+        medida_cm: medida,
+        tabelaPrecoId: { not: null },
+        tabelaPreco: {
+          ativo: true,
+        },
+      },
+      include: {
+        tabelaPreco: {
+          select: {
+            nome: true,
+            ativo: true,
+          },
+        },
+      },
+    });
+
+    if (linhasEmTabelasAtivas) {
+      return unprocessable({ 
+        message: `Não é possível excluir esta linha. O produto está vinculado à tabela de preço ativa "${linhasEmTabelasAtivas.tabelaPreco?.nome}". Remova o produto da tabela antes de excluir.` 
+      });
+    }
+
+    // Validação: Verificar se o produto está em destaque no site
+    const siteConfig = await prisma.siteConfig.findUnique({
+      where: { id: "site-config" },
+      select: {
+        produtosDestaque: true,
+        tabelaPrecoVigenteId: true,
+      },
+    });
+
+    if (siteConfig?.produtosDestaque.includes(params.id)) {
+      return unprocessable({ 
+        message: "Não é possível excluir esta linha. O produto está configurado como destaque no site. Remova o produto dos destaques antes de excluir." 
+      });
+    }
+
+    // Validação adicional: Verificar se a linha está na tabela de preço vigente
+    if (siteConfig?.tabelaPrecoVigenteId) {
+      const linhaNaTabelaVigente = await prisma.tabelaPrecoLinha.findFirst({
+        where: {
+          produtoId: params.id,
+          medida_cm: medida,
+          tabelaPrecoId: siteConfig.tabelaPrecoVigenteId,
+        },
+        include: {
+          tabelaPreco: {
+            select: {
+              nome: true,
+            },
+          },
+        },
+      });
+
+      if (linhaNaTabelaVigente) {
+        return unprocessable({ 
+          message: `Não é possível excluir esta linha. O produto está na tabela de preço vigente "${linhaNaTabelaVigente.tabelaPreco?.nome}". Remova o produto da tabela vigente antes de excluir.` 
+        });
+      }
+    }
     
     // Buscar linha na tabela geral (tabelaPrecoId: null) e excluir
     const linha = await prisma.tabelaPrecoLinha.findFirst({

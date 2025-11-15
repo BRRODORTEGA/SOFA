@@ -27,6 +27,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
   const [tecidoId, setTecidoId] = useState("");
   const [medida, setMedida] = useState<number | null>(null);
   const [preco, setPreco] = useState<number | null>(null);
+  const [precoDisponivel, setPrecoDisponivel] = useState(true);
   const [precoLoading, setPrecoLoading] = useState(false);
   const [qtd, setQtd] = useState(1);
   const [adding, setAdding] = useState(false);
@@ -56,14 +57,20 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
         .then((d) => {
           if (d.ok) {
             setPreco(d.data.preco);
+            setPrecoDisponivel(d.data.disponivel !== false);
           } else {
             setPreco(null);
+            setPrecoDisponivel(false);
           }
         })
-        .catch(() => setPreco(null))
+        .catch(() => {
+          setPreco(null);
+          setPrecoDisponivel(false);
+        })
         .finally(() => setPrecoLoading(false));
     } else {
       setPreco(null);
+      setPrecoDisponivel(true);
     }
   }, [tecidoId, medida, params.id]);
 
@@ -249,16 +256,26 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
             </select>
           </div>
 
-          {precoLoading && (
-            <div className="mt-4 text-sm text-gray-600">Calculando preço...</div>
-          )}
-
-          {preco !== null && !precoLoading && (
-            <div className="mt-4">
-              <div className="text-3xl font-bold text-gray-900">R$ {preco.toFixed(2)}</div>
-              <p className="text-sm text-gray-600">Preço unitário</p>
-            </div>
-          )}
+          {/* Exibição do Preço */}
+          <div className="mt-4">
+            {precoLoading ? (
+              <div className="text-sm text-gray-600">Calculando preço...</div>
+            ) : preco !== null && precoDisponivel ? (
+              <div>
+                <div className="text-3xl font-bold text-gray-900">R$ {preco.toFixed(2)}</div>
+                <p className="text-sm text-gray-600">Preço unitário</p>
+              </div>
+            ) : tecidoId && medida ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm font-medium text-amber-800">
+                  Me avise quando disponível
+                </p>
+                <p className="mt-1 text-xs text-amber-600">
+                  Este produto ainda não possui preço cadastrado para a combinação selecionada.
+                </p>
+              </div>
+            ) : null}
+          </div>
 
           <div className="mt-6 flex items-center gap-4">
             <div>
@@ -273,7 +290,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
             </div>
             <div className="flex-1">
               <button
-                disabled={!tecidoId || !medida || adding}
+                disabled={!tecidoId || !medida || adding || !precoDisponivel || preco === null}
                 onClick={addToCart}
                 className="w-full rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
@@ -282,7 +299,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
             </div>
           </div>
 
-          {preco !== null && !precoLoading && (
+          {preco !== null && precoDisponivel && !precoLoading && (
             <div className="mt-4 text-center text-sm text-gray-600">
               Total: <span className="font-semibold">R$ {(preco * qtd).toFixed(2)}</span>
             </div>

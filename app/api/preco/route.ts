@@ -13,7 +13,20 @@ export async function GET(req: Request) {
     }
 
     const preco = await getPrecoUnitario(produtoId, medida, tecidoId);
-    return ok({ preco });
+    
+    // Se não encontrou o preço, retorna null com flag indicando indisponibilidade
+    if (preco === null) {
+      return ok({ 
+        preco: null, 
+        disponivel: false,
+        mensagem: "Me avise quando disponível"
+      });
+    }
+
+    return ok({ 
+      preco, 
+      disponivel: true 
+    });
   } catch (e: any) {
     if (e.message) {
       return unprocessable({ message: e.message });
