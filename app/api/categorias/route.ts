@@ -17,8 +17,30 @@ export async function GET(req: Request) {
         where, 
         take: limit, 
         skip: offset, 
-        orderBy: { nome: "asc" } // Ordenar por nome
-      }).catch(() => prisma.categoria.findMany({where, take: limit, skip: offset})),
+        orderBy: { nome: "asc" }, // Ordenar por nome
+        include: {
+          _count: {
+            select: {
+              produtos: {
+                where: { status: true }
+              }
+            }
+          }
+        }
+      }).catch(() => prisma.categoria.findMany({
+        where, 
+        take: limit, 
+        skip: offset,
+        include: {
+          _count: {
+            select: {
+              produtos: {
+                where: { status: true }
+              }
+            }
+          }
+        }
+      })),
       prisma.categoria.count({ where }),
     ]);
     return ok({ items, total, limit, offset });

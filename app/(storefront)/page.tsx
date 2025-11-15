@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { ProductListingSection } from "@/components/storefront/ProductListingSection";
 
 export default async function HomePage() {
   // Buscar configurações do site
@@ -19,77 +20,42 @@ export default async function HomePage() {
     });
   }
 
-  // Buscar categorias: usar as selecionadas ou todas as ativas
-  let categorias;
-  if (siteConfig.categoriasDestaque.length > 0) {
-    // Buscar categorias selecionadas na ordem configurada
-    const categoriasMap = new Map();
-    const categoriasEncontradas = await prisma.categoria.findMany({
-      where: {
-        id: { in: siteConfig.categoriasDestaque },
-        ativo: true,
-      },
-      include: {
-        familias: { where: { ativo: true }, take: 3 },
-        produtos: { where: { status: true }, take: 4 },
-      },
-    });
-
-    // Ordenar conforme ordemCategorias
-    categorias = siteConfig.ordemCategorias
-      .map((id) => categoriasEncontradas.find((c) => c.id === id))
-      .filter((c) => c !== undefined);
-    
-    // Adicionar categorias que não estão na ordem (caso tenha sido adicionada depois)
-    categoriasEncontradas.forEach((cat) => {
-      if (!categorias.find((c) => c?.id === cat.id)) {
-        categorias.push(cat);
+  // Buscar todas as categorias ativas com contagem de produtos
+  const categorias = await prisma.categoria.findMany({
+    where: { ativo: true },
+    include: {
+      _count: {
+        select: {
+          produtos: {
+            where: { status: true }
+          }
+        }
       }
-    });
-  } else {
-    // Fallback: buscar todas as categorias ativas (comportamento padrão)
-    categorias = await prisma.categoria.findMany({
-      where: { ativo: true },
-      include: {
-        familias: { where: { ativo: true }, take: 3 },
-        produtos: { where: { status: true }, take: 4 },
-      },
-      take: 6,
-      orderBy: { nome: "asc" },
-    });
-  }
+    },
+    orderBy: { nome: "asc" },
+  });
 
-  // Buscar produtos em destaque: usar os selecionados ou os mais recentes
-  let produtosDestaque;
-  if (siteConfig.produtosDestaque.length > 0) {
-    produtosDestaque = await prisma.produto.findMany({
-      where: {
-        id: { in: siteConfig.produtosDestaque },
-        status: true,
-      },
-      include: {
-        familia: { select: { nome: true } },
-        categoria: { select: { nome: true } },
-      },
-    });
-    
-    // Manter a ordem de seleção
-    const produtosMap = new Map(produtosDestaque.map((p) => [p.id, p]));
-    produtosDestaque = siteConfig.produtosDestaque
-      .map((id) => produtosMap.get(id))
-      .filter((p) => p !== undefined);
-  } else {
-    // Fallback: buscar produtos mais recentes (comportamento padrão)
-    produtosDestaque = await prisma.produto.findMany({
-      where: { status: true },
-      include: {
-        familia: { select: { nome: true } },
-        categoria: { select: { nome: true } },
-      },
-      take: 8,
-      orderBy: { createdAt: "desc" },
-    });
-  }
+  // Buscar todos os produtos ativos para exibição
+  const produtos = await prisma.produto.findMany({
+    where: { status: true },
+    include: {
+      familia: { select: { nome: true } },
+      categoria: { select: { nome: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50, // Limite inicial
+  });
+
+  // Buscar produtos best sellers (top 3 mais recentes por enquanto)
+  const produtosBestSellers = await prisma.produto.findMany({
+    where: { status: true },
+    include: {
+      familia: { select: { nome: true } },
+      categoria: { select: { nome: true } },
+    },
+    take: 3,
+    orderBy: { createdAt: "desc" },
+  });
 
   return (
     <div className="overflow-hidden">
@@ -117,81 +83,28 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Categorias - Design Refinado */}
-      <section className="py-15 md:py-25 bg-background">
+      {/* Seção de Produtos com Sidebar e Grid */}
+      <section className="py-8 md:py-12 bg-background">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12 md:mb-16">
-            <h2 className="text-h1 font-light text-foreground mb-3">Nossas Categorias</h2>
-            <p className="text-lg text-muted-foreground font-light max-w-2xl mx-auto">
-              Descubra tudo que você precisa através das categorias!
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-4 md:gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-            {categorias.map((cat) => (
-              <Link
-                key={cat.id}
-                href={`/categoria/${cat.id}`}
-                className="group relative overflow-hidden rounded-[15px] bg-white border border-border hover:border-gray-1 transition-all duration-500 hover:shadow-xl"
-              >
-                <div className="p-6 md:p-8 text-center min-h-[180px] flex flex-col items-center justify-center">
-                  <div className="w-16 h-16 rounded-full bg-bg-2 flex items-center justify-center mb-4 group-hover:bg-bg-3 transition-colors duration-300">
-                    <svg className="w-8 h-8 text-gray-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                  </div>
-                  <h3 className="text-base md:text-lg font-medium text-foreground group-hover:text-primary transition-colors duration-300 mb-2">
-                    {cat.nome}
-                  </h3>
-                  <p className="text-sm text-muted-foreground font-light">
-                    {cat.produtos.length} {cat.produtos.length === 1 ? "produto" : "produtos"}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Produtos em Destaque - Design Elegante */}
-      <section className="py-15 md:py-25 bg-bg-1">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12 md:mb-16">
-            <h2 className="text-h1 font-light text-foreground mb-3">Produtos em Destaque</h2>
-            <p className="text-lg text-muted-foreground font-light max-w-2xl mx-auto">
-              Confira nossa seleção especial de sofás
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {produtosDestaque.map((produto) => (
-              <Link
-                key={produto.id}
-                href={`/produto/${produto.id}`}
-                className="group overflow-hidden rounded-[15px] bg-white border border-border hover:border-gray-1 transition-all duration-500 hover:shadow-2xl"
-              >
-                {produto.imagens?.[0] ? (
-                  <div className="aspect-square relative overflow-hidden bg-bg-2">
-                    <img
-                      src={produto.imagens[0]}
-                      alt={produto.nome}
-                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  </div>
-                ) : (
-                  <div className="aspect-square bg-bg-2 flex items-center justify-center">
-                    <span className="text-gray-2 text-sm">Sem imagem</span>
-                  </div>
-                )}
-                <div className="p-5 md:p-6">
-                  <h3 className="font-medium text-foreground group-hover:text-primary transition-colors duration-300 mb-2 text-lg">
-                    {produto.nome}
-                  </h3>
-                  <p className="text-sm text-muted-foreground font-light mb-1">{produto.familia?.nome}</p>
-                  <p className="text-xs text-gray-3 font-light">{produto.categoria?.nome}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
+          <ProductListingSection
+            categorias={categorias.map(cat => ({
+              id: cat.id,
+              nome: cat.nome,
+              _count: { produtos: cat._count?.produtos || 0 }
+            }))}
+            produtosIniciais={produtos.map(p => ({
+              id: p.id,
+              nome: p.nome,
+              imagens: p.imagens || [],
+              familia: p.familia,
+              categoria: p.categoria,
+            }))}
+            produtosBestSellers={produtosBestSellers.map(p => ({
+              id: p.id,
+              nome: p.nome,
+              imagens: p.imagens || [],
+            }))}
+          />
         </div>
       </section>
 

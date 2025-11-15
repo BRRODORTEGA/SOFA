@@ -4,7 +4,19 @@ import { produtoSchema } from "@/lib/validators";
 
 export async function GET(req: Request) {
   const { limit, offset, q } = paginateParams(new URL(req.url).searchParams);
-  const where = q ? { nome: { contains: q, mode: "insensitive" } } : {};
+  const searchParams = new URL(req.url).searchParams;
+  const categoriaId = searchParams.get("categoriaId");
+  
+  const where: any = { status: true };
+  
+  if (q) {
+    where.nome = { contains: q, mode: "insensitive" };
+  }
+  
+  if (categoriaId) {
+    where.categoriaId = categoriaId;
+  }
+  
   const [items, total] = await Promise.all([
     prisma.produto.findMany({
       where,
