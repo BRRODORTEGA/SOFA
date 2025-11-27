@@ -6,12 +6,14 @@ import { produtoSchema } from "@/lib/validators";
 import { FormShell } from "@/components/admin/form-shell";
 import { ProdutoImagensBlocos } from "@/components/admin/ProdutoImagensBlocos";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 
 export default function NewProdutoPage() {
   const router = useRouter();
   const [categorias, setCategorias] = useState<any[]>([]);
   const [familias, setFamilias] = useState<any[]>([]);
+  const [nomesPadrao, setNomesPadrao] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [acionamentoManual, setAcionamentoManual] = useState(false);
   const [acionamentoAutomatico, setAcionamentoAutomatico] = useState(false);
@@ -31,16 +33,19 @@ export default function NewProdutoPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [catRes, famRes] = await Promise.all([
+        const [catRes, famRes, nomesRes] = await Promise.all([
           fetch("/api/categorias").then(r => r.json()),
-          fetch("/api/familias").then(r => r.json())
+          fetch("/api/familias").then(r => r.json()),
+          fetch("/api/nomes-padrao-produto?limit=100").then(r => r.json())
         ]);
         
         const cats = catRes.data?.items || [];
         const fams = famRes.data?.items || [];
+        const nomes = nomesRes.data?.items?.filter((n: any) => n.ativo) || [];
         
         setCategorias(cats);
         setFamilias(fams);
+        setNomesPadrao(nomes);
         console.log("Famílias carregadas:", fams); // Debug
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
@@ -177,9 +182,33 @@ export default function NewProdutoPage() {
           )}
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Nome</label>
-          <input {...register("nome")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Nome <span className="text-red-500">*</span></label>
+          <select 
+            {...register("nome", { 
+              required: "Selecione um nome padrão",
+              validate: (value) => {
+                const nomeValido = nomesPadrao.some((n: any) => n.nome === value);
+                if (!nomeValido) {
+                  return "Selecione um nome padrão válido da lista";
+                }
+                return true;
+              }
+            })} 
+            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+          >
+            <option value="">Selecione um nome padrão...</option>
+            {nomesPadrao.map((nome: any) => (
+              <option key={nome.id} value={nome.nome}>
+                {nome.nome}
+              </option>
+            ))}
+          </select>
           {errors.nome && <p className="mt-2 text-sm font-medium text-red-600">{String(errors.nome.message)}</p>}
+          {nomesPadrao.length === 0 && (
+            <p className="mt-2 text-sm text-yellow-600">
+              ⚠️ Nenhum nome padrão ativo encontrado. <Link href="/admin/nomes-padrao-produto/new" className="text-blue-600 underline">Cadastre nomes padrões primeiro</Link>.
+            </p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo</label>

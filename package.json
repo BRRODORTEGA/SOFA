@@ -10,7 +10,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "popular-nomes-padrao": "tsx scripts/popular-nomes-padrao.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

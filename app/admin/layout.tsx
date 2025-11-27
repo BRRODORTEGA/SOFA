@@ -4,6 +4,7 @@ import { Providers } from "@/components/providers";
 import { requireAdminSession } from "@/lib/auth-guard";
 import Link from "next/link";
 import { LogoutButton } from "@/components/logout-button";
+import { AdminNavItem } from "@/components/admin/AdminNavItem";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireAdminSession(); // protege TUDO abaixo de /admin
@@ -34,9 +35,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/tecidos">
                   🧵 Tecidos
                 </Link>
-                <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/produtos">
-                  📦 Produtos
-                </Link>
+                <AdminNavItem
+                  label="Produtos"
+                  icon="📦"
+                  subItems={[
+                    { href: "/admin/produtos", label: "Lista de Produtos", icon: "📦" },
+                    { href: "/admin/nomes-padrao-produto", label: "Nomes Padrão", icon: "📝" },
+                  ]}
+                />
                 <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/tabela-preco">
                   💰 Tabela de Preço
                 </Link>
@@ -47,6 +53,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <div className="mt-6 mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">Operação</div>
                 <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/pedidos">
                   🛒 Pedidos
+                </Link>
+                <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/clientes">
+                  👥 Clientes
                 </Link>
               </nav>
               <div className="mt-8 border-t border-gray-200 pt-4">

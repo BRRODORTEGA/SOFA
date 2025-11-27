@@ -39,6 +39,20 @@ export async function POST(req: Request) {
     const parsed = produtoSchema.safeParse(json);
     if (!parsed.success) return unprocessable(parsed.error.flatten());
 
+    // Verificar se o nome está na lista de nomes padrões ativos
+    const nomePadrao = await prisma.nomePadraoProduto.findFirst({
+      where: {
+        nome: parsed.data.nome,
+        ativo: true,
+      },
+    });
+
+    if (!nomePadrao) {
+      return unprocessable({
+        message: `O nome "${parsed.data.nome}" não está na lista de nomes padrões ativos. Selecione um nome válido da lista.`,
+      });
+    }
+
     // Verificar se há múltiplos acionamentos
     const acionamento = parsed.data.acionamento;
     const acionamentos = acionamento 

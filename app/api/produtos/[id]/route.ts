@@ -41,15 +41,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const json = await req.json();
     console.log("PUT /api/produtos/[id] - Recebido:", json); // Debug
     
-    // Buscar produto atual para preservar o acionamento
-    const produtoAtual = await prisma.produto.findUnique({
-      where: { id: params.id },
-      select: { acionamento: true },
-    });
-    
-    if (!produtoAtual) {
-      return notFound();
-    }
     
     const parsed = produtoSchema.safeParse(json);
     if (!parsed.success) {
@@ -59,8 +50,37 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     
     console.log("Dados validados:", parsed.data); // Debug
     
+    // Buscar produto atual para verificar nome atual
+    const produtoAtualCompleto = await prisma.produto.findUnique({
+      where: { id: params.id },
+      select: { nome: true, acionamento: true },
+    });
+    
+    if (!produtoAtualCompleto) {
+      return notFound();
+    }
+    
+    // Verificar se o nome está na lista de nomes padrões ativos
+    // Permitir manter o nome atual mesmo se não estiver mais ativo (para não quebrar produtos existentes)
+    const nomeMudou = produtoAtualCompleto.nome !== parsed.data.nome;
+    
+    if (nomeMudou) {
+      const nomePadrao = await prisma.nomePadraoProduto.findFirst({
+        where: {
+          nome: parsed.data.nome,
+          ativo: true,
+        },
+      });
+
+      if (!nomePadrao) {
+        return unprocessable({
+          message: `O nome "${parsed.data.nome}" não está na lista de nomes padrões ativos. Selecione um nome válido da lista.`,
+        });
+      }
+    }
+    
     // Preservar o acionamento original (não permitir alteração)
-    const acionamentoFinal = produtoAtual.acionamento; // Manter o acionamento original
+    const acionamentoFinal = produtoAtualCompleto.acionamento; // Manter o acionamento original
     
     // Verificar se já existe outro produto (diferente do atual) com a mesma combinação
     const produtoExistente = await prisma.produto.findFirst({
