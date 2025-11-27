@@ -60,9 +60,30 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     console.log("Dados validados:", parsed.data); // Debug
     
     // Preservar o acionamento original (não permitir alteração)
+    const acionamentoFinal = produtoAtual.acionamento; // Manter o acionamento original
+    
+    // Verificar se já existe outro produto (diferente do atual) com a mesma combinação
+    const produtoExistente = await prisma.produto.findFirst({
+      where: {
+        id: { not: params.id }, // Excluir o produto atual da busca
+        categoriaId: parsed.data.categoriaId,
+        familiaId: parsed.data.familiaId,
+        nome: parsed.data.nome,
+        tipo: parsed.data.tipo || null,
+        abertura: parsed.data.abertura || null,
+        acionamento: acionamentoFinal || null,
+      },
+    });
+
+    if (produtoExistente) {
+      return unprocessable({
+        message: "Já existe outro produto com esta combinação de Categoria, Família, Nome, Tipo, Abertura e Acionamento.",
+      });
+    }
+    
     const dataToUpdate = {
       ...parsed.data,
-      acionamento: produtoAtual.acionamento, // Manter o acionamento original
+      acionamento: acionamentoFinal,
     };
     
     const updated = await prisma.produto.update({ 

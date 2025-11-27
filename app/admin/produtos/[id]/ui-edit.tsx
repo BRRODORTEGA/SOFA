@@ -163,8 +163,22 @@ export default function EditProduto({ item }: { item: any }) {
         router.push("/admin/produtos");
         router.refresh();
       } else {
-        const errorMsg = data.error || data.details || "Erro ao salvar";
-        alert(`Erro ao salvar: ${errorMsg}`);
+        // Tratar diferentes formatos de erro
+        let errorMsg = "Erro ao salvar produto";
+        if (data.message) {
+          errorMsg = data.message;
+        } else if (data.error) {
+          errorMsg = data.error;
+        } else if (data.details) {
+          errorMsg = data.details;
+        } else if (data.fieldErrors) {
+          // Se houver erros de campo específicos, exibir o primeiro
+          const firstError = Object.values(data.fieldErrors)[0];
+          if (Array.isArray(firstError) && firstError.length > 0) {
+            errorMsg = firstError[0];
+          }
+        }
+        alert(`Erro ao salvar produto: ${errorMsg}`);
       }
     } catch (error) {
       console.error("Erro ao salvar produto:", error);

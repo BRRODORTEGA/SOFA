@@ -101,8 +101,22 @@ export default function NewProdutoPage() {
         router.push("/admin/produtos");
         router.refresh();
       } else {
-        const errorMsg = result.error || result.details || "Erro ao criar produto";
-        alert(`Erro ao criar: ${errorMsg}`);
+        // Tratar diferentes formatos de erro
+        let errorMsg = "Erro ao criar produto";
+        if (result.message) {
+          errorMsg = result.message;
+        } else if (result.error) {
+          errorMsg = result.error;
+        } else if (result.details) {
+          errorMsg = result.details;
+        } else if (result.fieldErrors) {
+          // Se houver erros de campo específicos, exibir o primeiro
+          const firstError = Object.values(result.fieldErrors)[0];
+          if (Array.isArray(firstError) && firstError.length > 0) {
+            errorMsg = firstError[0];
+          }
+        }
+        alert(`Erro ao criar produto: ${errorMsg}`);
       }
     } catch (error) {
       console.error("Erro ao criar produto:", error);
