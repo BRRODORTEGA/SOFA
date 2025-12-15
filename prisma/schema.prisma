@@ -34,17 +34,17 @@ enum CategoriaGrade {
  */
 
 model User {
-  id                String    @id @default(cuid())
-  name              String?
-  email             String    @unique
-  password          String
-  role              Role      @default(CLIENTE)
-  emailVerificado   Boolean   @default(false)
-  tokenVerificacao  String?   @unique
-  tokenExpiracao    DateTime?
-  representante     Boolean   @default(false) // Flag para identificar representante/lojista
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  name             String?
+  email            String    @unique
+  password         String
+  role             Role      @default(CLIENTE)
+  emailVerificado  Boolean   @default(false)
+  tokenVerificacao String?   @unique
+  tokenExpiracao   DateTime?
+  representante    Boolean   @default(false) // Flag para identificar representante/lojista
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   pedidos  Pedido[]
   carrinho Carrinho?
@@ -88,7 +88,7 @@ model NomePadraoProduto {
   id        String   @id @default(cuid())
   nome      String   @unique
   ativo     Boolean  @default(true)
-  ordem     Int?     // Ordem de exibição (opcional)
+  ordem     Int? // Ordem de exibição (opcional)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -106,17 +106,18 @@ model Produto {
   acionamento  String? // ex.: Manual
   configuracao String? // ex.: Módulo com braço
   status       Boolean  @default(true)
-  imagens      String[] // URLs
+  imagens      String[] // URLs (mantido para compatibilidade)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  categoria     Categoria          @relation(fields: [categoriaId], references: [id])
-  familia       Familia            @relation(fields: [familiaId], references: [id])
-  tecidos       ProdutoTecido[]
-  variacoes     Variacao[]
-  precos        TabelaPrecoLinha[]
-  itens         PedidoItem[]
-  carrinhoItems CarrinhoItem[]
+  categoria         Categoria          @relation(fields: [categoriaId], references: [id])
+  familia           Familia            @relation(fields: [familiaId], references: [id])
+  tecidos           ProdutoTecido[]
+  variacoes         Variacao[]
+  precos            TabelaPrecoLinha[]
+  itens             PedidoItem[]
+  carrinhoItems     CarrinhoItem[]
+  imagensDetalhadas ProdutoImagem[]
 
   @@index([familiaId, categoriaId])
 }
@@ -136,9 +137,10 @@ model Tecido {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  produtos      ProdutoTecido[]
-  pedidoItems   PedidoItem[]
-  carrinhoItems CarrinhoItem[]
+  produtos       ProdutoTecido[]
+  pedidoItems    PedidoItem[]
+  carrinhoItems  CarrinhoItem[]
+  produtoImagens ProdutoImagem[]
 
   @@index([grade])
 }
@@ -151,6 +153,27 @@ model ProdutoTecido {
   tecido  Tecido  @relation(fields: [tecidoId], references: [id])
 
   @@id([produtoId, tecidoId]) // N:N sem payload
+}
+
+/**
+ * ===== Imagens de Produto vinculadas a Tecidos =====
+ */
+model ProdutoImagem {
+  id        String   @id @default(cuid())
+  produtoId String
+  url       String // URL da imagem
+  tecidoId  String? // null = aparece em todos os tecidos
+  tipo      String   @default("complementar") // principal, complementar, extra
+  ordem     Int      @default(0) // Ordem de exibição
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  tecido  Tecido? @relation(fields: [tecidoId], references: [id], onDelete: SetNull)
+
+  @@index([produtoId])
+  @@index([tecidoId])
+  @@index([produtoId, tecidoId])
 }
 
 /**
@@ -186,7 +209,7 @@ model TabelaPreco {
   ativo     Boolean @default(true) // Status ativo/inativo
   descricao String? // Descrição opcional
 
-  linhas TabelaPrecoLinha[] // Linhas de preço vinculadas a esta tabela
+  linhas      TabelaPrecoLinha[] // Linhas de preço vinculadas a esta tabela
   siteConfigs SiteConfig[] // Configurações do site que usam esta tabela
 
   createdAt DateTime @default(now())

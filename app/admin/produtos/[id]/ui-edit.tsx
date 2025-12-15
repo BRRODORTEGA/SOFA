@@ -14,6 +14,7 @@ export default function EditProduto({ item }: { item: any }) {
   const [categorias, setCategorias] = useState<any[]>([]);
   const [familias, setFamilias] = useState<any[]>([]);
   const [nomesPadrao, setNomesPadrao] = useState<any[]>([]);
+  const [tecidos, setTecidos] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -23,11 +24,41 @@ export default function EditProduto({ item }: { item: any }) {
   const [acionamentoManual, setAcionamentoManual] = useState(acionamentosIniciais.includes("Manual"));
   const [acionamentoAutomatico, setAcionamentoAutomatico] = useState(acionamentosIniciais.includes("Automático"));
   
-  // Separar imagens existentes nos 3 blocos (primeira = principal, próximas 5 = complementares, resto = extra)
-  const imagensExistentes = item.imagens || [];
-  const imagemPrincipalInicial = imagensExistentes.length > 0 ? [imagensExistentes[0]] : [];
-  const imagensComplementaresInicial = imagensExistentes.slice(1, 6);
-  const imagensExtraInicial = imagensExistentes.slice(6);
+  // Separar imagens existentes nos 3 blocos
+  // Se houver imagensDetalhadas, usar elas; senão usar imagens antigas
+  const imagensDetalhadas = item.imagensDetalhadas || [];
+  let imagemPrincipalInicial: string[] = [];
+  let imagensComplementaresInicial: string[] = [];
+  let imagensExtraInicial: string[] = [];
+  let imagemPrincipalTecidoInicial: (string | null)[] = [];
+  let imagensComplementaresTecidoInicial: (string | null)[] = [];
+  let imagensExtraTecidoInicial: (string | null)[] = [];
+  
+  if (imagensDetalhadas.length > 0) {
+    // Usar imagensDetalhadas
+    imagensDetalhadas.forEach(img => {
+      if (img.tipo === "principal") {
+        imagemPrincipalInicial.push(img.url);
+        imagemPrincipalTecidoInicial.push(img.tecidoId);
+      } else if (img.tipo === "complementar") {
+        imagensComplementaresInicial.push(img.url);
+        imagensComplementaresTecidoInicial.push(img.tecidoId);
+      } else if (img.tipo === "extra") {
+        imagensExtraInicial.push(img.url);
+        imagensExtraTecidoInicial.push(img.tecidoId);
+      }
+    });
+  } else {
+    // Fallback para imagens antigas
+    const imagensExistentes = item.imagens || [];
+    imagemPrincipalInicial = imagensExistentes.length > 0 ? [imagensExistentes[0]] : [];
+    imagensComplementaresInicial = imagensExistentes.slice(1, 6);
+    imagensExtraInicial = imagensExistentes.slice(6);
+    // Inicializar tecidoIds como null para imagens antigas
+    imagemPrincipalTecidoInicial = imagemPrincipalInicial.map(() => null);
+    imagensComplementaresTecidoInicial = imagensComplementaresInicial.map(() => null);
+    imagensExtraTecidoInicial = imagensExtraInicial.map(() => null);
+  }
 
   const { register, handleSubmit, control, watch, setValue, getValues, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(produtoSchema),
@@ -43,6 +74,9 @@ export default function EditProduto({ item }: { item: any }) {
       imagemPrincipal: imagemPrincipalInicial,
       imagensComplementares: imagensComplementaresInicial,
       imagensExtra: imagensExtraInicial,
+      imagemPrincipalTecido: imagemPrincipalTecidoInicial,
+      imagensComplementaresTecido: imagensComplementaresTecidoInicial,
+      imagensExtraTecido: imagensExtraTecidoInicial,
       status: item.status ?? true,
     },
   });
@@ -50,23 +84,27 @@ export default function EditProduto({ item }: { item: any }) {
 
   useEffect(() => {
     async function loadData() {
-      const [catRes, famRes, nomesRes] = await Promise.all([
+      const [catRes, famRes, nomesRes, tecidosRes] = await Promise.all([
         fetch("/api/categorias").then(r=>r.json()),
         fetch("/api/familias").then(r=>r.json()),
-        fetch("/api/nomes-padrao-produto?limit=100").then(r => r.json())
+        fetch("/api/nomes-padrao-produto?limit=100").then(r => r.json()),
+        fetch(`/api/produtos/${item.id}`).then(r => r.json())
       ]);
       
       const cats = catRes.data?.items || [];
       const fams = famRes.data?.items || [];
       const nomes = nomesRes.data?.items?.filter((n: any) => n.ativo) || [];
+      const produto = tecidosRes.data || {};
+      const tecs = produto.tecidos || [];
       
       setCategorias(cats);
       setFamilias(fams);
       setNomesPadrao(nomes);
+      setTecidos(tecs);
     }
     
     loadData();
-  }, []);
+  }, [item.id]);
 
   // Garantir que os valores sejam definidos após carregar as opções
   useEffect(() => {
@@ -98,34 +136,60 @@ export default function EditProduto({ item }: { item: any }) {
       // Obter valores atuais do formulário (garantir que pegamos os valores mais recentes)
       const currentValues = getValues();
       
-      // Combinar os 3 blocos de imagens em um único array
+      // Combinar os 3 blocos de imagens em um único array (compatibilidade)
       const todasImagens: string[] = [];
+      // Array detalhado com tecidoId
+      const imagensDetalhadas: Array<{ url: string; tecidoId: string | null; tipo: string; ordem: number }> = [];
       
       // Foto Principal
       const principal = currentValues.imagemPrincipal || values.imagemPrincipal || [];
+      const principalTecidos = currentValues.imagemPrincipalTecido || values.imagemPrincipalTecido || [];
       if (Array.isArray(principal) && principal.length > 0) {
-        const principalFiltradas = principal
-          .filter((url: any) => url && typeof url === 'string' && url.trim() !== "")
-          .filter((url: string) => url.startsWith("http") || url.startsWith("/")); // Garantir formato válido
-        todasImagens.push(...principalFiltradas);
+        principal.forEach((url: any, idx: number) => {
+          if (url && typeof url === 'string' && url.trim() !== "" && (url.startsWith("http") || url.startsWith("/"))) {
+            todasImagens.push(url);
+            imagensDetalhadas.push({
+              url,
+              tecidoId: principalTecidos[idx] || null,
+              tipo: "principal",
+              ordem: 0,
+            });
+          }
+        });
       }
       
       // Fotos Complementares
       const complementares = currentValues.imagensComplementares || values.imagensComplementares || [];
+      const complementaresTecidos = currentValues.imagensComplementaresTecido || values.imagensComplementaresTecido || [];
       if (Array.isArray(complementares) && complementares.length > 0) {
-        const complementaresFiltradas = complementares
-          .filter((url: any) => url && typeof url === 'string' && url.trim() !== "")
-          .filter((url: string) => url.startsWith("http") || url.startsWith("/")); // Garantir formato válido
-        todasImagens.push(...complementaresFiltradas);
+        complementares.forEach((url: any, idx: number) => {
+          if (url && typeof url === 'string' && url.trim() !== "" && (url.startsWith("http") || url.startsWith("/"))) {
+            todasImagens.push(url);
+            imagensDetalhadas.push({
+              url,
+              tecidoId: complementaresTecidos[idx] || null,
+              tipo: "complementar",
+              ordem: idx,
+            });
+          }
+        });
       }
       
       // Fotos Extra
       const extra = currentValues.imagensExtra || values.imagensExtra || [];
+      const extraTecidos = currentValues.imagensExtraTecido || values.imagensExtraTecido || [];
       if (Array.isArray(extra) && extra.length > 0) {
-        const extraFiltradas = extra
-          .filter((url: any) => url && typeof url === 'string' && url.trim() !== "")
-          .filter((url: string) => url.startsWith("http") || url.startsWith("/")); // Garantir formato válido
-        todasImagens.push(...extraFiltradas);
+        extra.forEach((url: any, idx: number) => {
+          if (url && typeof url === 'string' && url.trim() !== "" && (url.startsWith("http") || url.startsWith("/"))) {
+            todasImagens.push(url);
+            imagensDetalhadas.push({
+              url,
+              tecidoId: extraTecidos[idx] || null,
+              tipo: "extra",
+              ordem: idx,
+            });
+          }
+        });
       }
       
       console.log("Imagens coletadas:", {
@@ -149,7 +213,8 @@ export default function EditProduto({ item }: { item: any }) {
         abertura: values.abertura || null,
         acionamento: acionamentoValue,
         configuracao: values.configuracao || null,
-        imagens: todasImagens,
+        imagens: todasImagens, // Mantido para compatibilidade
+        imagensDetalhadas: imagensDetalhadas, // Novo formato com tecidoId
         status: Boolean(values.status),
       };
       
@@ -328,9 +393,11 @@ export default function EditProduto({ item }: { item: any }) {
           <ProdutoImagensBlocos
             control={control}
             watch={watch}
+            setValue={setValue}
             uploading={uploading}
             setUploading={setUploading}
             fileInputRef={fileInputRef}
+            tecidos={tecidos}
           />
         </div>
         <div className="flex items-center gap-3">

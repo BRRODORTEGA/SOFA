@@ -22,6 +22,16 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
         },
         orderBy: { medida_cm: "asc" },
       },
+      imagensDetalhadas: {
+        select: {
+          id: true,
+          url: true,
+          tecidoId: true,
+          tipo: true,
+          ordem: true,
+        },
+        orderBy: [{ tipo: "asc" }, { ordem: "asc" }],
+      },
     },
   });
 
@@ -106,9 +116,36 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       acionamento: acionamentoFinal,
     };
     
-    const updated = await prisma.produto.update({ 
-      where: { id: params.id }, 
-      data: dataToUpdate 
+    // Se houver imagensDetalhadas no payload, processá-las
+    const imagensDetalhadas = (json as any).imagensDetalhadas;
+    
+    const updated = await prisma.$transaction(async (tx) => {
+      // Atualizar produto
+      const produtoAtualizado = await tx.produto.update({ 
+        where: { id: params.id }, 
+        data: dataToUpdate 
+      });
+      
+      // Se houver imagensDetalhadas, atualizar
+      if (imagensDetalhadas && Array.isArray(imagensDetalhadas)) {
+        // Remover todas as imagens detalhadas existentes
+        await tx.produtoImagem.deleteMany({ where: { produtoId: params.id } });
+        
+        // Criar novas imagens detalhadas
+        if (imagensDetalhadas.length > 0) {
+          await tx.produtoImagem.createMany({
+            data: imagensDetalhadas.map((img: any, index: number) => ({
+              produtoId: params.id,
+              url: img.url,
+              tecidoId: img.tecidoId || null,
+              tipo: img.tipo || "complementar",
+              ordem: img.ordem ?? index,
+            })),
+          });
+        }
+      }
+      
+      return produtoAtualizado;
     });
     
     console.log("Produto atualizado:", updated); // Debug
@@ -168,6 +205,8 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
       prisma.tabelaPrecoLinha.deleteMany({ where: { produtoId: params.id } }),
       // Excluir vínculos com tecidos
       prisma.produtoTecido.deleteMany({ where: { produtoId: params.id } }),
+      // Excluir imagens detalhadas
+      prisma.produtoImagem.deleteMany({ where: { produtoId: params.id } }),
     ]);
 
     // Agora excluir o produto

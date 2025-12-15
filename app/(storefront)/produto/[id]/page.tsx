@@ -5,6 +5,14 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+type ProdutoImagem = {
+  id: string;
+  url: string;
+  tecidoId: string | null;
+  tipo: string;
+  ordem: number;
+};
+
 type Produto = {
   id: string;
   nome: string;
@@ -13,6 +21,7 @@ type Produto = {
   acionamento: string | null;
   configuracao: string | null;
   imagens: string[];
+  imagensDetalhadas?: ProdutoImagem[];
   familia: { nome: string };
   categoria: { nome: string };
   tecidos: Array<{ id: string; nome: string; grade: string; imagemUrl: string | null }>;
@@ -73,11 +82,41 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
           if (d.data.variacoes.length > 0) {
             setMedida(d.data.variacoes[0].medida_cm);
           }
+          // Resetar imagem atual quando produto carregar
+          setImagemAtual(0);
         }
       })
       .catch((err) => console.error("Erro ao carregar produto:", err))
       .finally(() => setLoading(false));
   }, [params.id]);
+  
+  // Filtrar imagens baseado no tecido selecionado
+  const imagensFiltradas = produto ? (() => {
+    // Se houver imagensDetalhadas, usar elas
+    if (produto.imagensDetalhadas && produto.imagensDetalhadas.length > 0) {
+      return produto.imagensDetalhadas
+        .filter(img => {
+          // Mostrar imagens sem tecido específico (null) OU imagens do tecido selecionado
+          return !img.tecidoId || (tecidoId && img.tecidoId === tecidoId);
+        })
+        .sort((a, b) => {
+          // Ordenar: principal primeiro, depois por ordem
+          if (a.tipo === "principal") return -1;
+          if (b.tipo === "principal") return 1;
+          return a.ordem - b.ordem;
+        })
+        .map(img => img.url);
+    }
+    // Fallback para imagens antigas (compatibilidade)
+    return produto.imagens || [];
+  })() : [];
+  
+  // Resetar imagem atual quando tecido mudar ou imagens filtradas mudarem
+  useEffect(() => {
+    if (imagensFiltradas.length > 0 && imagemAtual >= imagensFiltradas.length) {
+      setImagemAtual(0);
+    }
+  }, [tecidoId, imagensFiltradas.length, imagemAtual]);
 
   // Verificar item pendente após login
   useEffect(() => {
@@ -213,7 +252,37 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
       <div className="grid gap-8 md:grid-cols-2">
         {/* Galeria de Imagens */}
         <div>
-          {produto.imagens && produto.imagens.length > 0 ? (
+          {imagensFiltradas.length > 0 ? (
+            <div>
+              <div className="aspect-square relative overflow-hidden rounded-lg bg-gray-100 mb-4">
+                <img
+                  src={imagensFiltradas[imagemAtual]}
+                  alt={produto.nome}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              {imagensFiltradas.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto">
+                  {imagensFiltradas.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setImagemAtual(idx)}
+                      className={`flex-shrink-0 rounded border-2 ${
+                        imagemAtual === idx ? "border-blue-600" : "border-gray-200"
+                      }`}
+                    >
+                      <img src={img} alt={`${produto.nome} ${idx + 1}`} className="h-20 w-20 object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+              {tecidoId && produto.imagensDetalhadas && (
+                <p className="mt-2 text-xs text-gray-500 text-center">
+                  Mostrando {imagensFiltradas.length} foto(s) para este tecido
+                </p>
+              )}
+            </div>
+          ) : produto.imagens && produto.imagens.length > 0 ? (
             <div>
               <div className="aspect-square relative overflow-hidden rounded-lg bg-gray-100 mb-4">
                 <img

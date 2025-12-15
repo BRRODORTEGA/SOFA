@@ -1,22 +1,26 @@
 "use client";
 
-import { useFieldArray, Control, UseFormWatch, Controller } from "react-hook-form";
+import { useFieldArray, Control, UseFormWatch, Controller, UseFormSetValue } from "react-hook-form";
 import { useRef, useState } from "react";
 
 interface ProdutoImagensBlocosProps {
   control: Control<any>;
   watch: UseFormWatch<any>;
+  setValue: UseFormSetValue<any>;
   uploading: boolean;
   setUploading: (uploading: boolean) => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
+  tecidos?: Array<{ id: string; nome: string }>; // Tecidos do produto
 }
 
 export function ProdutoImagensBlocos({
   control,
   watch,
+  setValue,
   uploading,
   setUploading,
   fileInputRef,
+  tecidos = [],
 }: ProdutoImagensBlocosProps) {
   // Bloco 1: Foto Principal (1 imagem)
   const {
@@ -113,16 +117,20 @@ export function ProdutoImagensBlocos({
 
   function ImagePreview({
     url,
+    tecidoId,
     onRemove,
-    registerName,
+    urlRegisterName,
+    tecidoRegisterName,
   }: {
     url: string;
+    tecidoId?: string | null;
     onRemove: () => void;
-    registerName: string;
+    urlRegisterName: string;
+    tecidoRegisterName: string;
   }) {
     const isValidUrl = url && (url.startsWith("http") || url.startsWith("/") || url.startsWith("data:"));
     return (
-      <div className="relative group">
+      <div className="relative group space-y-2">
         {isValidUrl ? (
           <div className="relative aspect-square rounded-lg overflow-hidden border border-gray-300 bg-gray-100">
             <img
@@ -150,17 +158,37 @@ export function ProdutoImagensBlocos({
           </div>
         )}
         <Controller
-          name={registerName as any}
+          name={urlRegisterName as any}
           control={control}
           defaultValue={url || ""}
           render={({ field }) => (
             <input
               {...field}
-              className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="https://... ou /uploads/..."
             />
           )}
         />
+        {tecidos.length > 0 && (
+          <Controller
+            name={tecidoRegisterName as any}
+            control={control}
+            defaultValue={tecidoId || ""}
+            render={({ field }) => (
+              <select
+                {...field}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">🌐 Todos os tecidos</option>
+                {tecidos.map((tecido) => (
+                  <option key={tecido.id} value={tecido.id}>
+                    {tecido.nome}
+                  </option>
+                ))}
+              </select>
+            )}
+          />
+        )}
       </div>
     );
   }
@@ -189,12 +217,15 @@ export function ProdutoImagensBlocos({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {principalFields.map((f, idx) => {
               const imageUrl = watch(`imagemPrincipal.${idx}` as const);
+              const tecidoId = watch(`imagemPrincipalTecido.${idx}` as const);
               return (
                 <ImagePreview
                   key={f.id}
                   url={imageUrl || ""}
+                  tecidoId={tecidoId}
                   onRemove={() => removePrincipal(idx)}
-                  registerName={`imagemPrincipal.${idx}`}
+                  urlRegisterName={`imagemPrincipal.${idx}`}
+                  tecidoRegisterName={`imagemPrincipalTecido.${idx}`}
                 />
               );
             })}
@@ -229,12 +260,15 @@ export function ProdutoImagensBlocos({
           <div className="mb-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {complementaresFields.map((f, idx) => {
               const imageUrl = watch(`imagensComplementares.${idx}` as const);
+              const tecidoId = watch(`imagensComplementaresTecido.${idx}` as const);
               return (
                 <ImagePreview
                   key={f.id}
                   url={imageUrl || ""}
+                  tecidoId={tecidoId}
                   onRemove={() => removeComplementar(idx)}
-                  registerName={`imagensComplementares.${idx}`}
+                  urlRegisterName={`imagensComplementares.${idx}`}
+                  tecidoRegisterName={`imagensComplementaresTecido.${idx}`}
                 />
               );
             })}
@@ -270,12 +304,15 @@ export function ProdutoImagensBlocos({
           <div className="mb-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {extraFields.map((f, idx) => {
               const imageUrl = watch(`imagensExtra.${idx}` as const);
+              const tecidoId = watch(`imagensExtraTecido.${idx}` as const);
               return (
                 <ImagePreview
                   key={f.id}
                   url={imageUrl || ""}
+                  tecidoId={tecidoId}
                   onRemove={() => removeExtra(idx)}
-                  registerName={`imagensExtra.${idx}`}
+                  urlRegisterName={`imagensExtra.${idx}`}
+                  tecidoRegisterName={`imagensExtraTecido.${idx}`}
                 />
               );
             })}
