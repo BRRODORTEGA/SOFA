@@ -118,3 +118,4 @@ Este script verifica:
 4. Verifique permissões:
    - Certifique-se de que o usuário tem permissão para acessar o banco `ai_sofa`
 
+

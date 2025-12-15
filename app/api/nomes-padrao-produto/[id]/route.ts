@@ -70,3 +70,4 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
   }
 }
 
+

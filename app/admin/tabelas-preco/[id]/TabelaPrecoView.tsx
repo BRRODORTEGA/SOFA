@@ -38,12 +38,27 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState(""); // Estado separado para o input
   const [showImportPreview, setShowImportPreview] = useState(false);
   const [importData, setImportData] = useState<LinhaPreco[]>([]);
   const dirtyRef = useRef<Set<string>>(new Set()); // Chave: produtoId::medida::field
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Map<string, Set<string>>>(new Map()); // Chave: produtoId_medida_cm, Set de campos com erro
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [showAddProductsModal, setShowAddProductsModal] = useState(false);
+  const [categorias, setCategorias] = useState<any[]>([]);
+  const [familias, setFamilias] = useState<any[]>([]);
+  const [produtos, setProdutos] = useState<any[]>([]);
+  const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<Set<string>>(new Set());
+  const [familiasSelecionadas, setFamiliasSelecionadas] = useState<Set<string>>(new Set());
+  const [produtosSelecionados, setProdutosSelecionados] = useState<Set<string>>(new Set());
+  const [variacoesSelecionadas, setVariacoesSelecionadas] = useState<{ [produtoId: string]: Set<number> }>({});
+  const [variacoesPorProduto, setVariacoesPorProduto] = useState<{ [produtoId: string]: Array<{ medida_cm: number }> }>({});
+  const [adicionando, setAdicionando] = useState(false);
+  const [searchCategoriaAdd, setSearchCategoriaAdd] = useState("");
+  const [searchFamiliaAdd, setSearchFamiliaAdd] = useState("");
+  const [searchProdutoAdd, setSearchProdutoAdd] = useState("");
 
   useEffect(() => {
     if (tabelaPrecoId) {
@@ -53,14 +68,60 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
   }, [tabelaPrecoId]);
 
   useEffect(() => {
+    if (showAddProductsModal) {
+      console.log("Modal aberto, carregando dados...");
+      loadCategorias();
+      loadFamilias();
+      loadProdutos();
+    } else {
+      // Limpar seleções quando fechar o modal
+      setCategoriasSelecionadas(new Set());
+      setFamiliasSelecionadas(new Set());
+      setProdutosSelecionados(new Set());
+      setVariacoesSelecionadas({});
+      setVariacoesPorProduto({});
+    }
+  }, [showAddProductsModal]);
+
+  useEffect(() => {
+    produtosSelecionados.forEach(async (produtoId) => {
+      if (!variacoesPorProduto[produtoId]) {
+        await loadVariacoesProduto(produtoId);
+      }
+    });
+  }, [produtosSelecionados]);
+
+  // Debounce para busca: aguarda 300ms após parar de digitar
+  useEffect(() => {
+    // Limpar timeout anterior se existir
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Criar novo timeout
+    searchTimeoutRef.current = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, 300);
+
+    // Cleanup
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchInput]);
+
+  // Efeito para carregar linhas quando searchQuery mudar (após debounce)
+  useEffect(() => {
     if (tabelaPrecoId) {
+      // Não mostrar loading durante busca para não perder foco no input
       if (searchQuery) {
-        loadLinhas(searchQuery);
+        loadLinhas(searchQuery, true);
       } else {
-        loadLinhas();
+        loadLinhas(undefined, true);
       }
     }
-  }, [searchQuery]);
+  }, [searchQuery, tabelaPrecoId]);
 
   // Avisar antes de fechar a aba/janela se houver alterações pendentes
   useEffect(() => {
@@ -101,12 +162,8 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
               // Se confirmar, limpar estado e navegar
               dirtyRef.current.clear();
               setHasUnsavedChanges(false);
-              pendingNavigationRef.current = null;
               // Usar router.push para navegação do Next.js
               router.push(targetUrl);
-            } else {
-              // Se cancelar, garantir que não navegue
-              pendingNavigationRef.current = null;
             }
             return false;
           }
@@ -119,8 +176,73 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
     return () => document.removeEventListener("click", handleRouteChange, true);
   }, [hasUnsavedChanges, router]);
 
-  async function loadLinhas(q?: string) {
-    setLoading(true);
+  async function loadCategorias() {
+    const res = await fetch("/api/categorias");
+    const data = await res.json();
+    if (data.ok) setCategorias(data.data?.items || []);
+  }
+
+  async function loadFamilias() {
+    const res = await fetch("/api/familias");
+    const data = await res.json();
+    if (data.ok) {
+      // Igual à página de criação que funciona
+      setFamilias(data.data?.items || []);
+    }
+  }
+
+  async function loadProdutos() {
+    const res = await fetch("/api/produtos?limit=1000");
+    const data = await res.json();
+    if (data.ok) {
+      const produtosMapeados = (data.data?.items || []).map((p: any) => ({
+        ...p,
+        categoriaId: p.categoria?.id || p.categoriaId,
+        categoriaNome: p.categoria?.nome || "",
+        familiaId: p.familia?.id || p.familiaId,
+        familiaNome: p.familia?.nome || "",
+        variacoes: [],
+      }));
+      setProdutos(produtosMapeados);
+    }
+  }
+
+  async function loadVariacoesProduto(produtoId: string) {
+    try {
+      const res = await fetch(`/api/tabela-preco`);
+      const data = await res.json();
+      
+      if (data.ok) {
+        const linhas = data.data?.items || [];
+        const medidas = linhas
+          .filter((l: any) => l.produtoId === produtoId)
+          .map((l: any) => ({ medida_cm: l.medida_cm }))
+          .sort((a: any, b: any) => a.medida_cm - b.medida_cm);
+        
+        setVariacoesPorProduto((prev) => ({
+          ...prev,
+          [produtoId]: medidas,
+        }));
+
+        if (medidas.length > 0) {
+          setVariacoesSelecionadas((prev) => {
+            const newSet = new Set(medidas.map((m: any) => m.medida_cm));
+            return {
+              ...prev,
+              [produtoId]: newSet,
+            };
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao carregar variações:", error);
+    }
+  }
+
+  async function loadLinhas(q?: string, skipLoading = false) {
+    if (!skipLoading) {
+      setLoading(true);
+    }
     try {
       const url = q ? `/api/tabelas-preco/${tabelaPrecoId}/linhas?q=${encodeURIComponent(q)}` : `/api/tabelas-preco/${tabelaPrecoId}/linhas`;
       console.log("Carregando linhas da URL:", url);
@@ -152,7 +274,9 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
       console.error("Erro ao carregar linhas:", e);
       setError(e?.message || "Erro ao carregar linhas");
     } finally {
-      setLoading(false);
+      if (!skipLoading) {
+        setLoading(false);
+      }
     }
   }
 
@@ -594,28 +718,207 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
     return "";
   }
 
+  function toggleCategoria(categoriaId: string) {
+    const newSet = new Set(categoriasSelecionadas);
+    if (newSet.has(categoriaId)) {
+      newSet.delete(categoriaId);
+      // Igual à página de criação que funciona
+      const familiasDaCategoria = familias.filter((f: any) => f.categoriaId === categoriaId).map((f: any) => f.id);
+      familiasDaCategoria.forEach((fId) => {
+        familiasSelecionadas.delete(fId);
+        const produtosDaFamilia = produtos.filter((p) => p.familiaId === fId).map((p) => p.id);
+        produtosDaFamilia.forEach((pId) => {
+          produtosSelecionados.delete(pId);
+          delete variacoesSelecionadas[pId];
+        });
+      });
+      setFamiliasSelecionadas(new Set(familiasSelecionadas));
+      setProdutosSelecionados(new Set(produtosSelecionados));
+      setVariacoesSelecionadas({ ...variacoesSelecionadas });
+    } else {
+      newSet.add(categoriaId);
+    }
+    setCategoriasSelecionadas(newSet);
+  }
+
+  function toggleFamilia(familiaId: string) {
+    const newSet = new Set(familiasSelecionadas);
+    if (newSet.has(familiaId)) {
+      newSet.delete(familiaId);
+      const produtosDaFamilia = produtos.filter((p) => p.familiaId === familiaId).map((p) => p.id);
+      produtosDaFamilia.forEach((pId) => {
+        produtosSelecionados.delete(pId);
+        delete variacoesSelecionadas[pId];
+      });
+      setProdutosSelecionados(new Set(produtosSelecionados));
+      setVariacoesSelecionadas({ ...variacoesSelecionadas });
+    } else {
+      newSet.add(familiaId);
+    }
+    setFamiliasSelecionadas(newSet);
+  }
+
+  function toggleProduto(produtoId: string) {
+    const newSet = new Set(produtosSelecionados);
+    if (newSet.has(produtoId)) {
+      newSet.delete(produtoId);
+      delete variacoesSelecionadas[produtoId];
+      setVariacoesSelecionadas({ ...variacoesSelecionadas });
+    } else {
+      newSet.add(produtoId);
+      loadVariacoesProduto(produtoId);
+    }
+    setProdutosSelecionados(newSet);
+  }
+
+  function toggleVariacao(produtoId: string, medida_cm: number) {
+    setVariacoesSelecionadas((prev) => {
+      const produtoVariacoes = prev[produtoId] || new Set<number>();
+      const newSet = new Set(produtoVariacoes);
+      if (newSet.has(medida_cm)) {
+        newSet.delete(medida_cm);
+      } else {
+        newSet.add(medida_cm);
+      }
+      return {
+        ...prev,
+        [produtoId]: newSet,
+      };
+    });
+  }
+
+  function selecionarTodasVariacoes(produtoId: string) {
+    const variacoes = variacoesPorProduto[produtoId] || [];
+    setVariacoesSelecionadas((prev) => ({
+      ...prev,
+      [produtoId]: new Set(variacoes.map((v) => v.medida_cm)),
+    }));
+  }
+
+  function deselecionarTodasVariacoes(produtoId: string) {
+    setVariacoesSelecionadas((prev) => ({
+      ...prev,
+      [produtoId]: new Set<number>(),
+    }));
+  }
+
+  function getFamiliasFiltradas() {
+    let familiasFilt = familias;
+    
+    if (categoriasSelecionadas.size > 0) {
+      // Igual à página de criação que funciona
+      familiasFilt = familiasFilt.filter((f: any) => categoriasSelecionadas.has(f.categoriaId));
+    }
+    
+    if (searchFamiliaAdd) {
+      familiasFilt = familiasFilt.filter((f: any) =>
+        f.nome.toLowerCase().includes(searchFamiliaAdd.toLowerCase())
+      );
+    }
+    
+    return familiasFilt;
+  }
+
+  function getProdutosFiltrados() {
+    let produtosFilt = produtos;
+    
+    if (categoriasSelecionadas.size > 0) {
+      produtosFilt = produtosFilt.filter((p) => categoriasSelecionadas.has(p.categoriaId));
+    }
+    
+    if (familiasSelecionadas.size > 0) {
+      produtosFilt = produtosFilt.filter((p) => familiasSelecionadas.has(p.familiaId));
+    }
+    
+    if (searchProdutoAdd) {
+      const searchLower = searchProdutoAdd.toLowerCase();
+      produtosFilt = produtosFilt.filter((p) =>
+        p.nome?.toLowerCase().includes(searchLower) ||
+        p.categoriaNome?.toLowerCase().includes(searchLower) ||
+        p.familiaNome?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    return produtosFilt;
+  }
+
+  async function adicionarProdutos() {
+    if (produtosSelecionados.size === 0) {
+      alert("Selecione pelo menos um produto para adicionar");
+      return;
+    }
+
+    const totalVariacoes = Array.from(produtosSelecionados).reduce((acc, produtoId) => {
+      return acc + (variacoesSelecionadas[produtoId]?.size || 0);
+    }, 0);
+
+    if (totalVariacoes === 0) {
+      alert("Selecione pelo menos uma variação para adicionar");
+      return;
+    }
+
+    setAdicionando(true);
+    try {
+      const selecoes = Array.from(produtosSelecionados).map((produtoId) => ({
+        produtoId,
+        medidas: Array.from(variacoesSelecionadas[produtoId] || []),
+      }));
+
+      const res = await fetch(`/api/tabelas-preco/${tabelaPrecoId}/copiar-linhas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selecoes }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.ok) {
+        const msg = data.data.message || `${data.data.copiadas} linha(s) adicionada(s) com sucesso!`;
+        alert(msg);
+        setShowAddProductsModal(false);
+        // Limpar seleções
+        setCategoriasSelecionadas(new Set());
+        setFamiliasSelecionadas(new Set());
+        setProdutosSelecionados(new Set());
+        setVariacoesSelecionadas({});
+        setVariacoesPorProduto({});
+        // Recarregar linhas
+        await loadLinhas(searchQuery || undefined);
+      } else {
+        alert(`Erro ao adicionar produtos: ${data.error || data.details || "Erro desconhecido"}`);
+      }
+    } catch (error) {
+      console.error("Erro ao adicionar produtos:", error);
+      alert("Erro ao adicionar produtos. Verifique o console para mais detalhes.");
+    } finally {
+      setAdicionando(false);
+    }
+  }
+
   const linhasFiltradas = linhas;
+  // Calcular posições sticky: w-28(7rem=112px), w-32(8rem=128px), w-48(12rem=192px), w-24(6rem=96px)
+  // Considerando padding px-3 (12px cada lado) e bordas
   const columns = [
-    { key: "categoriaNome", header: "Categoria", readonly: true },
-    { key: "familiaNome", header: "Família", readonly: true },
-    { key: "produtoNome", header: "Nome Produto", readonly: true },
-    { key: "medida_cm", header: "Medida (cm)", readonly: true },
-    { key: "largura_cm", header: "Largura (cm)" },
-    { key: "profundidade_cm", header: "Profundidade (cm)" },
-    { key: "altura_cm", header: "Altura (cm)" },
-    { key: "largura_assento_cm", header: "Larg. Assento (cm)" },
-    { key: "altura_assento_cm", header: "Alt. Assento (cm)" },
-    { key: "largura_braco_cm", header: "Larg. Braço (cm)" },
-    { key: "metragem_tecido_m", header: "Met. Tecido (m)" },
-    { key: "metragem_couro_m", header: "Met. Couro (m)" },
-    { key: "preco_grade_1000", header: "1000" },
-    { key: "preco_grade_2000", header: "2000" },
-    { key: "preco_grade_3000", header: "3000" },
-    { key: "preco_grade_4000", header: "4000" },
-    { key: "preco_grade_5000", header: "5000" },
-    { key: "preco_grade_6000", header: "6000" },
-    { key: "preco_grade_7000", header: "7000" },
-    { key: "preco_couro", header: "Couro" },
+    { key: "categoriaNome", header: "Categoria", readonly: true, width: "w-28", sticky: true, stickyLeft: 0 },
+    { key: "familiaNome", header: "Família", readonly: true, width: "w-32", sticky: true, stickyLeft: 112 },
+    { key: "produtoNome", header: "Nome Produto", readonly: true, width: "w-48", sticky: true, stickyLeft: 240 },
+    { key: "medida_cm", header: "Medida (cm)", readonly: true, width: "w-24", sticky: true, stickyLeft: 432 },
+    { key: "largura_cm", header: "Largura (cm)", width: "w-28", isDimension: true },
+    { key: "profundidade_cm", header: "Profundidade (cm)", width: "w-32", isDimension: true },
+    { key: "altura_cm", header: "Altura (cm)", width: "w-28", isDimension: true },
+    { key: "largura_assento_cm", header: "Larg. Assento (cm)", width: "w-32", isDimension: true },
+    { key: "altura_assento_cm", header: "Alt. Assento (cm)", width: "w-32", isDimension: true },
+    { key: "largura_braco_cm", header: "Larg. Braço (cm)", width: "w-32", isDimension: true },
+    { key: "metragem_tecido_m", header: "Met. Tecido (m)", width: "w-32", isDimension: true },
+    { key: "metragem_couro_m", header: "Met. Couro (m)", width: "w-32", isDimension: true },
+    { key: "preco_grade_1000", header: "1000", width: "w-28", isPrice: true },
+    { key: "preco_grade_2000", header: "2000", width: "w-28", isPrice: true },
+    { key: "preco_grade_3000", header: "3000", width: "w-28", isPrice: true },
+    { key: "preco_grade_4000", header: "4000", width: "w-28", isPrice: true },
+    { key: "preco_grade_5000", header: "5000", width: "w-28", isPrice: true },
+    { key: "preco_grade_6000", header: "6000", width: "w-28", isPrice: true },
+    { key: "preco_grade_7000", header: "7000", width: "w-28", isPrice: true },
+    { key: "preco_couro", header: "Couro", width: "w-28", isPrice: true },
   ];
 
   return (
@@ -652,12 +955,18 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
           >
             Validar Tabela
           </button>
+          <button
+            onClick={() => setShowAddProductsModal(true)}
+            className="rounded-lg bg-green-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+          >
+            Adicionar Produtos
+          </button>
         </div>
       </div>
 
       <AdminToolbar
-        searchValue={searchQuery}
-        onSearchChange={setSearchQuery}
+        searchValue={searchInput}
+        onSearchChange={setSearchInput}
         searchPlaceholder="Buscar por categoria, família, produto ou medida..."
       />
 
@@ -690,18 +999,22 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
           </div>
 
           <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-            <table className="w-full border-collapse">
+            <table className="w-full border-collapse table-fixed">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
-                  {columns.map((col) => (
-                    <th
-                      key={col.key}
-                      className="border-r border-gray-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 last:border-r-0"
-                    >
-                      {col.header}
-                    </th>
-                  ))}
-                  <th className="border-r border-gray-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 last:border-r-0">
+                  {columns.map((col) => {
+                      const bgColor = col.isPrice ? "bg-blue-50" : col.isDimension ? "bg-green-50" : "bg-gray-50";
+                      return (
+                        <th
+                          key={col.key}
+                          className={`border-r border-gray-200 px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 last:border-r-0 ${col.width || ""} ${bgColor} ${col.sticky ? "sticky z-20" : ""}`}
+                          style={col.sticky ? { left: `${col.stickyLeft}px` } : {}}
+                        >
+                          {col.header}
+                        </th>
+                      );
+                    })}
+                  <th className="border-r border-gray-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 last:border-r-0 w-24">
                     Ações
                   </th>
                 </tr>
@@ -718,25 +1031,40 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                       const errorClass = getCellErrorClass(linha.produtoId, linha.medida_cm, col.key as keyof LinhaPreco);
                       const fieldKey = getFieldKey(linha.produtoId, linha.medida_cm, col.key);
                       const isFieldDirty = dirtyRef.current.has(fieldKey) && !col.isText && !col.readonly;
+                      const isPrice = col.isPrice;
+                      const isDimension = col.isDimension;
+
+                      const bgColor = isPrice ? "bg-blue-50/30" : isDimension ? "bg-green-50/30" : "bg-white";
+                      const stickyBg = col.sticky ? (isPrice ? "bg-blue-50" : isDimension ? "bg-green-50" : "bg-white") : "";
 
                       return (
-                        <td key={col.key} className="border-r border-gray-100 px-4 py-2 last:border-r-0">
+                        <td 
+                          key={col.key} 
+                          className={`border-r border-gray-100 px-3 py-2.5 last:border-r-0 ${col.width || ""} ${bgColor} ${col.sticky ? `sticky z-10 ${stickyBg}` : ""}`}
+                          style={col.sticky ? { left: `${col.stickyLeft}px` } : {}}
+                        >
                           {isReadonly ? (
                             <span className="text-sm font-medium text-gray-900">{String(value)}</span>
                           ) : (
                             <input
                               type="number"
+                              step={isPrice ? "0.01" : isDimension ? "0.1" : "1"}
                               value={value || ""}
                               onChange={(e) =>
                                 handleFieldChange(linha.produtoId, linha.medida_cm, col.key as keyof LinhaPreco, e.target.value)
                               }
-                              className={`w-full rounded border px-2 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 ${
+                              placeholder={isPrice ? "0,00" : isDimension ? "0,0" : ""}
+                              className={`w-full rounded border px-2.5 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 ${
                                 errorClass
                                   ? "border-red-500 bg-red-100 text-red-900 focus:ring-red-500"
                                   : isFieldDirty
                                   ? "border-yellow-400 bg-yellow-50 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500"
                                   : isReadonly
                                   ? "border-gray-300 bg-gray-50 text-gray-900 cursor-not-allowed"
+                                  : isPrice
+                                  ? "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 font-medium"
+                                  : isDimension
+                                  ? "border-gray-300 bg-white text-gray-900 focus:border-green-500 focus:ring-green-500"
                                   : "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500"
                               }`}
                             />
@@ -744,10 +1072,10 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                         </td>
                       );
                     })}
-                    <td className="border-r border-gray-100 px-4 py-2 last:border-r-0">
+                    <td className="border-r border-gray-100 px-3 py-2.5 last:border-r-0 w-24">
                       <button
                         onClick={() => handleDelete(linha.produtoId, linha.medida_cm)}
-                        className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500"
+                        className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 whitespace-nowrap"
                       >
                         Excluir
                       </button>
@@ -822,6 +1150,209 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-gray-400"
               >
                 {saving ? "Importando..." : "Confirmar Importação"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Adicionar Produtos */}
+      {showAddProductsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg border border-gray-200 bg-white p-6 shadow-xl">
+            <h2 className="mb-4 text-xl font-bold text-gray-900">Adicionar Produtos à Tabela</h2>
+            
+            <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <p className="text-sm font-medium text-blue-900">
+                Selecione as categorias, famílias, produtos e variações que deseja adicionar a esta tabela de preços.
+                As linhas serão geradas a partir da tabela de preços geral (Gestão Global).
+              </p>
+            </div>
+
+            {/* Seleção de Categorias */}
+            <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4">
+              <h3 className="mb-3 text-lg font-semibold text-gray-900">1. Categorias</h3>
+              <input
+                type="text"
+                value={searchCategoriaAdd}
+                onChange={(e) => setSearchCategoriaAdd(e.target.value)}
+                placeholder="Buscar categoria..."
+                className="mb-3 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <div className="max-h-48 space-y-2 overflow-y-auto">
+                {categorias
+                  .filter((cat) => 
+                    !searchCategoriaAdd || cat.nome.toLowerCase().includes(searchCategoriaAdd.toLowerCase())
+                  )
+                  .map((cat) => (
+                    <label
+                      key={cat.id}
+                      className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 hover:bg-gray-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={categoriasSelecionadas.has(cat.id)}
+                        onChange={() => toggleCategoria(cat.id)}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-medium text-gray-900">{cat.nome}</span>
+                    </label>
+                  ))}
+              </div>
+            </div>
+
+            {/* Seleção de Famílias */}
+            {categoriasSelecionadas.size > 0 && (
+              <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4">
+                <h3 className="mb-3 text-lg font-semibold text-gray-900">2. Famílias</h3>
+                <input
+                  type="text"
+                  value={searchFamiliaAdd}
+                  onChange={(e) => setSearchFamiliaAdd(e.target.value)}
+                  placeholder="Buscar família..."
+                  className="mb-3 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="max-h-48 space-y-2 overflow-y-auto">
+                  {getFamiliasFiltradas().length === 0 ? (
+                    <p className="text-sm text-gray-500">Nenhuma família encontrada para as categorias selecionadas</p>
+                  ) : (
+                    getFamiliasFiltradas().map((fam) => (
+                      <label
+                        key={fam.id}
+                        className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={familiasSelecionadas.has(fam.id)}
+                          onChange={() => toggleFamilia(fam.id)}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                        />
+                        <span className="text-sm font-medium text-gray-900">{fam.nome}</span>
+                        <span className="text-xs text-gray-500">
+                          ({categorias.find((c) => c.id === fam.categoriaId)?.nome || ""})
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Seleção de Produtos */}
+            {(categoriasSelecionadas.size > 0 || familiasSelecionadas.size > 0) && (
+              <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4">
+                <h3 className="mb-3 text-lg font-semibold text-gray-900">3. Produtos</h3>
+                <input
+                  type="text"
+                  value={searchProdutoAdd}
+                  onChange={(e) => setSearchProdutoAdd(e.target.value)}
+                  placeholder="Buscar produto..."
+                  className="mb-3 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="max-h-96 space-y-2 overflow-y-auto">
+                  {getProdutosFiltrados().length === 0 ? (
+                    <p className="text-sm text-gray-500">Nenhum produto encontrado</p>
+                  ) : (
+                    getProdutosFiltrados().map((prod) => (
+                      <div key={prod.id} className="rounded-lg border border-gray-200 bg-white p-3">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={produtosSelecionados.has(prod.id)}
+                            onChange={() => toggleProduto(prod.id)}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                          />
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-gray-900">{prod.nome}</span>
+                            <div className="text-xs text-gray-500">
+                              {prod.categoriaNome} / {prod.familiaNome}
+                            </div>
+                          </div>
+                        </label>
+                        
+                        {/* Variações do produto */}
+                        {produtosSelecionados.has(prod.id) && variacoesPorProduto[prod.id] && (
+                          <div className="mt-3 ml-7 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                            <div className="mb-2 flex items-center justify-between">
+                              <span className="text-xs font-semibold text-gray-700">Variações disponíveis:</span>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => selecionarTodasVariacoes(prod.id)}
+                                  className="text-xs text-blue-600 hover:text-blue-800"
+                                >
+                                  Selecionar Todas
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deselecionarTodasVariacoes(prod.id)}
+                                  className="text-xs text-gray-600 hover:text-gray-800"
+                                >
+                                  Deselecionar Todas
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {variacoesPorProduto[prod.id].map((variacao) => {
+                                const isSelected = variacoesSelecionadas[prod.id]?.has(variacao.medida_cm) || false;
+                                return (
+                                  <label
+                                    key={variacao.medida_cm}
+                                    className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 cursor-pointer ${
+                                      isSelected
+                                        ? "border-blue-500 bg-blue-50"
+                                        : "border-gray-300 bg-white hover:bg-gray-50"
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => toggleVariacao(prod.id, variacao.medida_cm)}
+                                      className="h-3 w-3 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500"
+                                    />
+                                    <span className="text-xs font-medium text-gray-900">
+                                      {variacao.medida_cm}cm
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                            {variacoesPorProduto[prod.id].length === 0 && (
+                              <p className="text-xs text-gray-500">Nenhuma variação encontrada na tabela geral</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="mt-3 text-sm font-medium text-gray-700">
+                  {produtosSelecionados.size} produto(s) selecionado(s)
+                </div>
+              </div>
+            )}
+
+            {/* Botões do Modal */}
+            <div className="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4">
+              <button
+                onClick={() => {
+                  setShowAddProductsModal(false);
+                  setCategoriasSelecionadas(new Set());
+                  setFamiliasSelecionadas(new Set());
+                  setProdutosSelecionados(new Set());
+                  setVariacoesSelecionadas({});
+                  setVariacoesPorProduto({});
+                }}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={adicionarProdutos}
+                disabled={adicionando || produtosSelecionados.size === 0}
+                className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {adicionando ? "Adicionando..." : "Adicionar Produtos"}
               </button>
             </div>
           </div>

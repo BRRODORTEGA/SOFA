@@ -38,6 +38,7 @@ export default function TabelaPrecoGlobal() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState(""); // Estado separado para o input
   const [showImportPreview, setShowImportPreview] = useState(false);
   const [importData, setImportData] = useState<LinhaPreco[]>([]);
   const dirtyRef = useRef<Set<string>>(new Set()); // Chave: produtoId_medida_cm_field
@@ -47,16 +48,39 @@ export default function TabelaPrecoGlobal() {
   const pendingNavigationRef = useRef<string | null>(null);
   const [selectedLines, setSelectedLines] = useState<Set<string>>(new Set()); // Chave: produtoId_medida_cm
   const [deleting, setDeleting] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadLinhas();
   }, []);
 
+  // Debounce para busca: aguarda 300ms após parar de digitar
   useEffect(() => {
+    // Limpar timeout anterior se existir
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Criar novo timeout
+    searchTimeoutRef.current = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, 300);
+
+    // Cleanup
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchInput]);
+
+  // Efeito para carregar linhas quando searchQuery mudar (após debounce)
+  useEffect(() => {
+    // Não mostrar loading durante busca para não perder foco no input
     if (searchQuery) {
-      loadLinhas(searchQuery);
+      loadLinhas(searchQuery, true);
     } else {
-      loadLinhas();
+      loadLinhas(undefined, true);
     }
   }, [searchQuery]);
 
@@ -117,8 +141,10 @@ export default function TabelaPrecoGlobal() {
     return () => document.removeEventListener("click", handleRouteChange, true);
   }, [hasUnsavedChanges, router]);
 
-  async function loadLinhas(q?: string) {
-    setLoading(true);
+  async function loadLinhas(q?: string, skipLoading = false) {
+    if (!skipLoading) {
+      setLoading(true);
+    }
     try {
       const url = q ? `/api/tabela-preco?q=${encodeURIComponent(q)}` : `/api/tabela-preco`;
       const res = await fetch(url);
@@ -143,8 +169,11 @@ export default function TabelaPrecoGlobal() {
       }
     } catch (e) {
       setError("Erro ao carregar dados");
+    } finally {
+      if (!skipLoading) {
+        setLoading(false);
+      }
     }
-    setLoading(false);
   }
 
   // Função manual para salvar alterações (não é mais automática)
@@ -755,27 +784,30 @@ export default function TabelaPrecoGlobal() {
     );
   }
 
+  // Calcular posições sticky: w-28(7rem=112px), w-32(8rem=128px), w-48(12rem=192px), w-24(6rem=96px)
+  const stickyPositions = [0, 112, 240, 432];
+  
   const columns = [
-    { key: "categoriaNome", label: "Categoria", readonly: true, isText: true },
-    { key: "familiaNome", label: "Família", readonly: true, isText: true },
-    { key: "produtoNome", label: "Nome Produto", readonly: true, isText: true },
-    { key: "medida_cm", label: "Medida (cm)", readonly: true },
-    { key: "largura_cm", label: "Largura (cm)", readonly: false },
-    { key: "profundidade_cm", label: "Profundidade (cm)", readonly: false },
-    { key: "altura_cm", label: "Altura (cm)", readonly: false },
-    { key: "largura_assento_cm", label: "Larg. Assento (cm)", readonly: false },
-    { key: "altura_assento_cm", label: "Alt. Assento (cm)", readonly: false },
-    { key: "largura_braco_cm", label: "Larg. Braço (cm)", readonly: false },
-    { key: "metragem_tecido_m", label: "Met. Tecido (m)", readonly: false },
-    { key: "metragem_couro_m", label: "Met. Couro (m)", readonly: false },
-    { key: "preco_grade_1000", label: "1000", readonly: false },
-    { key: "preco_grade_2000", label: "2000", readonly: false },
-    { key: "preco_grade_3000", label: "3000", readonly: false },
-    { key: "preco_grade_4000", label: "4000", readonly: false },
-    { key: "preco_grade_5000", label: "5000", readonly: false },
-    { key: "preco_grade_6000", label: "6000", readonly: false },
-    { key: "preco_grade_7000", label: "7000", readonly: false },
-    { key: "preco_couro", label: "Couro", readonly: false },
+    { key: "categoriaNome", label: "Categoria", readonly: true, isText: true, width: "w-28", sticky: true, stickyLeft: stickyPositions[0] },
+    { key: "familiaNome", label: "Família", readonly: true, isText: true, width: "w-32", sticky: true, stickyLeft: stickyPositions[1] },
+    { key: "produtoNome", label: "Nome Produto", readonly: true, isText: true, width: "w-48", sticky: true, stickyLeft: stickyPositions[2] },
+    { key: "medida_cm", label: "Medida (cm)", readonly: true, width: "w-24", sticky: true, stickyLeft: stickyPositions[3] },
+    { key: "largura_cm", label: "Largura (cm)", readonly: false, width: "w-28", isDimension: true },
+    { key: "profundidade_cm", label: "Profundidade (cm)", readonly: false, width: "w-32", isDimension: true },
+    { key: "altura_cm", label: "Altura (cm)", readonly: false, width: "w-28", isDimension: true },
+    { key: "largura_assento_cm", label: "Larg. Assento (cm)", readonly: false, width: "w-32", isDimension: true },
+    { key: "altura_assento_cm", label: "Alt. Assento (cm)", readonly: false, width: "w-32", isDimension: true },
+    { key: "largura_braco_cm", label: "Larg. Braço (cm)", readonly: false, width: "w-32", isDimension: true },
+    { key: "metragem_tecido_m", label: "Met. Tecido (m)", readonly: false, width: "w-32", isDimension: true },
+    { key: "metragem_couro_m", label: "Met. Couro (m)", readonly: false, width: "w-32", isDimension: true },
+    { key: "preco_grade_1000", label: "1000", readonly: false, width: "w-28", isPrice: true },
+    { key: "preco_grade_2000", label: "2000", readonly: false, width: "w-28", isPrice: true },
+    { key: "preco_grade_3000", label: "3000", readonly: false, width: "w-28", isPrice: true },
+    { key: "preco_grade_4000", label: "4000", readonly: false, width: "w-28", isPrice: true },
+    { key: "preco_grade_5000", label: "5000", readonly: false, width: "w-28", isPrice: true },
+    { key: "preco_grade_6000", label: "6000", readonly: false, width: "w-28", isPrice: true },
+    { key: "preco_grade_7000", label: "7000", readonly: false, width: "w-28", isPrice: true },
+    { key: "preco_couro", label: "Couro", readonly: false, width: "w-28", isPrice: true },
   ];
 
   return (
@@ -852,9 +884,12 @@ export default function TabelaPrecoGlobal() {
         <input
           type="text"
           placeholder="Buscar por categoria, família, produto ou medida..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          value={searchInput}
+          onChange={(e) => {
+            setSearchInput(e.target.value);
+          }}
           className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          autoComplete="off"
         />
       </div>
 
@@ -879,10 +914,10 @@ export default function TabelaPrecoGlobal() {
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-        <table className="min-w-full text-base">
+        <table className="w-full border-collapse table-fixed">
           <thead>
             <tr className="bg-gradient-to-r from-gray-50 to-gray-100">
-              <th className="border-b border-gray-200 px-3 py-3 text-center text-xs font-semibold text-gray-700">
+              <th className="border-b border-r border-gray-200 px-3 py-3 text-center text-xs font-semibold text-gray-700 w-12 sticky z-20 bg-gray-50" style={{ left: 0 }}>
                 <input
                   type="checkbox"
                   checked={linhas.length > 0 && selectedLines.size === linhas.length}
@@ -891,12 +926,19 @@ export default function TabelaPrecoGlobal() {
                   title="Selecionar todas"
                 />
               </th>
-              {columns.map((col) => (
-                <th key={col.key} className="border-b border-gray-200 px-3 py-3 text-center text-xs font-semibold text-gray-700">
-                  {col.label}
-                </th>
-              ))}
-              <th className="border-b border-gray-200 px-3 py-3 text-center text-xs font-semibold text-gray-700">Ações</th>
+              {columns.map((col) => {
+                const bgColor = col.isPrice ? "bg-blue-50" : col.isDimension ? "bg-green-50" : "bg-gray-50";
+                return (
+                  <th 
+                    key={col.key} 
+                    className={`border-b border-r border-gray-200 px-3 py-3 text-center text-xs font-semibold text-gray-700 ${col.width || ""} ${bgColor} ${col.sticky ? "sticky z-20" : ""}`}
+                    style={col.sticky ? { left: `${col.stickyLeft + 48}px` } : {}}
+                  >
+                    {col.label}
+                  </th>
+                );
+              })}
+              <th className="border-b border-gray-200 px-3 py-3 text-center text-xs font-semibold text-gray-700 w-24">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -914,7 +956,7 @@ export default function TabelaPrecoGlobal() {
                 
                 return (
                   <tr key={linhaKey} className={`bg-white transition-colors hover:bg-blue-50 ${isSelected ? "bg-blue-100" : ""}`}>
-                    <td className="border-r border-gray-200 px-3 py-2 text-center">
+                    <td className="border-r border-gray-200 px-3 py-2.5 text-center sticky z-10 bg-white" style={{ left: 0 }}>
                       <input
                         type="checkbox"
                         checked={isSelected}
@@ -926,8 +968,17 @@ export default function TabelaPrecoGlobal() {
                       const hasError = linhaErrors.has(col.key);
                       const fieldKey = getFieldKey(l.produtoId, l.medida_cm, col.key);
                       const isFieldDirty = dirtyRef.current.has(fieldKey) && !col.isText && !col.readonly;
+                      const isPrice = col.isPrice;
+                      const isDimension = col.isDimension;
+                      const bgColor = isPrice ? "bg-blue-50/30" : isDimension ? "bg-green-50/30" : "bg-white";
+                      const stickyBg = col.sticky ? (isPrice ? "bg-blue-50" : isDimension ? "bg-green-50" : "bg-white") : "";
+                      
                       return (
-                        <td key={col.key} className="border-r border-gray-200 px-2 py-2 last:border-r-0">
+                        <td 
+                          key={col.key} 
+                          className={`border-r border-gray-200 px-3 py-2.5 last:border-r-0 ${col.width || ""} ${bgColor} ${col.sticky ? `sticky z-10 ${stickyBg}` : ""}`}
+                          style={col.sticky ? { left: `${col.stickyLeft + 48}px` } : {}}
+                        >
                           {col.isText ? (
                             <div className="px-2 py-2 text-center text-sm font-medium text-gray-900">
                               {String(l[col.key as keyof LinhaPreco] || "")}
@@ -935,15 +986,20 @@ export default function TabelaPrecoGlobal() {
                           ) : (
                             <input
                               type="number"
-                              step={col.key.includes("metragem") || col.key.includes("preco") ? "0.01" : "1"}
+                              step={isPrice ? "0.01" : isDimension ? "0.1" : "1"}
                               min="0"
-                              className={`w-full rounded-lg border px-2 py-2 text-center text-sm font-medium focus:outline-none focus:ring-2 ${
+                              placeholder={isPrice ? "0,00" : isDimension ? "0,0" : ""}
+                              className={`w-full rounded-lg border px-2.5 py-2 text-center text-sm font-medium focus:outline-none focus:ring-2 ${
                                 hasError
                                   ? "border-red-500 bg-red-100 text-red-900 focus:ring-red-500"
                                   : isFieldDirty
                                   ? "border-yellow-400 bg-yellow-50 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500"
                                   : col.readonly
                                   ? "border-gray-300 bg-gray-50 text-gray-900 cursor-not-allowed"
+                                  : isPrice
+                                  ? "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 font-medium"
+                                  : isDimension
+                                  ? "border-gray-300 bg-white text-gray-900 focus:border-green-500 focus:ring-green-500"
                                   : "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500"
                               }`}
                               value={l[col.key as keyof LinhaPreco] || 0}
@@ -973,10 +1029,10 @@ export default function TabelaPrecoGlobal() {
                         </td>
                       );
                     })}
-                  <td className="border-r border-gray-200 px-3 py-2 text-center">
+                  <td className="border-r border-gray-200 px-3 py-2.5 text-center w-24">
                     <button
                       onClick={() => deleteLinha(l.produtoId, l.medida_cm)}
-                      className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                      className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 whitespace-nowrap"
                     >
                       Excluir
                     </button>
