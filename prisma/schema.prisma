@@ -401,6 +401,9 @@ model SiteConfig {
   // ID da tabela de preço que está vigente/ativa no momento
   tabelaPrecoVigenteId String?
 
+  // Produtos ativos da tabela vigente (IDs dos produtos que estarão disponíveis no site)
+  produtosAtivosTabelaVigente String[] @default([])
+
   // Ordem de exibição das categorias (opcional, para personalizar a ordem)
   ordemCategorias String[] @default([])
 

@@ -6,6 +6,25 @@ export async function GET(req: Request) {
   try {
     const { limit, offset, q } = paginateParams(new URL(req.url).searchParams);
     
+    // Buscar configurações do site para verificar produtos ativos da tabela vigente
+    const siteConfig = await prisma.siteConfig.findUnique({
+      where: { id: "site-config" },
+      select: {
+        tabelaPrecoVigenteId: true,
+        produtosAtivosTabelaVigente: true,
+      },
+    });
+
+    // Preparar filtro de produtos ativos para contagem
+    const produtosAtivosFilterContagem: any = { status: true };
+    if (siteConfig?.tabelaPrecoVigenteId) {
+      if (siteConfig.produtosAtivosTabelaVigente && siteConfig.produtosAtivosTabelaVigente.length > 0) {
+        produtosAtivosFilterContagem.id = { in: siteConfig.produtosAtivosTabelaVigente };
+      } else {
+        produtosAtivosFilterContagem.id = { in: [] };
+      }
+    }
+    
     // Construir filtro: sempre incluir ativo: true, e adicionar busca se houver
     const where: any = { ativo: true };
     if (q) {
@@ -22,7 +41,7 @@ export async function GET(req: Request) {
           _count: {
             select: {
               produtos: {
-                where: { status: true }
+                where: produtosAtivosFilterContagem
               }
             }
           }
@@ -35,7 +54,7 @@ export async function GET(req: Request) {
           _count: {
             select: {
               produtos: {
-                where: { status: true }
+                where: produtosAtivosFilterContagem
               }
             }
           }

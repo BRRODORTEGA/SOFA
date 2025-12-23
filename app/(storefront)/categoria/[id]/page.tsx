@@ -11,9 +11,29 @@ export default async function CategoriaPage({ params }: { params: { id: string }
     notFound();
   }
 
-  // Buscar todos os produtos da categoria para popular os filtros
+  // Buscar configurações do site para verificar produtos ativos da tabela vigente
+  const siteConfig = await prisma.siteConfig.findUnique({
+    where: { id: "site-config" },
+    select: {
+      tabelaPrecoVigenteId: true,
+      produtosAtivosTabelaVigente: true,
+    },
+  });
+
+  // Preparar filtro de produtos ativos
+  const whereFilter: any = { categoriaId: params.id, status: true };
+  if (siteConfig?.tabelaPrecoVigenteId) {
+    if (siteConfig.produtosAtivosTabelaVigente && siteConfig.produtosAtivosTabelaVigente.length > 0) {
+      whereFilter.id = { in: siteConfig.produtosAtivosTabelaVigente };
+    } else {
+      // Se houver tabela vigente mas nenhum produto ativo, não mostrar nenhum produto
+      whereFilter.id = { in: [] };
+    }
+  }
+
+  // Buscar produtos da categoria que estão ativos na tabela vigente
   const produtosIniciais = await prisma.produto.findMany({
-    where: { categoriaId: params.id, status: true },
+    where: whereFilter,
     include: {
       familia: { select: { id: true, nome: true } },
       categoria: { select: { nome: true } },

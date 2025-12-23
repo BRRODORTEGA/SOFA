@@ -2,10 +2,30 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
 export default async function CategoriasPage() {
+  // Buscar configurações do site para verificar produtos ativos da tabela vigente
+  const siteConfig = await prisma.siteConfig.findUnique({
+    where: { id: "site-config" },
+    select: {
+      tabelaPrecoVigenteId: true,
+      produtosAtivosTabelaVigente: true,
+    },
+  });
+
+  // Preparar filtro de produtos ativos
+  const produtosAtivosFilter: any = { status: true };
+  if (siteConfig?.tabelaPrecoVigenteId) {
+    if (siteConfig.produtosAtivosTabelaVigente && siteConfig.produtosAtivosTabelaVigente.length > 0) {
+      produtosAtivosFilter.id = { in: siteConfig.produtosAtivosTabelaVigente };
+    } else {
+      // Se houver tabela vigente mas nenhum produto ativo, não mostrar nenhum produto
+      produtosAtivosFilter.id = { in: [] };
+    }
+  }
+
   const categorias = await prisma.categoria.findMany({
     where: { ativo: true },
     include: {
-      produtos: { where: { status: true } },
+      produtos: { where: produtosAtivosFilter },
     },
     orderBy: { nome: "asc" },
   });

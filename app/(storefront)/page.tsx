@@ -6,6 +6,14 @@ export default async function HomePage() {
   // Buscar configurações do site
   let siteConfig = await prisma.siteConfig.findUnique({
     where: { id: "site-config" },
+    select: {
+      id: true,
+      categoriasDestaque: true,
+      produtosDestaque: true,
+      tabelaPrecoVigenteId: true,
+      produtosAtivosTabelaVigente: true,
+      ordemCategorias: true,
+    },
   });
 
   // Se não existir, criar configuração padrão
@@ -15,19 +23,40 @@ export default async function HomePage() {
         id: "site-config",
         categoriasDestaque: [],
         produtosDestaque: [],
+        produtosAtivosTabelaVigente: [],
         ordemCategorias: [],
+      },
+      select: {
+        id: true,
+        categoriasDestaque: true,
+        produtosDestaque: true,
+        tabelaPrecoVigenteId: true,
+        produtosAtivosTabelaVigente: true,
+        ordemCategorias: true,
       },
     });
   }
 
-  // Buscar todas as categorias ativas com contagem de produtos
+  // Preparar filtro de produtos ativos para contagem
+  const produtosAtivosFilterContagem: any = { status: true };
+  const siteConfigTypedContagem = siteConfig as any; // Type assertion temporária até regenerar Prisma Client
+  if (siteConfigTypedContagem?.tabelaPrecoVigenteId) {
+    const produtosAtivosContagem = siteConfigTypedContagem.produtosAtivosTabelaVigente || [];
+    if (produtosAtivosContagem.length > 0) {
+      produtosAtivosFilterContagem.id = { in: produtosAtivosContagem };
+    } else {
+      produtosAtivosFilterContagem.id = { in: [] };
+    }
+  }
+
+  // Buscar todas as categorias ativas com contagem de produtos ativos da tabela vigente
   const categorias = await prisma.categoria.findMany({
     where: { ativo: true },
     include: {
       _count: {
         select: {
           produtos: {
-            where: { status: true }
+            where: produtosAtivosFilterContagem
           }
         }
       }
@@ -35,20 +64,37 @@ export default async function HomePage() {
     orderBy: { nome: "asc" },
   });
 
-  // Buscar todos os produtos ativos para exibição
-  const produtos = await prisma.produto.findMany({
-    where: { status: true },
-    include: {
-      familia: { select: { nome: true } },
-      categoria: { select: { nome: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50, // Limite inicial
-  });
+  // Buscar produtos em destaque configurados no admin
+  const produtosDestaqueIds = siteConfig.produtosDestaque || [];
+  const produtos = produtosDestaqueIds.length > 0
+    ? await prisma.produto.findMany({
+        where: {
+          id: { in: produtosDestaqueIds },
+          status: true,
+        },
+        include: {
+          familia: { select: { nome: true } },
+          categoria: { select: { nome: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      })
+    : []; // Se não houver produtos em destaque, não exibir nenhum
 
   // Buscar produtos best sellers (top 3 mais recentes por enquanto)
+  // Filtrar apenas produtos ativos da tabela vigente
+  const produtosAtivosFilter: any = { status: true };
+  const siteConfigTyped = siteConfig as any; // Type assertion temporária até regenerar Prisma Client
+  if (siteConfigTyped?.tabelaPrecoVigenteId) {
+    const produtosAtivos = siteConfigTyped.produtosAtivosTabelaVigente || [];
+    if (produtosAtivos.length > 0) {
+      produtosAtivosFilter.id = { in: produtosAtivos };
+    } else {
+      produtosAtivosFilter.id = { in: [] };
+    }
+  }
+
   const produtosBestSellers = await prisma.produto.findMany({
-    where: { status: true },
+    where: produtosAtivosFilter,
     include: {
       familia: { select: { nome: true } },
       categoria: { select: { nome: true } },

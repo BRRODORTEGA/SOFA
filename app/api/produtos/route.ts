@@ -7,7 +7,27 @@ export async function GET(req: Request) {
   const searchParams = new URL(req.url).searchParams;
   const categoriaId = searchParams.get("categoriaId");
   
+  // Buscar configurações do site para verificar tabela vigente
+  const siteConfig = await prisma.siteConfig.findUnique({
+    where: { id: "site-config" },
+    select: {
+      tabelaPrecoVigenteId: true,
+      produtosAtivosTabelaVigente: true,
+    },
+  });
+  
   const where: any = { status: true };
+  
+  // Se houver tabela vigente configurada E produtos ativos selecionados, filtrar apenas esses produtos
+  // Se houver tabela vigente mas nenhum produto ativo selecionado, não exibir nenhum produto
+  if (siteConfig?.tabelaPrecoVigenteId) {
+    if (siteConfig.produtosAtivosTabelaVigente && siteConfig.produtosAtivosTabelaVigente.length > 0) {
+      where.id = { in: siteConfig.produtosAtivosTabelaVigente };
+    } else {
+      // Tabela vigente configurada mas nenhum produto ativo = não exibir nenhum produto
+      where.id = { in: [] };
+    }
+  }
   
   if (q) {
     where.nome = { contains: q, mode: "insensitive" };
