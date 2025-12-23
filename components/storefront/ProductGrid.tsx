@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { ProductCardDestaque } from "./ProductCardDestaque";
 
 interface Produto {
   id: string;
@@ -10,6 +11,9 @@ interface Produto {
   familia?: { nome: string } | null;
   categoria?: { nome: string } | null;
   preco?: number | null;
+  precoOriginal?: number | null;
+  precoComDesconto?: number | null;
+  descontoPercentual?: number;
 }
 
 interface ProductGridProps {
@@ -132,9 +136,13 @@ export function ProductGrid({
         </div>
       ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {produtos.map((produto) => (
-            <ProductCard key={produto.id} produto={produto} />
-          ))}
+          {produtos.map((produto) => {
+            // Se tiver desconto, usar ProductCardDestaque, senão usar ProductCard normal
+            if (produto.descontoPercentual && produto.descontoPercentual > 0) {
+              return <ProductCardDestaque key={produto.id} produto={produto} />;
+            }
+            return <ProductCard key={produto.id} produto={produto} />;
+          })}
         </div>
       ) : (
         <div className="space-y-4">

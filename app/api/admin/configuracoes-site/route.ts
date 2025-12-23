@@ -53,7 +53,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { categoriasDestaque, produtosDestaque, tabelaPrecoVigenteId, produtosAtivosTabelaVigente, ordemCategorias } = body;
+    const { categoriasDestaque, produtosDestaque, tabelaPrecoVigenteId, produtosAtivosTabelaVigente, descontosProdutosDestaque, ordemCategorias } = body;
 
     // Validar dados
     if (!Array.isArray(categoriasDestaque) || !Array.isArray(produtosDestaque)) {
@@ -73,6 +73,29 @@ export async function PUT(request: NextRequest) {
 
     // Garantir que produtosAtivosTabelaVigente seja um array válido
     const produtosAtivos = Array.isArray(produtosAtivosTabelaVigente) ? produtosAtivosTabelaVigente : [];
+
+    // Validar descontosProdutosDestaque se fornecido
+    let descontosValidos = null;
+    if (descontosProdutosDestaque !== undefined && descontosProdutosDestaque !== null) {
+      if (typeof descontosProdutosDestaque !== 'object' || Array.isArray(descontosProdutosDestaque)) {
+        return NextResponse.json(
+          { error: "descontosProdutosDestaque deve ser um objeto" },
+          { status: 400 }
+        );
+      }
+      // Validar que todos os valores são números entre 0 e 100
+      const descontosObj = descontosProdutosDestaque as Record<string, any>;
+      for (const [key, value] of Object.entries(descontosObj)) {
+        const numValue = Number(value);
+        if (isNaN(numValue) || numValue < 0 || numValue > 100) {
+          return NextResponse.json(
+            { error: `Desconto inválido para produto ${key}: deve ser um número entre 0 e 100` },
+            { status: 400 }
+          );
+        }
+      }
+      descontosValidos = descontosProdutosDestaque;
+    }
 
     // Verificar se a tabela de preço existe (se fornecida)
     if (tabelaPrecoVigenteId) {
@@ -99,6 +122,7 @@ export async function PUT(request: NextRequest) {
           produtosDestaque,
           tabelaPrecoVigenteId: tabelaPrecoVigenteId || null,
           produtosAtivosTabelaVigente: produtosAtivos,
+          descontosProdutosDestaque: descontosValidos,
           ordemCategorias: ordemCategorias || categoriasDestaque,
         } as any, // Type assertion temporária até regenerar Prisma Client
         create: {
@@ -107,6 +131,7 @@ export async function PUT(request: NextRequest) {
           produtosDestaque,
           tabelaPrecoVigenteId: tabelaPrecoVigenteId || null,
           produtosAtivosTabelaVigente: produtosAtivos,
+          descontosProdutosDestaque: descontosValidos,
           ordemCategorias: ordemCategorias || categoriasDestaque,
         } as any, // Type assertion temporária até regenerar Prisma Client
         include: {

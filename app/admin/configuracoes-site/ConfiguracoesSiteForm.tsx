@@ -34,6 +34,7 @@ interface SiteConfig {
   produtosDestaque: string[];
   tabelaPrecoVigenteId: string | null;
   produtosAtivosTabelaVigente: string[];
+  descontosProdutosDestaque?: Record<string, number> | null;
   ordemCategorias: string[];
   tabelaPrecoVigente: TabelaPreco | null;
 }
@@ -67,6 +68,9 @@ export default function ConfiguracoesSiteForm({
     siteConfig.produtosAtivosTabelaVigente || []
   );
   const [loadingProdutosTabela, setLoadingProdutosTabela] = useState(false);
+  const [descontosProdutosDestaque, setDescontosProdutosDestaque] = useState<Record<string, number>>(
+    (siteConfig.descontosProdutosDestaque as Record<string, number>) || {}
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +85,7 @@ export default function ConfiguracoesSiteForm({
           produtosDestaque: produtosSelecionados,
           tabelaPrecoVigenteId: tabelaPrecoSelecionada || null,
           produtosAtivosTabelaVigente: produtosAtivosTabelaVigente,
+          descontosProdutosDestaque: descontosProdutosDestaque,
           ordemCategorias: categoriasSelecionadas, // Por enquanto, ordem = ordem de seleção
         }),
       });
@@ -110,11 +115,29 @@ export default function ConfiguracoesSiteForm({
   };
 
   const toggleProduto = (produtoId: string) => {
-    setProdutosSelecionados((prev) =>
-      prev.includes(produtoId)
+    setProdutosSelecionados((prev) => {
+      const newList = prev.includes(produtoId)
         ? prev.filter((id) => id !== produtoId)
-        : [...prev, produtoId]
-    );
+        : [...prev, produtoId];
+      
+      // Se produto foi removido, remover também o desconto
+      if (prev.includes(produtoId) && !newList.includes(produtoId)) {
+        setDescontosProdutosDestaque((prevDescontos) => {
+          const newDescontos = { ...prevDescontos };
+          delete newDescontos[produtoId];
+          return newDescontos;
+        });
+      }
+      
+      return newList;
+    });
+  };
+
+  const atualizarDesconto = (produtoId: string, desconto: number) => {
+    setDescontosProdutosDestaque((prev) => ({
+      ...prev,
+      [produtoId]: desconto > 0 ? desconto : 0,
+    }));
   };
 
   const toggleProdutoTabelaVigente = (produtoId: string) => {
@@ -348,30 +371,55 @@ export default function ConfiguracoesSiteForm({
             <div className="max-h-96 space-y-2 overflow-y-auto">
               {produtosDisponiveisDestaque.map((produto) => {
                 const isSelected = produtosSelecionados.includes(produto.id);
+                const descontoAtual = descontosProdutosDestaque[produto.id] || 0;
                 return (
-                  <label
+                  <div
                     key={produto.id}
-                    className={`flex cursor-pointer items-center rounded-lg border p-3 transition-all ${
+                    className={`rounded-lg border p-3 transition-all ${
                       isSelected
                         ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 bg-white hover:border-gray-300"
+                        : "border-gray-200 bg-white"
                     }`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleProduto(produto.id)}
-                      className="mr-3 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm font-medium text-gray-900">
-                        {produto.nome}
-                      </span>
-                      <span className="ml-2 text-xs text-gray-500">
-                        {produto.categoria.nome} / {produto.familia.nome}
-                      </span>
+                    <div className="flex items-center">
+                      <label className="flex cursor-pointer items-center flex-1">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleProduto(produto.id)}
+                          className="mr-3 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-gray-900">
+                            {produto.nome}
+                          </span>
+                          <span className="ml-2 text-xs text-gray-500">
+                            {produto.categoria.nome} / {produto.familia.nome}
+                          </span>
+                        </div>
+                      </label>
+                      {isSelected && (
+                        <div className="ml-4 flex items-center gap-2">
+                          <label className="text-xs text-gray-600 whitespace-nowrap">
+                            Desconto (%):
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={descontoAtual}
+                            onChange={(e) => {
+                              const valor = parseFloat(e.target.value) || 0;
+                              atualizarDesconto(produto.id, Math.max(0, Math.min(100, valor)));
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-20 rounded border border-gray-300 px-2 py-1 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="0"
+                          />
+                        </div>
+                      )}
                     </div>
-                  </label>
+                  </div>
                 );
               })}
             </div>

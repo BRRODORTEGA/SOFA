@@ -1,5 +1,6 @@
 import { getPrecoUnitario } from "@/lib/pricing";
 import { ok, unprocessable, serverError } from "@/lib/http";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
   try {
@@ -23,8 +24,26 @@ export async function GET(req: Request) {
       });
     }
 
+    // Buscar desconto do produto em destaque
+    const siteConfig = await prisma.siteConfig.findUnique({
+      where: { id: "site-config" },
+      select: {
+        descontosProdutosDestaque: true,
+      },
+    }) as any;
+
+    const descontos = (siteConfig?.descontosProdutosDestaque as Record<string, number>) || {};
+    const descontoPercentual = descontos[produtoId] || 0;
+    
+    const precoOriginal = preco;
+    const precoComDesconto = descontoPercentual > 0 
+      ? preco * (1 - descontoPercentual / 100)
+      : preco;
+
     return ok({ 
-      preco, 
+      preco: precoComDesconto,
+      precoOriginal: descontoPercentual > 0 ? precoOriginal : null,
+      descontoPercentual: descontoPercentual > 0 ? descontoPercentual : null,
       disponivel: true 
     });
   } catch (e: any) {

@@ -6,15 +6,7 @@ export default async function HomePage() {
   // Buscar configurações do site
   let siteConfig = await prisma.siteConfig.findUnique({
     where: { id: "site-config" },
-    select: {
-      id: true,
-      categoriasDestaque: true,
-      produtosDestaque: true,
-      tabelaPrecoVigenteId: true,
-      produtosAtivosTabelaVigente: true,
-      ordemCategorias: true,
-    },
-  });
+  }) as any; // Type assertion temporária até regenerar Prisma Client
 
   // Se não existir, criar configuração padrão
   if (!siteConfig) {
@@ -26,16 +18,56 @@ export default async function HomePage() {
         produtosAtivosTabelaVigente: [],
         ordemCategorias: [],
       },
-      select: {
-        id: true,
-        categoriasDestaque: true,
-        produtosDestaque: true,
-        tabelaPrecoVigenteId: true,
-        produtosAtivosTabelaVigente: true,
-        ordemCategorias: true,
-      },
-    });
+    }) as any; // Type assertion temporária até regenerar Prisma Client
   }
+
+  // Função auxiliar para obter o preço mínimo de um produto
+  const getPrecoMinimoProduto = async (produtoId: string, tabelaPrecoId: string | null) => {
+    const where: any = { produtoId };
+    if (tabelaPrecoId) {
+      where.tabelaPrecoId = tabelaPrecoId;
+    } else {
+      where.tabelaPrecoId = null;
+    }
+
+    const linhas = await prisma.tabelaPrecoLinha.findMany({
+      where,
+      select: {
+        preco_grade_1000: true,
+        preco_grade_2000: true,
+        preco_grade_3000: true,
+        preco_grade_4000: true,
+        preco_grade_5000: true,
+        preco_grade_6000: true,
+        preco_grade_7000: true,
+        preco_couro: true,
+      },
+      take: 10, // Limitar para performance
+    });
+
+    if (linhas.length === 0) return null;
+
+    // Encontrar o menor preço entre todas as linhas e todas as grades
+    let precoMinimo = Infinity;
+    for (const linha of linhas) {
+      const precos = [
+        Number(linha.preco_grade_1000),
+        Number(linha.preco_grade_2000),
+        Number(linha.preco_grade_3000),
+        Number(linha.preco_grade_4000),
+        Number(linha.preco_grade_5000),
+        Number(linha.preco_grade_6000),
+        Number(linha.preco_grade_7000),
+        Number(linha.preco_couro),
+      ];
+      const menorPrecoLinha = Math.min(...precos.filter(p => p > 0));
+      if (menorPrecoLinha < precoMinimo) {
+        precoMinimo = menorPrecoLinha;
+      }
+    }
+
+    return precoMinimo === Infinity ? null : precoMinimo;
+  };
 
   // Preparar filtro de produtos ativos para contagem
   const produtosAtivosFilterContagem: any = { status: true };
@@ -66,7 +98,7 @@ export default async function HomePage() {
 
   // Buscar produtos em destaque configurados no admin
   const produtosDestaqueIds = siteConfig.produtosDestaque || [];
-  const produtos = produtosDestaqueIds.length > 0
+  const produtosRaw = produtosDestaqueIds.length > 0
     ? await prisma.produto.findMany({
         where: {
           id: { in: produtosDestaqueIds },
@@ -79,6 +111,29 @@ export default async function HomePage() {
         orderBy: { createdAt: "desc" },
       })
     : []; // Se não houver produtos em destaque, não exibir nenhum
+
+  // Buscar descontos e calcular preços com desconto
+  const siteConfigTypedDescontos = siteConfig as any;
+  const descontos = (siteConfigTypedDescontos?.descontosProdutosDestaque as Record<string, number>) || {};
+  const tabelaPrecoVigenteId = siteConfigTypedDescontos?.tabelaPrecoVigenteId || null;
+
+  // Enriquecer produtos com preços e descontos
+  const produtos = await Promise.all(
+    produtosRaw.map(async (produto) => {
+      const descontoPercentual = descontos[produto.id] || 0;
+      const precoOriginal = await getPrecoMinimoProduto(produto.id, tabelaPrecoVigenteId);
+      const precoComDesconto = precoOriginal && descontoPercentual > 0
+        ? precoOriginal * (1 - descontoPercentual / 100)
+        : precoOriginal;
+
+      return {
+        ...produto,
+        precoOriginal,
+        precoComDesconto,
+        descontoPercentual: descontoPercentual > 0 ? descontoPercentual : undefined,
+      };
+    })
+  );
 
   // Buscar produtos best sellers (top 3 mais recentes por enquanto)
   // Filtrar apenas produtos ativos da tabela vigente
@@ -144,6 +199,10 @@ export default async function HomePage() {
               imagens: p.imagens || [],
               familia: p.familia,
               categoria: p.categoria,
+              preco: p.precoComDesconto || p.precoOriginal || null,
+              precoOriginal: p.precoOriginal || null,
+              precoComDesconto: p.precoComDesconto || null,
+              descontoPercentual: p.descontoPercentual,
             }))}
             produtosBestSellers={produtosBestSellers.map(p => ({
               id: p.id,

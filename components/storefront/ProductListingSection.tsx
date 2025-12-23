@@ -17,6 +17,9 @@ interface Produto {
   familia: { nome: string } | null;
   categoria: { nome: string } | null;
   preco?: number | null;
+  precoOriginal?: number | null;
+  precoComDesconto?: number | null;
+  descontoPercentual?: number;
 }
 
 interface ProductListingSectionProps {

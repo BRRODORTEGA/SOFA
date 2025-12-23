@@ -36,6 +36,8 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
   const [tecidoId, setTecidoId] = useState("");
   const [medida, setMedida] = useState<number | null>(null);
   const [preco, setPreco] = useState<number | null>(null);
+  const [precoOriginal, setPrecoOriginal] = useState<number | null>(null);
+  const [descontoPercentual, setDescontoPercentual] = useState<number | null>(null);
   const [precoDisponivel, setPrecoDisponivel] = useState(true);
   const [precoLoading, setPrecoLoading] = useState(false);
   const [qtd, setQtd] = useState(1);
@@ -155,19 +157,27 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
         .then((d) => {
           if (d.ok) {
             setPreco(d.data.preco);
+            setPrecoOriginal(d.data.precoOriginal || null);
+            setDescontoPercentual(d.data.descontoPercentual || null);
             setPrecoDisponivel(d.data.disponivel !== false);
           } else {
             setPreco(null);
+            setPrecoOriginal(null);
+            setDescontoPercentual(null);
             setPrecoDisponivel(false);
           }
         })
         .catch(() => {
           setPreco(null);
+          setPrecoOriginal(null);
+          setDescontoPercentual(null);
           setPrecoDisponivel(false);
         })
         .finally(() => setPrecoLoading(false));
     } else {
       setPreco(null);
+      setPrecoOriginal(null);
+      setDescontoPercentual(null);
       setPrecoDisponivel(true);
     }
   }, [tecidoId, medida, params.id]);
@@ -429,8 +439,27 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
               <div className="text-sm text-gray-600">Calculando preço...</div>
             ) : preco !== null && precoDisponivel ? (
               <div>
-                <div className="text-3xl font-bold text-gray-900">R$ {preco.toFixed(2)}</div>
-                <p className="text-sm text-gray-600">Preço unitário</p>
+                {descontoPercentual && descontoPercentual > 0 && precoOriginal ? (
+                  <>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xl text-gray-500 line-through">
+                        R$ {precoOriginal.toFixed(2)}
+                      </span>
+                      <span className="inline-flex items-center rounded-full bg-red-500 px-2 py-1 text-xs font-bold text-white">
+                        -{descontoPercentual}%
+                      </span>
+                    </div>
+                    <div className="mt-1 text-3xl font-bold text-red-600">
+                      R$ {preco.toFixed(2)}
+                    </div>
+                    <p className="text-sm text-gray-600">Preço unitário com desconto</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-3xl font-bold text-gray-900">R$ {preco.toFixed(2)}</div>
+                    <p className="text-sm text-gray-600">Preço unitário</p>
+                  </>
+                )}
               </div>
             ) : tecidoId && medida ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -468,7 +497,22 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
 
           {preco !== null && precoDisponivel && !precoLoading && (
             <div className="mt-4 text-center text-sm text-gray-600">
-              Total: <span className="font-semibold">R$ {(preco * qtd).toFixed(2)}</span>
+              {descontoPercentual && descontoPercentual > 0 && precoOriginal ? (
+                <div>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-sm text-gray-500 line-through">
+                      Total: R$ {(precoOriginal * qtd).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="mt-1">
+                    Total com desconto: <span className="font-semibold text-red-600">R$ {(preco * qtd).toFixed(2)}</span>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  Total: <span className="font-semibold">R$ {(preco * qtd).toFixed(2)}</span>
+                </div>
+              )}
             </div>
           )}
         </div>

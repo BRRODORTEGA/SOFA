@@ -398,6 +398,10 @@ model SiteConfig {
   // Produtos selecionados para exibir na home como "Produtos em Destaque" (IDs dos produtos)
   produtosDestaque String[] @default([])
 
+  // Descontos adicionais para produtos em destaque (JSON: { "produtoId": percentualDesconto })
+  // Exemplo: { "cmj48oz1l0003go4opwomw5bx": 15 } = 15% de desconto
+  descontosProdutosDestaque Json?
+
   // ID da tabela de preço que está vigente/ativa no momento
   tabelaPrecoVigenteId String?
 
