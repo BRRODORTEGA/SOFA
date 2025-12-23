@@ -22,7 +22,26 @@ export async function POST(req: Request) {
       create: { userId: user.id },
     });
 
-    const preview = await getPrecoUnitario(produtoId, Number(variacaoMedida_cm), tecidoId);
+    const precoBase = await getPrecoUnitario(produtoId, Number(variacaoMedida_cm), tecidoId);
+    if (precoBase === null) {
+      return unprocessable({ message: "Preço não disponível para esta combinação" });
+    }
+
+    // Buscar desconto do produto em destaque
+    const siteConfig = await prisma.siteConfig.findUnique({
+      where: { id: "site-config" },
+      select: {
+        descontosProdutosDestaque: true,
+      },
+    }) as any;
+
+    const descontos = (siteConfig?.descontosProdutosDestaque as Record<string, number>) || {};
+    const descontoPercentual = descontos[produtoId] || 0;
+    
+    // Aplicar desconto se houver
+    const previewPrecoUnit = descontoPercentual > 0
+      ? precoBase * (1 - descontoPercentual / 100)
+      : precoBase;
 
     const item = await prisma.carrinhoItem.create({
       data: {
@@ -31,7 +50,7 @@ export async function POST(req: Request) {
         tecidoId,
         variacaoMedida_cm: Number(variacaoMedida_cm),
         quantidade: Number(quantidade),
-        previewPrecoUnit: preview,
+        previewPrecoUnit: Number(previewPrecoUnit.toFixed(2)), // Garantir que seja número
       },
       include: {
         produto: { select: { id: true, nome: true, imagens: true } },

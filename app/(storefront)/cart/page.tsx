@@ -11,7 +11,10 @@ type CarrinhoItem = {
   tecido: { id: string; nome: string; grade: string };
   variacaoMedida_cm: number;
   quantidade: number;
-  previewPrecoUnit: number | null;
+  previewPrecoUnit: number | null | string; // Preço com desconto aplicado
+  precoOriginal?: number; // Preço original sem desconto
+  descontoPercentual?: number | null; // Percentual de desconto
+  descontoValor?: number; // Valor do desconto em reais
 };
 
 type Carrinho = {
@@ -118,8 +121,26 @@ export default function CartPage() {
     );
   }
 
-  const total = carrinho.itens.reduce((acc, item) => {
-    const preco = item.previewPrecoUnit ?? 0;
+  // Função auxiliar para garantir que o preço seja sempre um número
+  const parsePreco = (preco: number | null | string | undefined): number => {
+    if (preco === null || preco === undefined) return 0;
+    const num = typeof preco === 'string' ? parseFloat(preco) : preco;
+    return isNaN(num) ? 0 : num;
+  };
+
+  // Calcular totais
+  const subtotalSemDesconto = carrinho.itens.reduce((acc, item) => {
+    const precoOriginal = item.precoOriginal || parsePreco(item.previewPrecoUnit);
+    return acc + precoOriginal * item.quantidade;
+  }, 0);
+
+  const totalDesconto = carrinho.itens.reduce((acc, item) => {
+    const descontoValor = item.descontoValor || 0;
+    return acc + descontoValor * item.quantidade;
+  }, 0);
+
+  const totalComDesconto = carrinho.itens.reduce((acc, item) => {
+    const preco = parsePreco(item.previewPrecoUnit);
     return acc + preco * item.quantidade;
   }, 0);
 
@@ -138,7 +159,23 @@ export default function CartPage() {
               <p className="text-sm text-gray-600">
                 Medida: {item.variacaoMedida_cm}cm | Tecido: {item.tecido.nome} ({item.tecido.grade})
               </p>
-              <p className="mt-1 font-semibold">R$ {(item.previewPrecoUnit ?? 0).toFixed(2)}</p>
+              <div className="mt-1">
+                {item.descontoPercentual && item.descontoPercentual > 0 && item.precoOriginal ? (
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm text-gray-500 line-through">
+                      R$ {item.precoOriginal.toFixed(2)}
+                    </span>
+                    <span className="inline-flex items-center rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                      -{item.descontoPercentual}%
+                    </span>
+                    <span className="font-semibold text-red-600">
+                      R$ {parsePreco(item.previewPrecoUnit).toFixed(2)}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="font-semibold">R$ {parsePreco(item.previewPrecoUnit).toFixed(2)}</p>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -156,7 +193,18 @@ export default function CartPage() {
               </button>
             </div>
             <div className="text-right">
-              <p className="font-semibold">R$ {((item.previewPrecoUnit ?? 0) * item.quantidade).toFixed(2)}</p>
+              {item.descontoPercentual && item.descontoPercentual > 0 && item.precoOriginal ? (
+                <div>
+                  <p className="text-sm text-gray-500 line-through">
+                    R$ {(item.precoOriginal * item.quantidade).toFixed(2)}
+                  </p>
+                  <p className="font-semibold text-red-600">
+                    R$ {(parsePreco(item.previewPrecoUnit) * item.quantidade).toFixed(2)}
+                  </p>
+                </div>
+              ) : (
+                <p className="font-semibold">R$ {(parsePreco(item.previewPrecoUnit) * item.quantidade).toFixed(2)}</p>
+              )}
               <button onClick={() => removeItem(item.id)} className="mt-2 text-sm text-red-600 hover:underline">
                 Remover
               </button>
@@ -166,14 +214,28 @@ export default function CartPage() {
       </div>
 
       <div className="mt-8 rounded border bg-gray-50 p-6">
-        <div className="mb-4 flex justify-between text-lg font-semibold">
-          <span>Total:</span>
-          <span>R$ {total.toFixed(2)}</span>
+        <div className="space-y-2">
+          <div className="flex justify-between text-base text-gray-700">
+            <span>Subtotal:</span>
+            <span>R$ {subtotalSemDesconto.toFixed(2)}</span>
+          </div>
+          {totalDesconto > 0 && (
+            <div className="flex justify-between text-base text-red-600">
+              <span>Desconto aplicado:</span>
+              <span className="font-semibold">-R$ {totalDesconto.toFixed(2)}</span>
+            </div>
+          )}
+          <div className="mt-4 flex justify-between border-t border-gray-300 pt-4 text-lg font-semibold">
+            <span>Total:</span>
+            <span className={totalDesconto > 0 ? "text-red-600" : ""}>
+              R$ {totalComDesconto.toFixed(2)}
+            </span>
+          </div>
         </div>
         <button
           onClick={handleCheckout}
           disabled={checkoutLoading}
-          className="w-full rounded bg-emerald-600 px-4 py-3 font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="mt-6 w-full rounded bg-emerald-600 px-4 py-3 font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           {checkoutLoading ? "Processando..." : "Finalizar Pedido"}
         </button>
