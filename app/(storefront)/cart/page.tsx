@@ -28,6 +28,8 @@ export default function CartPage() {
   const [carrinho, setCarrinho] = useState<Carrinho | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [pedidoCodigo, setPedidoCodigo] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -93,7 +95,8 @@ export default function CartPage() {
       const data = await res.json();
 
       if (res.ok) {
-        router.push(`/meus-pedidos/${data.data.pedidoId}`);
+        setPedidoCodigo(data.data.codigo || null);
+        setShowSuccessModal(true);
       } else {
         alert("Erro ao finalizar pedido: " + (data.error || "Erro desconhecido"));
       }
@@ -103,6 +106,11 @@ export default function CartPage() {
     } finally {
       setCheckoutLoading(false);
     }
+  }
+
+  function handleCloseModal() {
+    setShowSuccessModal(false);
+    router.push("/meus-pedidos");
   }
 
   if (status === "loading" || loading) {
@@ -240,6 +248,74 @@ export default function CartPage() {
           {checkoutLoading ? "Processando..." : "Finalizar Pedido"}
         </button>
       </div>
+
+      {/* Modal de Sucesso */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+                <svg
+                  className="h-8 w-8 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+            </div>
+            <h2 className="mb-4 text-center text-2xl font-bold text-gray-900">
+              Pedido Enviado com Sucesso!
+            </h2>
+            {pedidoCodigo && (
+              <p className="mb-4 text-center text-sm text-gray-600">
+                Código do pedido: <span className="font-semibold text-gray-900">{pedidoCodigo}</span>
+              </p>
+            )}
+            <div className="mb-6 space-y-3 text-sm text-gray-700">
+              <p className="text-center">
+                Seu pedido foi enviado para <strong>aprovação</strong> e em breve você receberá as informações para dar sequência no pagamento.
+              </p>
+              <div className="rounded-lg bg-blue-50 p-4">
+                <p className="mb-2 font-medium text-blue-900">Como acompanhar seu pedido:</p>
+                <ul className="space-y-1 text-blue-800">
+                  <li className="flex items-start gap-2">
+                    <span>📧</span>
+                    <span>Acompanhe seu e-mail para receber atualizações</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span>📋</span>
+                    <span>Visite a seção "Meus Pedidos" no site</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={handleCloseModal}
+                className="flex-1 rounded-lg bg-emerald-600 px-4 py-3 font-medium text-white hover:bg-emerald-700 transition-colors"
+              >
+                Ver Meus Pedidos
+              </button>
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  router.push("/");
+                }}
+                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Continuar Comprando
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

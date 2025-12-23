@@ -11,6 +11,9 @@ type Pedido = {
   status: string;
   createdAt: string;
   itens: any[];
+  temAtualizacao?: boolean;
+  temNovaMensagem?: boolean;
+  temAtualizacaoStatus?: boolean;
 };
 
 export default function MeusPedidosPage() {
@@ -18,6 +21,7 @@ export default function MeusPedidosPage() {
   const router = useRouter();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalAtualizacoes, setTotalAtualizacoes] = useState(0);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -36,6 +40,9 @@ export default function MeusPedidosPage() {
       if (res.ok) {
         const data = await res.json();
         setPedidos(data.data.items);
+        // Contar total de atualizações
+        const total = data.data.items.filter((p: Pedido) => p.temAtualizacao).length;
+        setTotalAtualizacoes(total);
       }
     } catch (error) {
       console.error("Erro ao carregar pedidos:", error);
@@ -51,6 +58,7 @@ export default function MeusPedidosPage() {
   function getStatusColor(status: string) {
     const colors: Record<string, string> = {
       Solicitado: "bg-yellow-100 text-yellow-800",
+      "Aguardando Pagamento": "bg-orange-100 text-orange-800",
       Aprovado: "bg-blue-100 text-blue-800",
       "Em Produção": "bg-purple-100 text-purple-800",
       Expedido: "bg-green-100 text-green-800",
@@ -61,7 +69,20 @@ export default function MeusPedidosPage() {
 
   return (
     <div className="mx-auto max-w-4xl p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Meus Pedidos</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Meus Pedidos</h1>
+        {totalAtualizacoes > 0 && (
+          <div className="flex items-center gap-2 rounded-lg bg-red-50 px-4 py-2">
+            <span className="relative flex h-3 w-3">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500"></span>
+            </span>
+            <span className="text-sm font-medium text-red-800">
+              {totalAtualizacoes} {totalAtualizacoes === 1 ? 'atualização' : 'atualizações'}
+            </span>
+          </div>
+        )}
+      </div>
 
       {pedidos.length === 0 ? (
         <div className="rounded border p-8 text-center">
@@ -81,11 +102,31 @@ export default function MeusPedidosPage() {
               <Link
                 key={pedido.id}
                 href={`/meus-pedidos/${pedido.id}`}
-                className="block rounded border p-4 hover:bg-gray-50"
+                className="block rounded border p-4 hover:bg-gray-50 relative"
               >
+                {pedido.temAtualizacao && (
+                  <div className="absolute top-2 right-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500"></span>
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold">{pedido.codigo}</h3>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{pedido.codigo}</h3>
+                      {pedido.temAtualizacao && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
+                          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                          </svg>
+                          {pedido.temNovaMensagem && pedido.temAtualizacaoStatus ? 'Nova mensagem e status' :
+                           pedido.temNovaMensagem ? 'Nova mensagem' :
+                           pedido.temAtualizacaoStatus ? 'Status atualizado' : 'Atualização'}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600">
                       {new Date(pedido.createdAt).toLocaleDateString("pt-BR")}
                     </p>

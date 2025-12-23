@@ -8,6 +8,7 @@ export default function Navbar() {
   const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const [cartItemCount, setCartItemCount] = useState(0);
+  const [pedidosAtualizacoes, setPedidosAtualizacoes] = useState(0);
 
   // Buscar quantidade de itens no carrinho
   useEffect(() => {
@@ -42,6 +43,45 @@ export default function Navbar() {
                 return acc + (item.quantidade || 0);
               }, 0);
               setCartItemCount(totalItems);
+            }
+          })
+          .catch(() => {});
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [session]);
+
+  // Buscar atualizações de pedidos
+  useEffect(() => {
+    if (session && (session.user as any)?.role !== "ADMIN" && (session.user as any)?.role !== "OPERADOR") {
+      fetch("/api/meus-pedidos")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.ok && data.data?.items) {
+            const totalAtualizacoes = data.data.items.filter((p: any) => p.temAtualizacao).length;
+            setPedidosAtualizacoes(totalAtualizacoes);
+          }
+        })
+        .catch(() => {
+          setPedidosAtualizacoes(0);
+        });
+    } else {
+      setPedidosAtualizacoes(0);
+    }
+  }, [session]);
+
+  // Atualizar contador de atualizações quando a página receber foco
+  useEffect(() => {
+    const handleFocus = () => {
+      if (session && (session.user as any)?.role !== "ADMIN" && (session.user as any)?.role !== "OPERADOR") {
+        fetch("/api/meus-pedidos")
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.ok && data.data?.items) {
+              const totalAtualizacoes = data.data.items.filter((p: any) => p.temAtualizacao).length;
+              setPedidosAtualizacoes(totalAtualizacoes);
             }
           })
           .catch(() => {});
@@ -146,20 +186,33 @@ export default function Navbar() {
                     href="/meus-pedidos" 
                     className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors duration-300 relative group"
                   >
-                    <svg 
-                      className="h-5 w-5" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
-                      />
-                    </svg>
+                    <div className="relative">
+                      <svg 
+                        className="h-5 w-5" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+                        />
+                      </svg>
+                      {pedidosAtualizacoes > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-white">
+                          {pedidosAtualizacoes > 9 ? '9+' : pedidosAtualizacoes}
+                        </span>
+                      )}
+                    </div>
                     <span>Meus Pedidos</span>
+                    {pedidosAtualizacoes > 0 && (
+                      <span className="relative flex h-2 w-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+                      </span>
+                    )}
                     <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
                   </Link>
                 </>
@@ -281,23 +334,36 @@ export default function Navbar() {
                     </Link>
                     <Link 
                       href="/meus-pedidos" 
-                      className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-bg-2 rounded-lg transition-colors duration-300"
+                      className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-bg-2 rounded-lg transition-colors duration-300 relative"
                       onClick={() => setMenuOpen(false)}
                     >
-                      <svg 
-                        className="h-5 w-5" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          strokeWidth={2} 
-                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
-                        />
-                      </svg>
+                      <div className="relative">
+                        <svg 
+                          className="h-5 w-5" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth={2} 
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+                          />
+                        </svg>
+                        {pedidosAtualizacoes > 0 && (
+                          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-white">
+                            {pedidosAtualizacoes > 9 ? '9+' : pedidosAtualizacoes}
+                          </span>
+                        )}
+                      </div>
                       <span>Meus Pedidos</span>
+                      {pedidosAtualizacoes > 0 && (
+                        <span className="ml-auto relative flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+                        </span>
+                      )}
                     </Link>
                   </>
                 )}

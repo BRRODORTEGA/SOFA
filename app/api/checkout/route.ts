@@ -26,18 +26,39 @@ export async function POST() {
 
     const codigo = gerarCodigoPedido();
 
+    // Buscar descontos configurados
+    const siteConfig = await prisma.siteConfig.findUnique({
+      where: { id: "site-config" },
+      select: {
+        descontosProdutosDestaque: true,
+      },
+    }) as any;
+
+    const descontos = (siteConfig?.descontosProdutosDestaque as Record<string, number>) || {};
+
     // Resolve preços atuais e total
     let total = 0;
     const itensData = [];
     for (const it of carrinho.itens) {
-      const precoUnit = await getPrecoUnitario(it.produtoId, it.variacaoMedida_cm, it.tecidoId);
+      const precoBase = await getPrecoUnitario(it.produtoId, it.variacaoMedida_cm, it.tecidoId);
+      
+      if (precoBase === null) {
+        return new Response(`Preço não disponível para produto ${it.produtoId}`, { status: 400 });
+      }
+
+      // Aplicar desconto se houver
+      const descontoPercentual = descontos[it.produtoId] || 0;
+      const precoUnit = descontoPercentual > 0
+        ? precoBase * (1 - descontoPercentual / 100)
+        : precoBase;
+
       total += precoUnit * it.quantidade;
       itensData.push({
         produtoId: it.produtoId,
         tecidoId: it.tecidoId,
         variacaoMedida_cm: it.variacaoMedida_cm,
         quantidade: it.quantidade,
-        precoUnit,
+        precoUnit: Number(precoUnit.toFixed(2)), // Garantir que seja número válido
       });
     }
 

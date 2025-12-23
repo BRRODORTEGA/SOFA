@@ -121,6 +121,7 @@ export default function PedidoAdminDetailPage() {
   function getStatusColor(status: string) {
     const colors: Record<string, string> = {
       Solicitado: "bg-yellow-100 text-yellow-800",
+      "Aguardando Pagamento": "bg-orange-100 text-orange-800",
       Aprovado: "bg-blue-100 text-blue-800",
       "Em Produção": "bg-purple-100 text-purple-800",
       Expedido: "bg-green-100 text-green-800",
@@ -154,6 +155,7 @@ export default function PedidoAdminDetailPage() {
               className="mt-1 w-full rounded border px-3 py-2"
             >
               <option value="Solicitado">Solicitado</option>
+              <option value="Aguardando Pagamento">Aguardando Pagamento</option>
               <option value="Aprovado">Aprovado</option>
               <option value="Em Produção">Em Produção</option>
               <option value="Expedido">Expedido</option>

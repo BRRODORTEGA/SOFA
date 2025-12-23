@@ -167,6 +167,7 @@ export default async function Page({ params }: { params: { id: string } }) {
                       <td className="whitespace-nowrap px-4 py-4 text-sm">
                         <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                           pedido.status === "Solicitado" ? "bg-yellow-100 text-yellow-800" :
+                          pedido.status === "Aguardando Pagamento" ? "bg-orange-100 text-orange-800" :
                           pedido.status === "Aprovado" ? "bg-blue-100 text-blue-800" :
                           pedido.status === "Em Produção" ? "bg-purple-100 text-purple-800" :
                           pedido.status === "Expedido" ? "bg-green-100 text-green-800" :

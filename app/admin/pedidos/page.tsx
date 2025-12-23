@@ -1,5 +1,3 @@
-import { AdminToolbar } from "@/components/admin/toolbar";
-import { AdminTableWrapper } from "@/components/admin/table-wrapper";
 import { prisma } from "@/lib/prisma";
 import DbError from "@/components/admin/db-error";
 import Link from "next/link";
@@ -28,21 +26,39 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
         orderBy: { createdAt: "desc" },
         include: {
           cliente: { select: { id: true, name: true, email: true } },
+          mensagens: {
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              role: true,
+              createdAt: true,
+            },
+            take: 1, // Apenas a última mensagem para verificar
+          },
         },
       }),
       prisma.pedido.count({ where }),
     ]);
 
-    const rowsWithFormatted = items.map((item) => ({
-      ...item,
-      clienteNome: item.cliente.name || item.cliente.email,
-      createdAtFormatted: new Date(item.createdAt).toLocaleDateString("pt-BR"),
-      statusFormatted: item.status,
-    }));
+    const rowsWithFormatted = items.map((item) => {
+      // Verificar se há nova mensagem do cliente
+      // Nova mensagem = última mensagem é do cliente (role = "CLIENTE")
+      const ultimaMensagem = item.mensagens[0];
+      const temNovaMensagemCliente = ultimaMensagem && ultimaMensagem.role === "CLIENTE";
+
+      return {
+        ...item,
+        clienteNome: item.cliente.name || item.cliente.email,
+        createdAtFormatted: new Date(item.createdAt).toLocaleDateString("pt-BR"),
+        statusFormatted: item.status,
+        temNovaMensagem: temNovaMensagemCliente,
+      };
+    });
 
     function getStatusColor(status: string) {
       const colors: Record<string, string> = {
         Solicitado: "bg-yellow-100 text-yellow-800",
+        "Aguardando Pagamento": "bg-orange-100 text-orange-800",
         Aprovado: "bg-blue-100 text-blue-800",
         "Em Produção": "bg-purple-100 text-purple-800",
         Expedido: "bg-green-100 text-green-800",
@@ -70,21 +86,76 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
             </button>
           </form>
         </div>
-        <AdminTableWrapper
-          columns={[
-            { key: "codigo", header: "Código" },
-            { key: "clienteNome", header: "Cliente" },
-            {
-              key: "statusFormatted",
-              header: "Status",
-              className: "w-32",
-            },
-            { key: "createdAtFormatted", header: "Data" },
-          ]}
-          rows={rowsWithFormatted}
-          basePath="/admin/pedidos"
-          emptyText="Nenhum pedido encontrado"
-        />
+        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+          <table className="min-w-full text-base">
+            <thead>
+              <tr className="bg-gradient-to-r from-gray-50 to-gray-100 text-left">
+                <th className="px-4 py-3 text-sm font-semibold text-gray-700">Código</th>
+                <th className="px-4 py-3 text-sm font-semibold text-gray-700">Cliente</th>
+                <th className="px-4 py-3 text-sm font-semibold text-gray-700 w-32">Status</th>
+                <th className="px-4 py-3 text-sm font-semibold text-gray-700">Data</th>
+                <th className="px-4 py-3 text-sm font-semibold text-gray-700 w-20"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {rowsWithFormatted.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-base text-gray-500">
+                    Nenhum pedido encontrado
+                  </td>
+                </tr>
+              )}
+              {rowsWithFormatted.map((row) => (
+                <tr
+                  key={row.id}
+                  className="bg-white transition-colors hover:bg-blue-50"
+                >
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <Link href={`/admin/pedidos/${row.id}`} className="flex items-center gap-2 hover:text-blue-600">
+                      {row.temNovaMensagem && (
+                        <span className="relative flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+                        </span>
+                      )}
+                      <span className="font-medium">{row.codigo}</span>
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <Link href={`/admin/pedidos/${row.id}`} className="hover:text-blue-600">
+                      {row.clienteNome}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    <Link href={`/admin/pedidos/${row.id}`} className="hover:opacity-80">
+                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${getStatusColor(row.statusFormatted)}`}>
+                        {row.statusFormatted}
+                      </span>
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <Link href={`/admin/pedidos/${row.id}`} className="hover:text-blue-600">
+                      {row.createdAtFormatted}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {row.temNovaMensagem && (
+                      <Link href={`/admin/pedidos/${row.id}`} className="flex items-center justify-center">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">
+                          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                          </svg>
+                          Nova
+                        </span>
+                      </Link>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <div className="mt-4 text-base font-medium text-gray-700">Total: <span className="font-semibold text-gray-900">{total}</span></div>
       </div>
     );
