@@ -21,7 +21,7 @@ export default async function HomePage() {
     }) as any; // Type assertion temporária até regenerar Prisma Client
   }
 
-  // Função auxiliar para obter o preço mínimo de um produto
+  // Função auxiliar para obter o preço mínimo e desconto máximo de um produto
   const getPrecoMinimoProduto = async (produtoId: string, tabelaPrecoId: string | null) => {
     const where: any = { produtoId };
     if (tabelaPrecoId) {
@@ -41,14 +41,18 @@ export default async function HomePage() {
         preco_grade_6000: true,
         preco_grade_7000: true,
         preco_couro: true,
+        descontoPercentual: true,
       },
       take: 10, // Limitar para performance
     });
 
-    if (linhas.length === 0) return null;
+    if (linhas.length === 0) return { preco: null, desconto: null };
 
     // Encontrar o menor preço entre todas as linhas e todas as grades
+    // E também o maior desconto aplicado
     let precoMinimo = Infinity;
+    let descontoMaximo = 0;
+    
     for (const linha of linhas) {
       const precos = [
         Number(linha.preco_grade_1000),
@@ -64,9 +68,20 @@ export default async function HomePage() {
       if (menorPrecoLinha < precoMinimo) {
         precoMinimo = menorPrecoLinha;
       }
+      
+      // Buscar o maior desconto entre as linhas
+      if (linha.descontoPercentual) {
+        const descontoLinha = Number(linha.descontoPercentual);
+        if (descontoLinha > descontoMaximo) {
+          descontoMaximo = descontoLinha;
+        }
+      }
     }
 
-    return precoMinimo === Infinity ? null : precoMinimo;
+    return {
+      preco: precoMinimo === Infinity ? null : precoMinimo,
+      desconto: descontoMaximo > 0 ? descontoMaximo : null
+    };
   };
 
   // Preparar filtro de produtos ativos para contagem
@@ -120,8 +135,12 @@ export default async function HomePage() {
   // Enriquecer produtos com preços e descontos
   const produtos = await Promise.all(
     produtosRaw.map(async (produto) => {
-      const descontoPercentual = descontos[produto.id] || 0;
-      const precoOriginal = await getPrecoMinimoProduto(produto.id, tabelaPrecoVigenteId);
+      const descontoProdutoDestaque = descontos[produto.id] || 0;
+      const { preco: precoOriginal, desconto: descontoLinha } = await getPrecoMinimoProduto(produto.id, tabelaPrecoVigenteId);
+      
+      // Usar o maior desconto entre linha da tabela e produto em destaque
+      const descontoPercentual = Math.max(descontoProdutoDestaque, descontoLinha || 0);
+      
       const precoComDesconto = precoOriginal && descontoPercentual > 0
         ? precoOriginal * (1 - descontoPercentual / 100)
         : precoOriginal;
@@ -148,7 +167,7 @@ export default async function HomePage() {
     }
   }
 
-  const produtosBestSellers = await prisma.produto.findMany({
+  const produtosBestSellersRaw = await prisma.produto.findMany({
     where: produtosAtivosFilter,
     include: {
       familia: { select: { nome: true } },
@@ -157,6 +176,28 @@ export default async function HomePage() {
     take: 3,
     orderBy: { createdAt: "desc" },
   });
+
+  // Enriquecer best sellers com preços e descontos
+  const produtosBestSellers = await Promise.all(
+    produtosBestSellersRaw.map(async (produto) => {
+      const descontoProdutoDestaque = descontos[produto.id] || 0;
+      const { preco: precoOriginal, desconto: descontoLinha } = await getPrecoMinimoProduto(produto.id, tabelaPrecoVigenteId);
+      
+      // Usar o maior desconto entre linha da tabela e produto em destaque
+      const descontoPercentual = Math.max(descontoProdutoDestaque, descontoLinha || 0);
+      
+      const precoComDesconto = precoOriginal && descontoPercentual > 0
+        ? precoOriginal * (1 - descontoPercentual / 100)
+        : precoOriginal;
+
+      return {
+        ...produto,
+        precoOriginal,
+        precoComDesconto,
+        descontoPercentual: descontoPercentual > 0 ? descontoPercentual : undefined,
+      };
+    })
+  );
 
   return (
     <div className="overflow-hidden">
@@ -208,6 +249,12 @@ export default async function HomePage() {
               id: p.id,
               nome: p.nome,
               imagens: p.imagens || [],
+              familia: p.familia,
+              categoria: p.categoria,
+              preco: p.precoComDesconto || p.precoOriginal || null,
+              precoOriginal: p.precoOriginal || null,
+              precoComDesconto: p.precoComDesconto || null,
+              descontoPercentual: p.descontoPercentual,
             }))}
           />
         </div>

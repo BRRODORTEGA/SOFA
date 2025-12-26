@@ -65,13 +65,16 @@ export default function NewTabelaPrecoPage() {
   }
 
   async function loadFamilias() {
-    const res = await fetch("/api/familias");
+    // Usar parâmetro all=true para buscar TODAS as famílias (ativas e inativas)
+    const res = await fetch("/api/familias?all=true");
     const data = await res.json();
     if (data.ok) setFamilias(data.data?.items || []);
   }
 
   async function loadProdutos() {
-    const res = await fetch("/api/produtos?limit=1000");
+    // Usar parâmetro all=true para buscar TODOS os produtos (ativos e inativos)
+    // sem filtros de tabela vigente
+    const res = await fetch("/api/produtos?limit=1000&all=true");
     const data = await res.json();
     if (data.ok) {
       const produtosMapeados = (data.data?.items || []).map((p: any) => ({
@@ -231,13 +234,18 @@ export default function NewTabelaPrecoPage() {
   function getFamiliasFiltradas() {
     let familiasFilt = familias;
     
-    if (categoriasSelecionadas.size > 0) {
-      familiasFilt = familiasFilt.filter((f) => categoriasSelecionadas.has(f.categoriaId));
-    }
-    
+    // Se houver busca por nome de família, mostrar todas que correspondem à busca
+    // independente da categoria selecionada
     if (searchFamilia) {
+      const searchLower = searchFamilia.toLowerCase();
       familiasFilt = familiasFilt.filter((f) =>
-        f.nome.toLowerCase().includes(searchFamilia.toLowerCase())
+        f.nome.toLowerCase().includes(searchLower)
+      );
+    } else if (categoriasSelecionadas.size > 0) {
+      // Se não houver busca, filtrar apenas por categorias selecionadas
+      // Incluir também famílias sem categoria (categoriaId null) se necessário
+      familiasFilt = familiasFilt.filter((f) => 
+        f.categoriaId === null || categoriasSelecionadas.has(f.categoriaId)
       );
     }
     
@@ -247,14 +255,24 @@ export default function NewTabelaPrecoPage() {
   function getProdutosFiltrados() {
     let produtosFilt = produtos;
     
+    // Filtrar por categorias selecionadas
     if (categoriasSelecionadas.size > 0) {
       produtosFilt = produtosFilt.filter((p) => categoriasSelecionadas.has(p.categoriaId));
     }
     
+    // Filtrar por famílias selecionadas OU famílias que correspondem à busca
     if (familiasSelecionadas.size > 0) {
       produtosFilt = produtosFilt.filter((p) => familiasSelecionadas.has(p.familiaId));
+    } else if (searchFamilia) {
+      // Se não há famílias selecionadas mas há busca por família, mostrar produtos dessa família
+      const searchLower = searchFamilia.toLowerCase();
+      const familiasEncontradas = familias.filter((f) =>
+        f.nome.toLowerCase().includes(searchLower)
+      ).map((f) => f.id);
+      produtosFilt = produtosFilt.filter((p) => familiasEncontradas.includes(p.familiaId));
     }
     
+    // Busca por nome de produto, categoria ou família
     if (searchProduto) {
       const searchLower = searchProduto.toLowerCase();
       produtosFilt = produtosFilt.filter((p) =>

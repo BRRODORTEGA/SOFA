@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ok, unprocessable, serverError } from "@/lib/http";
-import { getPrecoUnitario } from "@/lib/pricing";
+import { getPrecoUnitario, getDescontoPercentualLinha } from "@/lib/pricing";
 
 export async function POST(req: Request) {
   try {
@@ -27,6 +27,12 @@ export async function POST(req: Request) {
       return unprocessable({ message: "Preço não disponível para esta combinação" });
     }
 
+    // Buscar desconto da linha da tabela de preço
+    const descontoLinha = await getDescontoPercentualLinha(
+      produtoId,
+      Number(variacaoMedida_cm)
+    );
+
     // Buscar desconto do produto em destaque
     const siteConfig = await prisma.siteConfig.findUnique({
       where: { id: "site-config" },
@@ -36,27 +42,57 @@ export async function POST(req: Request) {
     }) as any;
 
     const descontos = (siteConfig?.descontosProdutosDestaque as Record<string, number>) || {};
-    const descontoPercentual = descontos[produtoId] || 0;
+    const descontoProdutoDestaque = descontos[produtoId] || 0;
+    
+    // Usar o maior desconto entre linha e produto em destaque
+    const descontoPercentual = Math.max(descontoLinha || 0, descontoProdutoDestaque);
     
     // Aplicar desconto se houver
     const previewPrecoUnit = descontoPercentual > 0
       ? precoBase * (1 - descontoPercentual / 100)
       : precoBase;
 
-    const item = await prisma.carrinhoItem.create({
-      data: {
+    // Verificar se já existe um item igual no carrinho
+    const itemExistente = await prisma.carrinhoItem.findFirst({
+      where: {
         carrinhoId: carrinho.id,
         produtoId,
         tecidoId,
         variacaoMedida_cm: Number(variacaoMedida_cm),
-        quantidade: Number(quantidade),
-        previewPrecoUnit: Number(previewPrecoUnit.toFixed(2)), // Garantir que seja número
-      },
-      include: {
-        produto: { select: { id: true, nome: true, imagens: true } },
-        tecido: { select: { id: true, nome: true, grade: true } },
       },
     });
+
+    let item;
+    if (itemExistente) {
+      // Se já existe, atualizar a quantidade
+      item = await prisma.carrinhoItem.update({
+        where: { id: itemExistente.id },
+        data: {
+          quantidade: itemExistente.quantidade + Number(quantidade),
+          previewPrecoUnit: Number(previewPrecoUnit.toFixed(2)),
+        },
+        include: {
+          produto: { select: { id: true, nome: true, imagens: true } },
+          tecido: { select: { id: true, nome: true, grade: true } },
+        },
+      });
+    } else {
+      // Se não existe, criar novo item
+      item = await prisma.carrinhoItem.create({
+        data: {
+          carrinhoId: carrinho.id,
+          produtoId,
+          tecidoId,
+          variacaoMedida_cm: Number(variacaoMedida_cm),
+          quantidade: Number(quantidade),
+          previewPrecoUnit: Number(previewPrecoUnit.toFixed(2)), // Garantir que seja número
+        },
+        include: {
+          produto: { select: { id: true, nome: true, imagens: true } },
+          tecido: { select: { id: true, nome: true, grade: true } },
+        },
+      });
+    }
 
     return ok(item);
   } catch (e: any) {

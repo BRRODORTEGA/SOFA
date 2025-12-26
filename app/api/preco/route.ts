@@ -1,4 +1,4 @@
-import { getPrecoUnitario } from "@/lib/pricing";
+import { getPrecoUnitario, getDescontoPercentualLinha } from "@/lib/pricing";
 import { ok, unprocessable, serverError } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 
@@ -24,6 +24,9 @@ export async function GET(req: Request) {
       });
     }
 
+    // Buscar desconto da linha da tabela de preço
+    const descontoLinha = await getDescontoPercentualLinha(produtoId, medida);
+
     // Buscar desconto do produto em destaque
     const siteConfig = await prisma.siteConfig.findUnique({
       where: { id: "site-config" },
@@ -33,7 +36,10 @@ export async function GET(req: Request) {
     }) as any;
 
     const descontos = (siteConfig?.descontosProdutosDestaque as Record<string, number>) || {};
-    const descontoPercentual = descontos[produtoId] || 0;
+    const descontoProdutoDestaque = descontos[produtoId] || 0;
+    
+    // Usar o maior desconto entre linha e produto em destaque
+    const descontoPercentual = Math.max(descontoLinha || 0, descontoProdutoDestaque);
     
     const precoOriginal = preco;
     const precoComDesconto = descontoPercentual > 0 

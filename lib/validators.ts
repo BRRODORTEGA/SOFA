@@ -125,5 +125,6 @@ export const tabelaPrecoLinhaSchema = z.object({
   preco_grade_6000: z.coerce.number().nonnegative(),
   preco_grade_7000: z.coerce.number().nonnegative(),
   preco_couro: z.coerce.number().nonnegative(),
+  descontoPercentual: z.coerce.number().min(0).max(100).optional().nullable(),
 });
 

@@ -181,7 +181,7 @@ function ProductCard({ produto }: { produto: Produto }) {
         {produto.familia && (
           <p className="mt-1 text-sm text-gray-600">{produto.familia.nome}</p>
         )}
-        {produto.preco !== null && produto.preco !== undefined && (
+        {produto.preco !== null && produto.preco !== undefined && typeof produto.preco === 'number' && (
           <p className="mt-2 text-lg font-bold text-gray-900">
             R$ {produto.preco.toFixed(2)}
           </p>
@@ -220,7 +220,7 @@ function ProductListItem({ produto }: { produto: Produto }) {
         {produto.categoria && (
           <p className="mt-1 text-xs text-gray-500">{produto.categoria.nome}</p>
         )}
-        {produto.preco !== null && produto.preco !== undefined && (
+        {produto.preco !== null && produto.preco !== undefined && typeof produto.preco === 'number' && (
           <p className="mt-2 text-lg font-bold text-gray-900">
             R$ {produto.preco.toFixed(2)}
           </p>

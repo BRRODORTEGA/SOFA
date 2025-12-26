@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
+import { OrderStatusTracker } from "@/components/storefront/OrderStatusTracker";
 
 type Pedido = {
   id: string;
@@ -104,10 +105,13 @@ export default function PedidoDetailPage() {
   function getStatusColor(status: string) {
     const colors: Record<string, string> = {
       Solicitado: "bg-yellow-100 text-yellow-800",
-      "Aguardando Pagamento": "bg-orange-100 text-orange-800",
       Aprovado: "bg-blue-100 text-blue-800",
+      "Aguardando Pagamento": "bg-orange-100 text-orange-800",
+      "Pagamento Aprovado": "bg-green-100 text-green-800",
       "Em Produção": "bg-purple-100 text-purple-800",
-      Expedido: "bg-green-100 text-green-800",
+      "Em Expedição": "bg-indigo-100 text-indigo-800",
+      "Em Transporte": "bg-cyan-100 text-cyan-800",
+      Entregue: "bg-emerald-100 text-emerald-800",
       Reprovado: "bg-red-100 text-red-800",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
@@ -149,6 +153,17 @@ export default function PedidoDetailPage() {
           <span>Total:</span>
           <span>R$ {total.toFixed(2)}</span>
         </div>
+      </div>
+
+      {/* Rastreamento de Status */}
+      <div className="mb-8 rounded border bg-white p-6">
+        <OrderStatusTracker
+          currentStatus={pedido.status}
+          historico={pedido.historico.map((h) => ({
+            status: h.status,
+            createdAt: h.createdAt,
+          }))}
+        />
       </div>
 
       <div className="mb-8 rounded border p-6">

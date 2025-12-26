@@ -11,6 +11,8 @@ interface ProdutoImagensBlocosProps {
   setUploading: (uploading: boolean) => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
   tecidos?: Array<{ id: string; nome: string }>; // Tecidos do produto
+  onAutoSave?: () => Promise<void>; // Função para salvar automaticamente após upload
+  produtoId?: string; // ID do produto para salvar automaticamente
 }
 
 export function ProdutoImagensBlocos({
@@ -21,6 +23,8 @@ export function ProdutoImagensBlocos({
   setUploading,
   fileInputRef,
   tecidos = [],
+  onAutoSave,
+  produtoId,
 }: ProdutoImagensBlocosProps) {
   // Bloco 1: Foto Principal (1 imagem)
   const {
@@ -51,59 +55,105 @@ export function ProdutoImagensBlocos({
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    // Validar tipo de arquivo
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
-    if (!allowedTypes.includes(file.type)) {
-      alert("Tipo de arquivo não permitido. Use JPEG, PNG, WebP ou GIF.");
-      e.target.value = "";
-      return;
-    }
-
-    // Validar tamanho (máximo 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      alert("Arquivo muito grande. Tamanho máximo: 5MB.");
+
+    // Validar todos os arquivos primeiro
+    const validFiles: File[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      if (!allowedTypes.includes(file.type)) {
+        alert(`Arquivo "${file.name}" não é permitido. Use JPEG, PNG, WebP ou GIF.`);
+        continue;
+      }
+
+      if (file.size > maxSize) {
+        alert(`Arquivo "${file.name}" muito grande. Tamanho máximo: 5MB.`);
+        continue;
+      }
+
+      validFiles.push(file);
+    }
+
+    if (validFiles.length === 0) {
       e.target.value = "";
       return;
     }
 
-    // Fazer upload via API
     setUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
+
+    let uploadedCount = 0;
 
     try {
-      const res = await fetch("/api/upload/imagem", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.ok && data.data?.url) {
-        const imageUrl = data.data.url;
-        
+      // Processar arquivos em sequência
+      for (const file of validFiles) {
+        // Verificar limites antes de fazer upload
         if (activeBlock === "principal") {
-          if (principalFields.length === 0) {
-            appendPrincipal(imageUrl);
-          } else {
+          const currentPrincipal = watch("imagemPrincipal") || [];
+          if (currentPrincipal.length > 0) {
             alert("Já existe uma foto principal. Remova a atual antes de adicionar outra.");
+            continue;
           }
         } else if (activeBlock === "complementar") {
-          if (complementaresFields.length < 5) {
-            appendComplementar(imageUrl);
-          } else {
+          const currentComplementares = watch("imagensComplementares") || [];
+          if (currentComplementares.length >= 5) {
             alert("Máximo de 5 fotos complementares atingido.");
+            continue;
           }
-        } else if (activeBlock === "extra") {
-          appendExtra(imageUrl);
         }
-      } else {
-        const errorMsg = data.error || data.details || "Erro ao fazer upload";
-        alert(`Erro ao fazer upload: ${errorMsg}`);
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch("/api/upload/imagem", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.ok && data.data?.url) {
+          const imageUrl = data.data.url;
+          
+          // Verificar novamente antes de adicionar (pode ter mudado durante o upload)
+          if (activeBlock === "principal") {
+            const currentPrincipal = watch("imagemPrincipal") || [];
+            if (currentPrincipal.length === 0) {
+              appendPrincipal(imageUrl);
+              uploadedCount++;
+            } else {
+              alert("Já existe uma foto principal. Remova a atual antes de adicionar outra.");
+            }
+          } else if (activeBlock === "complementar") {
+            const currentComplementares = watch("imagensComplementares") || [];
+            if (currentComplementares.length < 5) {
+              appendComplementar(imageUrl);
+              uploadedCount++;
+            } else {
+              alert("Máximo de 5 fotos complementares atingido.");
+            }
+          } else if (activeBlock === "extra") {
+            appendExtra(imageUrl);
+            uploadedCount++;
+          }
+        } else {
+          const errorMsg = data.error || data.details || "Erro ao fazer upload";
+          alert(`Erro ao fazer upload de "${file.name}": ${errorMsg}`);
+        }
+      }
+
+      // Salvar automaticamente após todos os uploads bem-sucedidos (apenas se for edição e houver uploads)
+      if (uploadedCount > 0 && produtoId && onAutoSave) {
+        try {
+          await onAutoSave();
+        } catch (error) {
+          console.error("Erro ao salvar automaticamente:", error);
+          // Não mostrar erro ao usuário, apenas logar
+        }
       }
     } catch (error) {
       console.error("Erro ao fazer upload:", error);
@@ -200,6 +250,7 @@ export function ProdutoImagensBlocos({
         ref={fileInputRef}
         type="file"
         accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+        multiple
         onChange={(e) => handleFileUpload(e)}
         className="hidden"
       />

@@ -5,6 +5,41 @@ import { Decimal } from "@prisma/client/runtime/library";
 
 export const dynamic = "force-dynamic";
 
+// Função para garantir que a coluna desconto_percentual existe
+async function ensureDescontoColumnExists() {
+  try {
+    // Verificar se a coluna existe usando informação do schema
+    const result = await prisma.$queryRawUnsafe<Array<{ column_name: string }>>(
+      `SELECT column_name 
+       FROM information_schema.columns 
+       WHERE table_schema = 'public' 
+       AND table_name = 'TabelaPrecoLinha' 
+       AND column_name = 'descontoPercentual'`
+    );
+    
+    if (result.length === 0) {
+      // Criar a coluna se não existir (PostgreSQL não suporta IF NOT EXISTS em ADD COLUMN, então usamos DO)
+      await prisma.$executeRawUnsafe(
+        `DO $$ 
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name = 'TabelaPrecoLinha' 
+            AND column_name = 'descontoPercentual'
+          ) THEN
+            ALTER TABLE "TabelaPrecoLinha" ADD COLUMN "descontoPercentual" DECIMAL(5,2);
+          END IF;
+        END $$;`
+      );
+      console.log("Coluna desconto_percentual criada com sucesso");
+    }
+  } catch (e: any) {
+    // Se der erro, logar mas não falhar (pode ser que já exista)
+    console.log("Erro ao verificar/criar coluna desconto_percentual:", e?.message);
+  }
+}
+
 /** GET — retorna todas as linhas de uma tabela de preços específica */
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -75,6 +110,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       preco_grade_6000: linha.preco_grade_6000,
       preco_grade_7000: linha.preco_grade_7000,
       preco_couro: linha.preco_couro,
+      descontoPercentual: linha.descontoPercentual,
     }));
 
     console.log(`GET /api/tabelas-preco/${params.id}/linhas - Retornando ${linhasEnriquecidas.length} linhas`);
@@ -89,6 +125,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 /** PUT — salva lista de linhas de uma tabela específica */
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
+    // Garantir que a coluna desconto_percentual existe
+    await ensureDescontoColumnExists();
+
     // Verificar se a tabela existe
     const tabela = await prisma.tabelaPreco.findUnique({
       where: { id: params.id },
@@ -156,10 +195,86 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
           },
         });
 
+        // Preparar descontoPercentual
+        const descontoPercentual = validated.descontoPercentual !== undefined && validated.descontoPercentual !== null
+          ? clampDecimal(validated.descontoPercentual)
+          : null;
+
         if (linhaExistente) {
-          await prisma.tabelaPrecoLinha.update({
-            where: { id: linhaExistente.id },
-            data: {
+          // Usar $executeRaw para atualizar incluindo descontoPercentual se necessário
+          // Isso funciona mesmo se o Prisma Client não foi regenerado
+          const updateFields: string[] = [];
+          const updateValues: any[] = [];
+          let paramIndex = 1;
+
+          updateFields.push(`largura_cm = $${paramIndex++}`);
+          updateValues.push(validated.largura_cm);
+          updateFields.push(`profundidade_cm = $${paramIndex++}`);
+          updateValues.push(validated.profundidade_cm);
+          updateFields.push(`altura_cm = $${paramIndex++}`);
+          updateValues.push(validated.altura_cm);
+          updateFields.push(`largura_assento_cm = $${paramIndex++}`);
+          updateValues.push(validated.largura_assento_cm);
+          updateFields.push(`altura_assento_cm = $${paramIndex++}`);
+          updateValues.push(validated.altura_assento_cm);
+          updateFields.push(`largura_braco_cm = $${paramIndex++}`);
+          updateValues.push(validated.largura_braco_cm);
+          updateFields.push(`metragem_tecido_m = $${paramIndex++}`);
+          updateValues.push(validated.metragem_tecido_m);
+          updateFields.push(`metragem_couro_m = $${paramIndex++}`);
+          updateValues.push(validated.metragem_couro_m);
+          updateFields.push(`preco_grade_1000 = $${paramIndex++}`);
+          updateValues.push(Number(clampDecimal(validated.preco_grade_1000)));
+          updateFields.push(`preco_grade_2000 = $${paramIndex++}`);
+          updateValues.push(Number(clampDecimal(validated.preco_grade_2000)));
+          updateFields.push(`preco_grade_3000 = $${paramIndex++}`);
+          updateValues.push(Number(clampDecimal(validated.preco_grade_3000)));
+          updateFields.push(`preco_grade_4000 = $${paramIndex++}`);
+          updateValues.push(Number(clampDecimal(validated.preco_grade_4000)));
+          updateFields.push(`preco_grade_5000 = $${paramIndex++}`);
+          updateValues.push(Number(clampDecimal(validated.preco_grade_5000)));
+          updateFields.push(`preco_grade_6000 = $${paramIndex++}`);
+          updateValues.push(Number(clampDecimal(validated.preco_grade_6000)));
+          updateFields.push(`preco_grade_7000 = $${paramIndex++}`);
+          updateValues.push(Number(clampDecimal(validated.preco_grade_7000)));
+          updateFields.push(`preco_couro = $${paramIndex++}`);
+          updateValues.push(Number(clampDecimal(validated.preco_couro)));
+          
+          if (descontoPercentual !== null) {
+            updateFields.push(`"descontoPercentual" = $${paramIndex++}`);
+            updateValues.push(Number(descontoPercentual));
+          } else {
+            updateFields.push(`"descontoPercentual" = NULL`);
+          }
+
+          if (produtoNome) {
+            updateFields.push(`"nomeProduto" = $${paramIndex++}`);
+            updateValues.push(produtoNome);
+          }
+          if (categoriaNome) {
+            updateFields.push(`"categoriaTxt" = $${paramIndex++}`);
+            updateValues.push(categoriaNome);
+          }
+          if (familiaNome) {
+            updateFields.push(`"familiaTxt" = $${paramIndex++}`);
+            updateValues.push(familiaNome);
+          }
+
+          updateFields.push(`"tabelaPrecoId" = $${paramIndex++}`);
+          updateValues.push(params.id);
+          updateFields.push(`"updatedAt" = NOW()`);
+
+          const sql = `UPDATE "TabelaPrecoLinha" SET ${updateFields.join(", ")} WHERE id = $${paramIndex}`;
+          updateValues.push(linhaExistente.id);
+
+          await prisma.$executeRawUnsafe(sql, ...updateValues);
+          linhasModificadas = true;
+        } else {
+          // Para criação, usar Prisma normal mas sem descontoPercentual se não estiver disponível
+          const createData: any = {
+            produtoId,
+            tabelaPrecoId: params.id,
+            medida_cm: validated.medida_cm,
             largura_cm: validated.largura_cm,
             profundidade_cm: validated.profundidade_cm,
             altura_cm: validated.altura_cm,
@@ -176,40 +291,33 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             preco_grade_6000: clampDecimal(validated.preco_grade_6000),
             preco_grade_7000: clampDecimal(validated.preco_grade_7000),
             preco_couro: clampDecimal(validated.preco_couro),
-            tabelaPrecoId: params.id,
             nomeProduto: produtoNome || undefined,
             categoriaTxt: categoriaNome || undefined,
             familiaTxt: familiaNome || undefined,
-            },
-          });
-          linhasModificadas = true;
-        } else {
-          await prisma.tabelaPrecoLinha.create({
-            data: {
-              produtoId,
-              tabelaPrecoId: params.id,
-              medida_cm: validated.medida_cm,
-              largura_cm: validated.largura_cm,
-              profundidade_cm: validated.profundidade_cm,
-              altura_cm: validated.altura_cm,
-              largura_assento_cm: validated.largura_assento_cm,
-              altura_assento_cm: validated.altura_assento_cm,
-              largura_braco_cm: validated.largura_braco_cm,
-              metragem_tecido_m: validated.metragem_tecido_m,
-              metragem_couro_m: validated.metragem_couro_m,
-              preco_grade_1000: clampDecimal(validated.preco_grade_1000),
-              preco_grade_2000: clampDecimal(validated.preco_grade_2000),
-              preco_grade_3000: clampDecimal(validated.preco_grade_3000),
-              preco_grade_4000: clampDecimal(validated.preco_grade_4000),
-              preco_grade_5000: clampDecimal(validated.preco_grade_5000),
-              preco_grade_6000: clampDecimal(validated.preco_grade_6000),
-              preco_grade_7000: clampDecimal(validated.preco_grade_7000),
-              preco_couro: clampDecimal(validated.preco_couro),
-              nomeProduto: produtoNome || undefined,
-              categoriaTxt: categoriaNome || undefined,
-              familiaTxt: familiaNome || undefined,
-            },
-          });
+          };
+
+          // Tentar adicionar descontoPercentual, mas não falhar se não existir
+          try {
+            if (descontoPercentual !== null) {
+              createData.descontoPercentual = descontoPercentual;
+            }
+            await prisma.tabelaPrecoLinha.create({ data: createData });
+          } catch (e: any) {
+            // Se falhar por causa do descontoPercentual, criar sem ele e depois atualizar via SQL
+            if (e.message?.includes("descontoPercentual") || e.message?.includes("desconto_percentual")) {
+              delete createData.descontoPercentual;
+              const created = await prisma.tabelaPrecoLinha.create({ data: createData });
+              if (descontoPercentual !== null) {
+                await prisma.$executeRawUnsafe(
+                  `UPDATE "TabelaPrecoLinha" SET "descontoPercentual" = $1 WHERE id = $2`,
+                  Number(descontoPercentual),
+                  created.id
+                );
+              }
+            } else {
+              throw e;
+            }
+          }
           linhasModificadas = true;
         }
       }

@@ -260,6 +260,9 @@ model TabelaPrecoLinha {
   preco_grade_7000 Decimal @db.Decimal(10, 2)
   preco_couro      Decimal @db.Decimal(10, 2)
 
+  // Desconto percentual aplicado à linha (opcional, 0-100)
+  descontoPercentual Decimal? @db.Decimal(5, 2)
+
   produto     Produto      @relation(fields: [produtoId], references: [id])
   tabelaPreco TabelaPreco? @relation(fields: [tabelaPrecoId], references: [id], onDelete: SetNull)
   createdAt   DateTime     @default(now())
@@ -274,6 +277,31 @@ model TabelaPrecoLinha {
 }
 
 /**
+ * ===== Cupons de Desconto =====
+ */
+
+model Cupom {
+  codigo          String   @id // Código único do cupom (ex: "DESCONTO10")
+  descricao       String?  // Descrição do cupom
+  descontoPercentual Decimal? @db.Decimal(5, 2) // Desconto percentual (0-100)
+  descontoFixo    Decimal? @db.Decimal(10, 2) // Desconto fixo em reais
+  valorMinimo     Decimal? @db.Decimal(10, 2) // Valor mínimo do pedido para usar o cupom
+  ativo           Boolean  @default(true)
+  dataInicio      DateTime?
+  dataFim         DateTime?
+  limiteUsos      Int?     // Limite de vezes que pode ser usado (null = ilimitado)
+  usosAtuais      Int      @default(0) // Quantas vezes já foi usado
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  carrinhos Carrinho[]
+  pedidos   Pedido[]
+
+  @@index([ativo])
+  @@index([codigo])
+}
+
+/**
  * ===== Pedidos e Histórico de Status =====
  */
 
@@ -282,6 +310,8 @@ model Pedido {
   codigo    String   @unique // ex.: ORD-AB12CD
   clienteId String
   status    String   @default("Solicitado")
+  cupomCodigo String? // Código do cupom aplicado
+  descontoCupom Decimal? @db.Decimal(10, 2) // Valor do desconto do cupom aplicado
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -289,6 +319,7 @@ model Pedido {
   itens     PedidoItem[]
   historico PedidoStatusHistory[]
   mensagens MensagemPedido[]
+  cupom     Cupom?                @relation(fields: [cupomCodigo], references: [codigo])
 }
 
 model PedidoItem {
@@ -325,11 +356,13 @@ model PedidoStatusHistory {
 model Carrinho {
   id        String   @id @default(cuid())
   userId    String   @unique
+  cupomCodigo String? // Código do cupom aplicado temporariamente
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   user  User           @relation(fields: [userId], references: [id])
   itens CarrinhoItem[]
+  cupom Cupom?         @relation(fields: [cupomCodigo], references: [codigo])
 }
 
 model CarrinhoItem {

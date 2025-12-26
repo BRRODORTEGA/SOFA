@@ -28,6 +28,7 @@ type LinhaPreco = {
   preco_grade_6000: number;
   preco_grade_7000: number;
   preco_couro: number;
+  descontoPercentual?: number | null;
 };
 
 export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaPrecoId: string; tabelaNome: string }) {
@@ -183,7 +184,8 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
   }
 
   async function loadFamilias() {
-    const res = await fetch("/api/familias");
+    // Usar parâmetro all=true para buscar TODAS as famílias (ativas e inativas)
+    const res = await fetch("/api/familias?all=true");
     const data = await res.json();
     if (data.ok) {
       // Igual à página de criação que funciona
@@ -192,7 +194,9 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
   }
 
   async function loadProdutos() {
-    const res = await fetch("/api/produtos?limit=1000");
+    // Usar parâmetro all=true para buscar TODOS os produtos (ativos e inativos)
+    // sem filtros de tabela vigente
+    const res = await fetch("/api/produtos?limit=1000&all=true");
     const data = await res.json();
     if (data.ok) {
       const produtosMapeados = (data.data?.items || []).map((p: any) => ({
@@ -262,6 +266,7 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
           preco_grade_6000: Number(item.preco_grade_6000),
           preco_grade_7000: Number(item.preco_grade_7000),
           preco_couro: Number(item.preco_couro),
+          descontoPercentual: item.descontoPercentual ? Number(item.descontoPercentual) : null,
         })));
         dirtyRef.current.clear();
         setHasUnsavedChanges(false);
@@ -919,6 +924,7 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
     { key: "preco_grade_6000", header: "6000", width: "w-28", isPrice: true },
     { key: "preco_grade_7000", header: "7000", width: "w-28", isPrice: true },
     { key: "preco_couro", header: "Couro", width: "w-28", isPrice: true },
+    { key: "descontoPercentual", header: "Desconto (%)", width: "w-32", isDiscount: true },
   ];
 
   return (
@@ -994,12 +1000,38 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
         </div>
       ) : (
         <>
-          <div className="text-base font-medium text-gray-700">
+          <div className="text-base font-medium text-gray-700 mb-4">
             Total: <span className="font-semibold text-gray-900">{linhasFiltradas.length}</span> linha(s) de preço
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-            <table className="w-full border-collapse table-fixed">
+          {/* Container com altura máxima e scroll sempre visível */}
+          <div className="relative rounded-lg border border-gray-200 bg-white shadow-sm">
+            <style dangerouslySetInnerHTML={{__html: `
+              .table-scroll-wrapper::-webkit-scrollbar {
+                height: 12px;
+                width: 12px;
+              }
+              .table-scroll-wrapper::-webkit-scrollbar-track {
+                background: #f1f5f9;
+                border-radius: 6px;
+              }
+              .table-scroll-wrapper::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 6px;
+              }
+              .table-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+                background: #94a3b8;
+              }
+            `}} />
+            {/* Barra de rolagem horizontal sempre visível */}
+            <div 
+              className="table-scroll-wrapper overflow-x-auto overflow-y-auto max-h-[calc(100vh-400px)]"
+              style={{ 
+                scrollbarWidth: 'thin', 
+                scrollbarColor: '#cbd5e1 #f1f5f9',
+              }}
+            >
+              <table className="w-full border-collapse table-fixed min-w-max">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
                   {columns.map((col) => {
@@ -1033,9 +1065,10 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                       const isFieldDirty = dirtyRef.current.has(fieldKey) && !col.isText && !col.readonly;
                       const isPrice = col.isPrice;
                       const isDimension = col.isDimension;
+                      const isDiscount = col.isDiscount;
 
-                      const bgColor = isPrice ? "bg-blue-50/30" : isDimension ? "bg-green-50/30" : "bg-white";
-                      const stickyBg = col.sticky ? (isPrice ? "bg-blue-50" : isDimension ? "bg-green-50" : "bg-white") : "";
+                      const bgColor = isPrice ? "bg-blue-50/30" : isDimension ? "bg-green-50/30" : isDiscount ? "bg-yellow-50/30" : "bg-white";
+                      const stickyBg = col.sticky ? (isPrice ? "bg-blue-50" : isDimension ? "bg-green-50" : isDiscount ? "bg-yellow-50" : "bg-white") : "";
 
                       return (
                         <td 
@@ -1048,12 +1081,14 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                           ) : (
                             <input
                               type="number"
-                              step={isPrice ? "0.01" : isDimension ? "0.1" : "1"}
+                              step={isPrice ? "0.01" : isDimension ? "0.1" : isDiscount ? "0.01" : "1"}
+                              min={isDiscount ? "0" : undefined}
+                              max={isDiscount ? "100" : undefined}
                               value={value || ""}
                               onChange={(e) =>
                                 handleFieldChange(linha.produtoId, linha.medida_cm, col.key as keyof LinhaPreco, e.target.value)
                               }
-                              placeholder={isPrice ? "0,00" : isDimension ? "0,0" : ""}
+                              placeholder={isPrice ? "0,00" : isDimension ? "0,0" : isDiscount ? "0,00" : ""}
                               className={`w-full rounded border px-2.5 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 ${
                                 errorClass
                                   ? "border-red-500 bg-red-100 text-red-900 focus:ring-red-500"
@@ -1065,6 +1100,8 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                                   ? "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 font-medium"
                                   : isDimension
                                   ? "border-gray-300 bg-white text-gray-900 focus:border-green-500 focus:ring-green-500"
+                                  : isDiscount
+                                  ? "border-gray-300 bg-white text-gray-900 focus:border-yellow-500 focus:ring-yellow-500 font-medium"
                                   : "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500"
                               }`}
                             />
@@ -1084,6 +1121,7 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </>
       )}

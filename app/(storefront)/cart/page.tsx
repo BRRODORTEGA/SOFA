@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -17,9 +17,20 @@ type CarrinhoItem = {
   descontoValor?: number; // Valor do desconto em reais
 };
 
+type Cupom = {
+  codigo: string;
+  descricao?: string | null;
+  descontoPercentual?: number | null;
+  descontoFixo?: number | null;
+  valorMinimo?: number | null;
+};
+
 type Carrinho = {
   id: string;
   itens: CarrinhoItem[];
+  cupomCodigo?: string | null;
+  cupom?: Cupom | null;
+  descontoCupom?: number;
 };
 
 export default function CartPage() {
@@ -30,6 +41,33 @@ export default function CartPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [pedidoCodigo, setPedidoCodigo] = useState<string | null>(null);
+  const [cupomCodigo, setCupomCodigo] = useState("");
+  const [cupomLoading, setCupomLoading] = useState(false);
+  const [cupomError, setCupomError] = useState<string | null>(null);
+
+  const loadCarrinho = useCallback(async () => {
+    try {
+      const res = await fetch("/api/cart");
+      const data = await res.json();
+      
+      if (res.ok) {
+        console.log("[CART DEBUG] Dados recebidos:", data);
+        console.log("[CART DEBUG] Itens no carrinho:", data.data?.itens?.length || 0);
+        setCarrinho(data.data);
+        if (data.data?.cupomCodigo) {
+          setCupomCodigo(data.data.cupomCodigo);
+        }
+      } else {
+        console.error("[CART DEBUG] Erro na resposta:", data);
+        alert("Erro ao carregar carrinho: " + (data.error || "Erro desconhecido"));
+      }
+    } catch (error) {
+      console.error("Erro ao carregar carrinho:", error);
+      alert("Erro ao carregar carrinho. Verifique o console para mais detalhes.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -38,21 +76,77 @@ export default function CartPage() {
     }
 
     if (status === "authenticated") {
-      loadCarrinho();
+      // Validar carrinho automaticamente ao carregar a página
+      fetch("/api/cart/validar", { method: "POST" })
+        .then(res => res.json())
+        .then(data => {
+          if (data.data && (data.data.itensRemovidos > 0 || data.data.itensAtualizados > 0)) {
+            // Mostrar notificação discreta
+            if (data.data.itensRemovidos > 0) {
+              console.log(`[CART] ${data.data.mensagem}`);
+            }
+          }
+          // Sempre recarregar o carrinho após validação
+          loadCarrinho();
+        })
+        .catch(err => {
+          console.error("Erro ao validar carrinho:", err);
+          // Em caso de erro, ainda assim carregar o carrinho
+          loadCarrinho();
+        });
     }
-  }, [status, router]);
+  }, [status, router, loadCarrinho]);
 
-  async function loadCarrinho() {
+  async function aplicarCupom() {
+    if (!cupomCodigo.trim()) {
+      setCupomError("Digite um código de cupom");
+      return;
+    }
+
+    setCupomLoading(true);
+    setCupomError(null);
+
     try {
-      const res = await fetch("/api/cart");
+      const res = await fetch("/api/cart/cupom", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codigo: cupomCodigo }),
+      });
+
+      const data = await res.json();
+
       if (res.ok) {
-        const data = await res.json();
-        setCarrinho(data.data);
+        loadCarrinho();
+        setCupomCodigo("");
+      } else {
+        setCupomError(data.error || "Erro ao aplicar cupom");
       }
     } catch (error) {
-      console.error("Erro ao carregar carrinho:", error);
+      console.error("Erro ao aplicar cupom:", error);
+      setCupomError("Erro ao aplicar cupom");
     } finally {
-      setLoading(false);
+      setCupomLoading(false);
+    }
+  }
+
+  async function removerCupom() {
+    setCupomLoading(true);
+    setCupomError(null);
+
+    try {
+      const res = await fetch("/api/cart/cupom", {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        loadCarrinho();
+        setCupomCodigo("");
+      }
+    } catch (error) {
+      console.error("Erro ao remover cupom:", error);
+      setCupomError("Erro ao remover cupom");
+    } finally {
+      setCupomLoading(false);
     }
   }
 
@@ -91,6 +185,30 @@ export default function CartPage() {
   async function handleCheckout() {
     setCheckoutLoading(true);
     try {
+      // Primeiro, validar o carrinho antes de finalizar
+      const validacaoRes = await fetch("/api/cart/validar", { method: "POST" });
+      const validacaoData = await validacaoRes.json();
+
+      if (validacaoRes.ok && validacaoData.data) {
+        if (validacaoData.data.itensRemovidos > 0 || validacaoData.data.itensAtualizados > 0) {
+          // Recarregar o carrinho para mostrar as mudanças
+          await loadCarrinho();
+          
+          // Mostrar mensagem informativa
+          const mensagem = validacaoData.data.mensagem || 
+            `${validacaoData.data.itensRemovidos} produto(s) foram removidos. ${validacaoData.data.itensAtualizados} produto(s) tiveram preços atualizados.`;
+          
+          if (validacaoData.data.itensRemovidos > 0) {
+            alert(mensagem + "\n\nPor favor, revise seu carrinho antes de finalizar o pedido.");
+            setCheckoutLoading(false);
+            return;
+          } else {
+            alert(mensagem + "\n\nContinuando com o checkout...");
+          }
+        }
+      }
+
+      // Prosseguir com o checkout
       const res = await fetch("/api/checkout", { method: "POST" });
       const data = await res.json();
 
@@ -98,6 +216,10 @@ export default function CartPage() {
         setPedidoCodigo(data.data.codigo || null);
         setShowSuccessModal(true);
       } else {
+        // Se o erro contém informações sobre itens removidos, recarregar o carrinho
+        if (data.error && data.error.includes("atualizado")) {
+          await loadCarrinho();
+        }
         alert("Erro ao finalizar pedido: " + (data.error || "Erro desconhecido"));
       }
     } catch (error) {
@@ -151,6 +273,10 @@ export default function CartPage() {
     const preco = parsePreco(item.previewPrecoUnit);
     return acc + preco * item.quantidade;
   }, 0);
+
+  // Aplicar desconto do cupom se houver
+  const descontoCupom = carrinho.descontoCupom || 0;
+  const totalFinal = totalComDesconto - descontoCupom;
 
   return (
     <div className="mx-auto max-w-4xl p-8">
@@ -221,6 +347,53 @@ export default function CartPage() {
         ))}
       </div>
 
+      {/* Campo de cupom */}
+      <div className="mt-8 rounded border bg-white p-4">
+        <h3 className="mb-3 text-lg font-semibold">Cupom de Desconto</h3>
+        {carrinho.cupom ? (
+          <div className="flex items-center justify-between rounded bg-green-50 p-3">
+            <div>
+              <p className="font-medium text-green-800">
+                Cupom: {carrinho.cupom.codigo}
+              </p>
+              {carrinho.cupom.descricao && (
+                <p className="text-sm text-green-600">{carrinho.cupom.descricao}</p>
+              )}
+            </div>
+            <button
+              onClick={removerCupom}
+              disabled={cupomLoading}
+              className="rounded bg-red-500 px-3 py-1 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50"
+            >
+              Remover
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={cupomCodigo}
+              onChange={(e) => {
+                setCupomCodigo(e.target.value.toUpperCase());
+                setCupomError(null);
+              }}
+              placeholder="Digite o código do cupom"
+              className="flex-1 rounded border border-gray-300 px-4 py-2 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+            />
+            <button
+              onClick={aplicarCupom}
+              disabled={cupomLoading || !cupomCodigo.trim()}
+              className="rounded bg-emerald-600 px-6 py-2 font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {cupomLoading ? "Aplicando..." : "Aplicar"}
+            </button>
+          </div>
+        )}
+        {cupomError && (
+          <p className="mt-2 text-sm text-red-600">{cupomError}</p>
+        )}
+      </div>
+
       <div className="mt-8 rounded border bg-gray-50 p-6">
         <div className="space-y-2">
           <div className="flex justify-between text-base text-gray-700">
@@ -233,10 +406,16 @@ export default function CartPage() {
               <span className="font-semibold">-R$ {totalDesconto.toFixed(2)}</span>
             </div>
           )}
+          {descontoCupom > 0 && (
+            <div className="flex justify-between text-base text-green-600">
+              <span>Desconto do cupom:</span>
+              <span className="font-semibold">-R$ {descontoCupom.toFixed(2)}</span>
+            </div>
+          )}
           <div className="mt-4 flex justify-between border-t border-gray-300 pt-4 text-lg font-semibold">
             <span>Total:</span>
-            <span className={totalDesconto > 0 ? "text-red-600" : ""}>
-              R$ {totalComDesconto.toFixed(2)}
+            <span className={totalDesconto > 0 || descontoCupom > 0 ? "text-red-600" : ""}>
+              R$ {totalFinal.toFixed(2)}
             </span>
           </div>
         </div>

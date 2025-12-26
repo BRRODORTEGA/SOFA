@@ -1,7 +1,7 @@
 import { AdminToolbar } from "@/components/admin/toolbar";
-import { AdminTableWrapper } from "@/components/admin/table-wrapper";
 import { prisma } from "@/lib/prisma";
 import DbError from "@/components/admin/db-error";
+import TabelasPrecoTable from "./TabelasPrecoTable";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +63,7 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
       <div>
         <h1 className="mb-6 text-3xl font-bold text-gray-900">Gestão de Tabelas de Preços</h1>
         <AdminToolbar createHref="/admin/tabelas-preco/new" />
-        <AdminTableWrapper
+        <TabelasPrecoTable
           columns={[
             { key: "nome", header: "Nome" },
             { key: "ativoFormatted", header: "Status" },

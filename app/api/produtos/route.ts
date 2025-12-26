@@ -1,31 +1,38 @@
 import { prisma } from "@/lib/prisma";
 import { ok, created, unprocessable, serverError, paginateParams } from "@/lib/http";
 import { produtoSchema } from "@/lib/validators";
+import { getDescontoMaximoProduto, getPrecoMinimoEDescontoProduto } from "@/lib/pricing";
 
 export async function GET(req: Request) {
   const { limit, offset, q } = paginateParams(new URL(req.url).searchParams);
   const searchParams = new URL(req.url).searchParams;
   const categoriaId = searchParams.get("categoriaId");
+  const all = searchParams.get("all") === "true"; // Parâmetro para retornar todos os produtos (sem filtros de status/tabela vigente)
   
-  // Buscar configurações do site para verificar tabela vigente
-  const siteConfig = await prisma.siteConfig.findUnique({
-    where: { id: "site-config" },
-    select: {
-      tabelaPrecoVigenteId: true,
-      produtosAtivosTabelaVigente: true,
-    },
-  });
+  const where: any = {};
   
-  const where: any = { status: true };
-  
-  // Se houver tabela vigente configurada E produtos ativos selecionados, filtrar apenas esses produtos
-  // Se houver tabela vigente mas nenhum produto ativo selecionado, não exibir nenhum produto
-  if (siteConfig?.tabelaPrecoVigenteId) {
-    if (siteConfig.produtosAtivosTabelaVigente && siteConfig.produtosAtivosTabelaVigente.length > 0) {
-      where.id = { in: siteConfig.produtosAtivosTabelaVigente };
-    } else {
-      // Tabela vigente configurada mas nenhum produto ativo = não exibir nenhum produto
-      where.id = { in: [] };
+  // Se não for "all", aplicar filtros padrão (status e tabela vigente)
+  if (!all) {
+    where.status = true;
+    
+    // Buscar configurações do site para verificar tabela vigente
+    const siteConfig = await prisma.siteConfig.findUnique({
+      where: { id: "site-config" },
+      select: {
+        tabelaPrecoVigenteId: true,
+        produtosAtivosTabelaVigente: true,
+      },
+    });
+    
+    // Se houver tabela vigente configurada E produtos ativos selecionados, filtrar apenas esses produtos
+    // Se houver tabela vigente mas nenhum produto ativo selecionado, não exibir nenhum produto
+    if (siteConfig?.tabelaPrecoVigenteId) {
+      if (siteConfig.produtosAtivosTabelaVigente && siteConfig.produtosAtivosTabelaVigente.length > 0) {
+        where.id = { in: siteConfig.produtosAtivosTabelaVigente };
+      } else {
+        // Tabela vigente configurada mas nenhum produto ativo = não exibir nenhum produto
+        where.id = { in: [] };
+      }
     }
   }
   
@@ -50,7 +57,43 @@ export async function GET(req: Request) {
     }).catch(() => prisma.produto.findMany({ where, take: limit, skip: offset })),
     prisma.produto.count({ where }),
   ]);
-  return ok({ items, total, limit, offset });
+
+  // Buscar configurações do site para obter tabela vigente e descontos de produtos em destaque
+  const siteConfig = await prisma.siteConfig.findUnique({
+    where: { id: "site-config" },
+    select: {
+      tabelaPrecoVigenteId: true,
+      descontosProdutosDestaque: true,
+    },
+  }) as any;
+
+  const tabelaPrecoVigenteId = siteConfig?.tabelaPrecoVigenteId || null;
+  const descontosProdutosDestaque = (siteConfig?.descontosProdutosDestaque as Record<string, number>) || {};
+
+  // Enriquecer produtos com preços e descontos
+  const itemsEnriquecidos = await Promise.all(
+    items.map(async (item) => {
+      const descontoProdutoDestaque = descontosProdutosDestaque[item.id] || 0;
+      const { preco: precoOriginal, desconto: descontoLinha } = await getPrecoMinimoEDescontoProduto(item.id);
+      
+      // Usar o maior desconto entre linha da tabela e produto em destaque
+      const descontoPercentual = Math.max(descontoProdutoDestaque, descontoLinha || 0);
+      
+      const precoComDesconto = precoOriginal && descontoPercentual > 0
+        ? precoOriginal * (1 - descontoPercentual / 100)
+        : precoOriginal;
+
+      return {
+        ...item,
+        preco: precoComDesconto || precoOriginal || null,
+        precoOriginal: precoOriginal || null,
+        precoComDesconto: precoComDesconto || null,
+        descontoPercentual: descontoPercentual > 0 ? descontoPercentual : undefined,
+      };
+    })
+  );
+
+  return ok({ items: itemsEnriquecidos, total, limit, offset });
 }
 
 export async function POST(req: Request) {

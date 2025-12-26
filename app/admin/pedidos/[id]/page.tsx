@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { OrderStatusTracker } from "@/components/storefront/OrderStatusTracker";
 
 type Pedido = {
   id: string;
@@ -121,11 +122,15 @@ export default function PedidoAdminDetailPage() {
   function getStatusColor(status: string) {
     const colors: Record<string, string> = {
       Solicitado: "bg-yellow-100 text-yellow-800",
-      "Aguardando Pagamento": "bg-orange-100 text-orange-800",
       Aprovado: "bg-blue-100 text-blue-800",
+      "Aguardando Pagamento": "bg-orange-100 text-orange-800",
+      "Pagamento Aprovado": "bg-green-100 text-green-800",
       "Em Produção": "bg-purple-100 text-purple-800",
-      Expedido: "bg-green-100 text-green-800",
+      "Em Expedição": "bg-indigo-100 text-indigo-800",
+      "Em Transporte": "bg-cyan-100 text-cyan-800",
+      Entregue: "bg-emerald-100 text-emerald-800",
       Reprovado: "bg-red-100 text-red-800",
+      Expedido: "bg-indigo-100 text-indigo-800", // Compatibilidade com status antigo
     };
     return colors[status] || "bg-gray-100 text-gray-800";
   }
@@ -145,6 +150,17 @@ export default function PedidoAdminDetailPage() {
         </span>
       </div>
 
+      {/* Rastreamento de Status */}
+      <div className="mb-6 rounded border bg-white p-6">
+        <OrderStatusTracker
+          currentStatus={pedido.status}
+          historico={pedido.historico.map((h) => ({
+            status: h.status,
+            createdAt: h.createdAt,
+          }))}
+        />
+      </div>
+
       <div className="mb-6 rounded border p-6">
         <h2 className="mb-4 font-semibold">Atualizar Status</h2>
         <form onSubmit={handleSubmitStatus(onUpdateStatus)} className="space-y-3">
@@ -154,11 +170,14 @@ export default function PedidoAdminDetailPage() {
               {...registerStatus("novoStatus", { required: true })}
               className="mt-1 w-full rounded border px-3 py-2"
             >
-              <option value="Solicitado">Solicitado</option>
-              <option value="Aguardando Pagamento">Aguardando Pagamento</option>
+              <option value="Solicitado">Pedido Solicitado</option>
               <option value="Aprovado">Aprovado</option>
+              <option value="Aguardando Pagamento">Aguardando Pagamento</option>
+              <option value="Pagamento Aprovado">Pagamento Aprovado</option>
               <option value="Em Produção">Em Produção</option>
-              <option value="Expedido">Expedido</option>
+              <option value="Em Expedição">Em Expedição</option>
+              <option value="Em Transporte">Em Transporte</option>
+              <option value="Entregue">Entregue</option>
               <option value="Reprovado">Reprovado</option>
             </select>
           </div>

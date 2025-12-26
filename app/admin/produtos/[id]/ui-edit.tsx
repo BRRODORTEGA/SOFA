@@ -125,6 +125,102 @@ export default function EditProduto({ item }: { item: any }) {
     ? familias.filter((f:any) => !f.categoriaId || f.categoriaId === categoriaId)
     : familias;
 
+  // Função para salvar automaticamente apenas as imagens após upload
+  async function handleAutoSave() {
+    try {
+      const currentValues = getValues();
+      
+      // Processar acionamento dos checkboxes
+      const acionamentos: string[] = [];
+      if (acionamentoManual) acionamentos.push("Manual");
+      if (acionamentoAutomatico) acionamentos.push("Automático");
+      const acionamentoValue = acionamentos.length > 0 ? acionamentos.join(",") : null;
+      
+      // Combinar os 3 blocos de imagens em um único array (compatibilidade)
+      const todasImagens: string[] = [];
+      // Array detalhado com tecidoId
+      const imagensDetalhadas: Array<{ url: string; tecidoId: string | null; tipo: string; ordem: number }> = [];
+      
+      // Foto Principal
+      const principal = currentValues.imagemPrincipal || [];
+      const principalTecidos = currentValues.imagemPrincipalTecido || [];
+      if (Array.isArray(principal) && principal.length > 0) {
+        principal.forEach((url: any, idx: number) => {
+          if (url && typeof url === 'string' && url.trim() !== "" && (url.startsWith("http") || url.startsWith("/"))) {
+            todasImagens.push(url);
+            imagensDetalhadas.push({
+              url,
+              tecidoId: principalTecidos[idx] || null,
+              tipo: "principal",
+              ordem: 0,
+            });
+          }
+        });
+      }
+      
+      // Fotos Complementares
+      const complementares = currentValues.imagensComplementares || [];
+      const complementaresTecidos = currentValues.imagensComplementaresTecido || [];
+      if (Array.isArray(complementares) && complementares.length > 0) {
+        complementares.forEach((url: any, idx: number) => {
+          if (url && typeof url === 'string' && url.trim() !== "" && (url.startsWith("http") || url.startsWith("/"))) {
+            todasImagens.push(url);
+            imagensDetalhadas.push({
+              url,
+              tecidoId: complementaresTecidos[idx] || null,
+              tipo: "complementar",
+              ordem: idx,
+            });
+          }
+        });
+      }
+      
+      // Fotos Extra
+      const extra = currentValues.imagensExtra || [];
+      const extraTecidos = currentValues.imagensExtraTecido || [];
+      if (Array.isArray(extra) && extra.length > 0) {
+        extra.forEach((url: any, idx: number) => {
+          if (url && typeof url === 'string' && url.trim() !== "" && (url.startsWith("http") || url.startsWith("/"))) {
+            todasImagens.push(url);
+            imagensDetalhadas.push({
+              url,
+              tecidoId: extraTecidos[idx] || null,
+              tipo: "extra",
+              ordem: idx,
+            });
+          }
+        });
+      }
+      
+      const payload = {
+        categoriaId: currentValues.categoriaId || item.categoriaId,
+        familiaId: currentValues.familiaId || item.familiaId,
+        nome: currentValues.nome || item.nome,
+        tipo: currentValues.tipo || item.tipo || null,
+        abertura: currentValues.abertura || item.abertura || null,
+        acionamento: acionamentoValue || item.acionamento || null,
+        configuracao: currentValues.configuracao || item.configuracao || null,
+        imagens: todasImagens,
+        imagensDetalhadas: imagensDetalhadas,
+        status: Boolean(currentValues.status ?? item.status ?? true),
+      };
+      
+      const res = await fetch(`/api/produtos/${item.id}`, { 
+        method: "PUT", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(payload) 
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok || !data.ok) {
+        console.error("Erro ao salvar automaticamente:", data);
+      }
+    } catch (error) {
+      console.error("Erro ao salvar automaticamente:", error);
+    }
+  }
+
   async function onSubmit(values:any) {
     try {
       // Processar acionamento dos checkboxes
@@ -230,8 +326,9 @@ export default function EditProduto({ item }: { item: any }) {
       console.log("Resposta da API:", data); // Debug
       
       if (res.ok && data.ok) {
-        router.push("/admin/produtos");
+        // Atualizar a página sem redirecionar
         router.refresh();
+        alert("Produto salvo com sucesso!");
       } else {
         // Tratar diferentes formatos de erro
         let errorMsg = "Erro ao salvar produto";
@@ -398,6 +495,8 @@ export default function EditProduto({ item }: { item: any }) {
             setUploading={setUploading}
             fileInputRef={fileInputRef}
             tecidos={tecidos}
+            onAutoSave={handleAutoSave}
+            produtoId={item.id}
           />
         </div>
         <div className="flex items-center gap-3">

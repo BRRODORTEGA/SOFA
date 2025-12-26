@@ -61,10 +61,13 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
       });
 
       const data = await res.json();
+      console.log("[ADD TO CART DEBUG - After Login] Resposta:", data);
       if (res.ok) {
+        console.log("[ADD TO CART DEBUG - After Login] Item adicionado:", data.data);
         alert("Produto adicionado ao carrinho!");
         router.push("/cart");
       } else {
+        console.error("[ADD TO CART DEBUG - After Login] Erro:", data);
         alert("Erro ao adicionar ao carrinho: " + (data.error || "Erro desconhecido"));
       }
     } catch (error) {
@@ -204,6 +207,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
 
     setAdding(true);
     try {
+      console.log("[ADD TO CART DEBUG] Adicionando produto:", { produtoId: params.id, tecidoId, variacaoMedida_cm: medida, quantidade: qtd });
       const res = await fetch("/api/cart/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -216,14 +220,17 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
       });
 
       const data = await res.json();
+      console.log("[ADD TO CART DEBUG] Resposta completa:", { status: res.status, ok: res.ok, data });
       if (res.ok) {
+        console.log("[ADD TO CART DEBUG] Item adicionado com sucesso:", data.data);
         alert("Produto adicionado ao carrinho!");
         router.push("/cart");
       } else {
+        console.error("[ADD TO CART DEBUG] Erro na resposta:", data);
         alert("Erro ao adicionar ao carrinho: " + (data.error || "Erro desconhecido"));
       }
     } catch (error) {
-      console.error("Erro:", error);
+      console.error("[ADD TO CART DEBUG] Erro na requisição:", error);
       alert("Erro ao adicionar ao carrinho");
     } finally {
       setAdding(false);
@@ -441,18 +448,18 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
               <div>
                 {descontoPercentual && descontoPercentual > 0 && precoOriginal ? (
                   <>
-                    <div className="flex items-baseline gap-2">
+                    <div className="flex items-baseline gap-2 mb-2">
                       <span className="text-xl text-gray-500 line-through">
-                        R$ {precoOriginal.toFixed(2)}
+                        R$ {precoOriginal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                       <span className="inline-flex items-center rounded-full bg-red-500 px-2 py-1 text-xs font-bold text-white">
                         -{descontoPercentual}%
                       </span>
                     </div>
-                    <div className="mt-1 text-3xl font-bold text-red-600">
-                      R$ {preco.toFixed(2)}
+                    <div className="text-3xl font-bold text-red-600">
+                      R$ {preco.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
-                    <p className="text-sm text-gray-600">Preço unitário com desconto</p>
+                    <p className="text-sm text-gray-600 mt-1">Preço unitário com desconto</p>
                   </>
                 ) : (
                   <>

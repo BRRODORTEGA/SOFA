@@ -4,9 +4,17 @@ import { familiaSchema } from "@/lib/validators";
 
 export async function GET(req: Request) {
   const { limit, offset, q } = paginateParams(new URL(req.url).searchParams);
+  const searchParams = new URL(req.url).searchParams;
+  const all = searchParams.get("all") === "true"; // Parâmetro para retornar todas as famílias (ativas e inativas)
   
-  // Construir filtro: sempre incluir ativo: true, e adicionar busca se houver
-  const where: any = { ativo: true };
+  // Construir filtro
+  const where: any = {};
+  
+  // Se não for "all", filtrar apenas famílias ativas
+  if (!all) {
+    where.ativo = true;
+  }
+  
   if (q) {
     where.nome = { contains: q, mode: "insensitive" };
   }

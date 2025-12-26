@@ -150,7 +150,7 @@ export function ProductSidebar({
                   <h4 className="text-sm font-medium text-gray-900 group-hover:text-primary transition-colors line-clamp-2">
                     {produto.nome}
                   </h4>
-                  {produto.preco !== undefined && (
+                  {produto.preco !== undefined && produto.preco !== null && (
                     <p className="mt-1 text-sm font-semibold text-gray-900">
                       R$ {produto.preco.toFixed(2)}
                     </p>
