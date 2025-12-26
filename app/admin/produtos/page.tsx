@@ -1,19 +1,34 @@
 import { AdminToolbar } from "@/components/admin/toolbar";
+import { StatusFilter } from "@/components/admin/StatusFilter";
 import { prisma } from "@/lib/prisma";
 import DbError from "@/components/admin/db-error";
 import ProdutosTable from "./ProdutosTable";
 
 export const dynamic = "force-dynamic";
 
-export default async function Page({ searchParams }: { searchParams: { q?: string; limit?: string; offset?: string; sortBy?: string; sortOrder?: string } }) {
+export default async function Page({ searchParams }: { searchParams: { q?: string; limit?: string; offset?: string; sortBy?: string; sortOrder?: string; status?: string } }) {
   const limit = Number(searchParams.limit ?? 20);
   const offset = Number(searchParams.offset ?? 0);
   const q = searchParams.q?.trim() ?? "";
   const sortBy = searchParams.sortBy || "createdAt";
   const sortOrder = searchParams.sortOrder === "asc" ? "asc" : "desc";
+  const statusFilter = searchParams.status; // "ativo", "inativo" ou undefined (todos)
 
   try {
-    const where = q ? { nome: { contains: q, mode: "insensitive" } } : {};
+    const where: any = {};
+    
+    // Filtro de busca por nome
+    if (q) {
+      where.nome = { contains: q, mode: "insensitive" };
+    }
+    
+    // Filtro de status
+    if (statusFilter === "ativo") {
+      where.status = true;
+    } else if (statusFilter === "inativo") {
+      where.status = false;
+    }
+    // Se statusFilter for undefined ou "todos", não adiciona filtro de status
     
     // Buscar todos os itens (sem paginação inicial) para ordenação correta
     const allItems = await prisma.produto.findMany({ 
@@ -42,6 +57,7 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
         : "-",
       variacoesCount: item._count.variacoes ?? 0,
       precosCount: item._count.precos ?? 0,
+      status: item.status, // Manter o status original para o toggle
       statusFormatted: item.status ? "Ativo" : "Inativo"
     }));
 
@@ -78,7 +94,12 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
     return (
       <div>
         <h1 className="mb-6 text-3xl font-bold text-gray-900">Produtos</h1>
-        <AdminToolbar createHref="/admin/produtos/new" />
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex-1">
+            <AdminToolbar createHref="/admin/produtos/new" />
+          </div>
+          <StatusFilter currentStatus={statusFilter} />
+        </div>
         <ProdutosTable
           columns={[
             { key: "categoriaNome", header: "Categoria" },

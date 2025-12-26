@@ -26,6 +26,39 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const createdItem = await prisma.variacao.create({
       data: { ...data, produtoId: params.id },
     });
+
+    // Sincronizar com tabela de preço após criar variação
+    // Atualizar todas as linhas de preço que correspondem à medida criada
+    try {
+      const linhasPreco = await prisma.tabelaPrecoLinha.findMany({
+        where: {
+          produtoId: params.id,
+          medida_cm: data.medida_cm,
+        },
+      });
+
+      // Atualizar cada linha de preço com os valores da nova variação
+      for (const linha of linhasPreco) {
+        await prisma.tabelaPrecoLinha.update({
+          where: { id: linha.id },
+          data: {
+            largura_cm: data.largura_cm,
+            profundidade_cm: data.profundidade_cm,
+            altura_cm: data.altura_cm,
+            largura_assento_cm: data.largura_assento_cm || 0,
+            altura_assento_cm: data.altura_assento_cm || 0,
+            largura_braco_cm: data.largura_braco_cm || 0,
+            metragem_tecido_m: data.metragem_tecido_m,
+            metragem_couro_m: data.metragem_couro_m,
+          },
+        });
+        console.log(`Linha de preço sincronizada para nova variação medida ${data.medida_cm} (linha ID: ${linha.id})`); // Debug
+      }
+    } catch (syncError: any) {
+      // Log do erro mas não falha a criação da variação
+      console.warn(`Erro ao sincronizar tabela de preço para medida ${data.medida_cm}:`, syncError?.message);
+    }
+
     return created(createdItem);
   } catch (e: any) {
     // P2002: unique violada -> já existe essa medida
@@ -66,6 +99,42 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         data: rest,
       });
       results.push(updated);
+    }
+    
+    // Sincronizar com tabela de preço após atualizar variações
+    // Atualizar todas as linhas de preço que correspondem às medidas atualizadas
+    for (const item of json) {
+      const { medida_cm, ...rest } = item;
+      try {
+        // Buscar todas as linhas de preço para esta medida (incluindo tabelas específicas)
+        const linhasPreco = await prisma.tabelaPrecoLinha.findMany({
+          where: {
+            produtoId: params.id,
+            medida_cm: medida_cm,
+          },
+        });
+
+        // Atualizar cada linha de preço com os novos valores da variação
+        for (const linha of linhasPreco) {
+          await prisma.tabelaPrecoLinha.update({
+            where: { id: linha.id },
+            data: {
+              largura_cm: rest.largura_cm,
+              profundidade_cm: rest.profundidade_cm,
+              altura_cm: rest.altura_cm,
+              largura_assento_cm: rest.largura_assento_cm || 0,
+              altura_assento_cm: rest.altura_assento_cm || 0,
+              largura_braco_cm: rest.largura_braco_cm || 0,
+              metragem_tecido_m: rest.metragem_tecido_m,
+              metragem_couro_m: rest.metragem_couro_m,
+            },
+          });
+          console.log(`Linha de preço sincronizada para medida ${medida_cm} (linha ID: ${linha.id})`); // Debug
+        }
+      } catch (syncError: any) {
+        // Log do erro mas não falha a atualização das variações
+        console.warn(`Erro ao sincronizar tabela de preço para medida ${medida_cm}:`, syncError?.message);
+      }
     }
     
     console.log(`Variações atualizadas: ${results.length}`); // Debug

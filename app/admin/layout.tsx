@@ -22,8 +22,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <div className="mt-1 text-xs text-gray-600">Role: <span className="font-medium text-blue-700">{role}</span></div>
               </div>
               <nav className="space-y-1">
+                <div className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">Geral</div>
                 <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin">
-                  📊 Dashboard
+                  🏠 Início
+                </Link>
+                <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/configuracoes-site">
+                  ⚙️ Configuração do Site
+                </Link>
+                <div className="mt-6 mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">Dashboards</div>
+                <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/dashboard">
+                  📊 Dashboard Geral
+                </Link>
+                <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/dashboard/pedidos">
+                  📈 Painel Executivo de Pedidos
                 </Link>
                 <div className="mt-6 mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">Cadastros</div>
                 <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/categorias">

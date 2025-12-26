@@ -18,6 +18,7 @@ export default function ProdutosTable<T extends { id?: string }>({ columns, rows
   const router = useRouter();
   const searchParams = useSearchParams();
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
 
   const handleSort = (columnKey: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -36,6 +37,37 @@ export default function ProdutosTable<T extends { id?: string }>({ columns, rows
 
   const handleRowClick = (row: T) => {
     router.push(`${basePath}/${row.id}`);
+  };
+
+  const handleToggleStatus = async (e: React.MouseEvent, row: T) => {
+    e.stopPropagation(); // Prevenir clique na linha
+    
+    if (!row.id) return;
+
+    const currentStatus = (row as any).status;
+    const newStatus = !currentStatus;
+
+    setTogglingStatus(row.id);
+    try {
+      const res = await fetch(`/api/produtos/${row.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const result = await res.json();
+      
+      if (res.ok) {
+        router.refresh();
+      } else {
+        const errorMsg = result.error || result.details || result.message || "Erro ao atualizar status";
+        alert(`Erro ao atualizar status: ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar status:", error);
+      alert("Erro ao atualizar status. Verifique o console para mais detalhes.");
+    } finally {
+      setTogglingStatus(null);
+    }
   };
 
   const handleDelete = async (e: React.MouseEvent, row: T) => {
@@ -112,11 +144,39 @@ export default function ProdutosTable<T extends { id?: string }>({ columns, rows
                 onClick={() => handleRowClick(row)}
                 className="cursor-pointer bg-white transition-colors hover:bg-blue-50"
               >
-                {columns.map((col) => (
-                  <td key={String(col.key)} className="border-r border-gray-200 px-4 py-3 text-sm text-gray-900 last:border-r-0">
-                    {String((row as any)[col.key] || "-")}
-                  </td>
-                ))}
+                {columns.map((col) => {
+                  // Renderizar botão de toggle para a coluna de status
+                  if (col.key === "statusFormatted") {
+                    const isActive = (row as any).status === true;
+                    const isToggling = togglingStatus === row.id;
+                    
+                    return (
+                      <td
+                        key={String(col.key)}
+                        className="border-r border-gray-200 px-4 py-3 text-sm last:border-r-0"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          onClick={(e) => handleToggleStatus(e, row)}
+                          disabled={isToggling}
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                            isActive
+                              ? "bg-green-100 text-green-800 hover:bg-green-200 focus:ring-green-500"
+                              : "bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-gray-500"
+                          }`}
+                        >
+                          {isToggling ? "..." : isActive ? "Ativo" : "Inativo"}
+                        </button>
+                      </td>
+                    );
+                  }
+                  
+                  return (
+                    <td key={String(col.key)} className="border-r border-gray-200 px-4 py-3 text-sm text-gray-900 last:border-r-0">
+                      {String((row as any)[col.key] || "-")}
+                    </td>
+                  );
+                })}
                 <td 
                   className="border-r border-gray-200 px-4 py-3 text-sm last:border-r-0"
                   onClick={(e) => e.stopPropagation()}

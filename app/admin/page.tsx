@@ -13,7 +13,7 @@ const tiles = [
 export default function AdminHome() {
   return (
     <div>
-      <h1 className="mb-2 text-3xl font-bold text-gray-900">Dashboard</h1>
+      <h1 className="mb-2 text-3xl font-bold text-gray-900">Início</h1>
       <p className="mb-8 text-base text-gray-600">Acesse os módulos do backoffice:</p>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {tiles.map((t) => (
