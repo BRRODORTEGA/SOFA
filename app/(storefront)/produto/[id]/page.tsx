@@ -227,7 +227,8 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
         router.push("/cart");
       } else {
         console.error("[ADD TO CART DEBUG] Erro na resposta:", data);
-        alert("Erro ao adicionar ao carrinho: " + (data.error || "Erro desconhecido"));
+        const errorMsg = data.error || data.message || "Erro desconhecido ao adicionar ao carrinho";
+        alert("Erro ao adicionar ao carrinho: " + errorMsg);
       }
     } catch (error) {
       console.error("[ADD TO CART DEBUG] Erro na requisição:", error);
