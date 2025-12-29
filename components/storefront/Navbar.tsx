@@ -324,6 +324,26 @@ export default function Navbar() {
                       )}
                       <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
                     </Link>
+                    <Link 
+                      href="/meus-dados" 
+                      className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors duration-300 relative group"
+                    >
+                      <svg 
+                        className="h-5 w-5" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" 
+                        />
+                      </svg>
+                      <span>Meus Dados</span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+                    </Link>
                   </>
                 )}
                 <div className="flex items-center gap-4 pl-4 border-l border-border">
@@ -455,6 +475,26 @@ export default function Navbar() {
                           <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
                         </span>
                       )}
+                    </Link>
+                    <Link 
+                      href="/meus-dados" 
+                      className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-bg-2 rounded-lg transition-colors duration-300"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <svg 
+                        className="h-5 w-5" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" 
+                        />
+                      </svg>
+                      <span>Meus Dados</span>
                     </Link>
                   </>
                 )}
