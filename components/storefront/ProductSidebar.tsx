@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
+import { PriceFilter } from "./PriceFilter";
 
 interface Categoria {
   id: string;
@@ -52,6 +53,14 @@ interface ProductSidebarProps {
   onOpcoesChange?: (opcoes: FiltrosOpcoes) => void;
 }
 
+// Helper para converter PriceRange para strings (compatibilidade com código existente)
+function priceRangeToStrings(range: { min: number; max: number }, minLimit: number, maxLimit: number): { min: string; max: string } {
+  return {
+    min: range.min === minLimit ? "" : range.min.toString(),
+    max: range.max === maxLimit ? "" : range.max.toString(),
+  };
+}
+
 export function ProductSidebar({
   categorias,
   produtosBestSellers = [],
@@ -66,12 +75,35 @@ export function ProductSidebar({
   onComDescontoChange,
   onOpcoesChange,
 }: ProductSidebarProps) {
-  const [precoMin, setPrecoMin] = useState(precoMinProp || "");
-  const [precoMax, setPrecoMax] = useState(precoMaxProp || "");
-  const [precoMinSlider, setPrecoMinSlider] = useState(precoMinRange);
-  const [precoMaxSlider, setPrecoMaxSlider] = useState(precoMaxRange);
-  const [activeSlider, setActiveSlider] = useState<"min" | "max" | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Estado para o filtro de preço usando PriceRange
+  const [priceRange, setPriceRange] = useState<{ min: number; max: number }>(() => {
+    const min = precoMinProp ? parseFloat(precoMinProp) : precoMinRange;
+    const max = precoMaxProp ? parseFloat(precoMaxProp) : precoMaxRange;
+    return {
+      min: isNaN(min) ? precoMinRange : Math.max(precoMinRange, Math.min(min, precoMaxRange)),
+      max: isNaN(max) ? precoMaxRange : Math.max(precoMinRange, Math.min(max, precoMaxRange)),
+    };
+  });
+
+  // Sincronizar priceRange quando props mudarem
+  useEffect(() => {
+    const min = precoMinProp ? parseFloat(precoMinProp) : precoMinRange;
+    const max = precoMaxProp ? parseFloat(precoMaxProp) : precoMaxRange;
+    if (!isNaN(min) && !isNaN(max)) {
+      setPriceRange({
+        min: Math.max(precoMinRange, Math.min(min, precoMaxRange)),
+        max: Math.max(precoMinRange, Math.min(max, precoMaxRange)),
+      });
+    }
+  }, [precoMinProp, precoMaxProp, precoMinRange, precoMaxRange]);
+
+  // Quando priceRange mudar, notificar componente pai (compatibilidade com formato antigo)
+  useEffect(() => {
+    if (onPrecoChange) {
+      const strings = priceRangeToStrings(priceRange, precoMinRange, precoMaxRange);
+      onPrecoChange(strings.min, strings.max);
+    }
+  }, [priceRange, precoMinRange, precoMaxRange, onPrecoChange]);
   const [filtrosConfig, setFiltrosConfig] = useState<FiltrosConfig | null>(null);
   const [loadingFiltrosConfig, setLoadingFiltrosConfig] = useState(true);
   const [comDesconto, setComDesconto] = useState<boolean>(comDescontoProp);
@@ -125,10 +157,6 @@ export function ProductSidebar({
     }
   }, [filtrosConfig?.filtroOpcoesProdutoAtivo]);
 
-  // Converter valores para número
-  const precoMinNum = precoMin ? parseFloat(precoMin) : precoMinRange;
-  const precoMaxNum = precoMax ? parseFloat(precoMax) : precoMaxRange;
-
   // Filtrar categorias baseado na configuração
   const categoriasFiltradas = filtrosConfig?.filtroCategoriaCategorias.length 
     ? categorias.filter(cat => filtrosConfig.filtroCategoriaCategorias.includes(cat.id))
@@ -146,136 +174,6 @@ export function ProductSidebar({
     }
   }, [comDesconto, onComDescontoChange]);
 
-  // Sincronizar valores quando props mudarem
-  useEffect(() => {
-    if (precoMinProp !== undefined) {
-      setPrecoMin(precoMinProp);
-      if (precoMinProp) {
-        setPrecoMinSlider(parseFloat(precoMinProp));
-      }
-    }
-  }, [precoMinProp]);
-
-  useEffect(() => {
-    if (precoMaxProp !== undefined) {
-      setPrecoMax(precoMaxProp);
-      if (precoMaxProp) {
-        setPrecoMaxSlider(parseFloat(precoMaxProp));
-      }
-    }
-  }, [precoMaxProp]);
-
-  // Garantir que o slider seja liberado quando o mouse for solto em qualquer lugar
-  useEffect(() => {
-    const handleGlobalMouseUp = () => {
-      if (activeSlider !== null) {
-        setActiveSlider(null);
-      }
-    };
-
-    const handleGlobalTouchEnd = () => {
-      if (activeSlider !== null) {
-        setActiveSlider(null);
-      }
-    };
-
-    if (activeSlider !== null) {
-      document.addEventListener('mouseup', handleGlobalMouseUp);
-      document.addEventListener('touchend', handleGlobalTouchEnd);
-      document.addEventListener('touchcancel', handleGlobalTouchEnd);
-    }
-
-    return () => {
-      document.removeEventListener('mouseup', handleGlobalMouseUp);
-      document.removeEventListener('touchend', handleGlobalTouchEnd);
-      document.removeEventListener('touchcancel', handleGlobalTouchEnd);
-    };
-  }, [activeSlider]);
-
-  // Aplicar filtro automaticamente com debounce
-  const aplicarFiltro = useCallback((min: string, max: string) => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    timeoutRef.current = setTimeout(() => {
-      if (onPrecoChange) {
-        onPrecoChange(min, max);
-      }
-    }, 300); // Debounce de 300ms
-  }, [onPrecoChange]);
-
-  // Atualizar quando slider mínimo mudar
-  const handleMinSliderChange = (value: number) => {
-    // Garantir que min não seja maior que max - se for, ajustar para o valor do max
-    const finalMin = Math.min(value, precoMaxSlider);
-    setPrecoMinSlider(finalMin);
-    setPrecoMin(finalMin.toString());
-    aplicarFiltro(finalMin.toString(), precoMax.toString() || precoMaxSlider.toString());
-  };
-
-  // Atualizar quando slider máximo mudar
-  const handleMaxSliderChange = (value: number) => {
-    // Garantir que max não seja menor que min - se for, ajustar para o valor do min
-    const finalMax = Math.max(value, precoMinSlider);
-    setPrecoMaxSlider(finalMax);
-    setPrecoMax(finalMax.toString());
-    aplicarFiltro(precoMin.toString() || precoMinSlider.toString(), finalMax.toString());
-  };
-
-  // Handler para quando o usuário começa a arrastar
-  const handleSliderMouseDown = (type: "min" | "max") => {
-    setActiveSlider(type);
-  };
-
-  // Handler para quando o usuário solta o slider
-  const handleSliderMouseUp = () => {
-    setActiveSlider(null);
-  };
-
-  // Atualizar quando input mudar
-  const handleInputChange = (type: "min" | "max", value: string) => {
-    if (type === "min") {
-      setPrecoMin(value);
-      if (value) {
-        const numValue = parseFloat(value);
-        if (!isNaN(numValue)) {
-          // Garantir que min não seja maior que max
-          const finalMin = Math.max(precoMinRange, Math.min(numValue, precoMaxSlider));
-          setPrecoMinSlider(finalMin);
-          aplicarFiltro(finalMin.toString(), precoMax.toString() || precoMaxSlider.toString());
-        } else {
-          aplicarFiltro("", precoMax.toString() || precoMaxSlider.toString());
-        }
-      } else {
-        aplicarFiltro("", precoMax.toString() || precoMaxSlider.toString());
-      }
-    } else {
-      setPrecoMax(value);
-      if (value) {
-        const numValue = parseFloat(value);
-        if (!isNaN(numValue)) {
-          // Garantir que max não seja menor que min
-          const finalMax = Math.min(precoMaxRange, Math.max(numValue, precoMinSlider));
-          setPrecoMaxSlider(finalMax);
-          aplicarFiltro(precoMin.toString() || precoMinSlider.toString(), finalMax.toString());
-        } else {
-          aplicarFiltro(precoMin.toString() || precoMinSlider.toString(), "");
-        }
-      } else {
-        aplicarFiltro(precoMin.toString() || precoMinSlider.toString(), "");
-      }
-    }
-  };
-
-  // Formatar valor monetário
-  const formatarPreco = (valor: number): string => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(valor);
-  };
 
 
   return (
@@ -340,153 +238,24 @@ export function ProductSidebar({
 
       {/* FILTER BY PRICE */}
       {filtrosConfig?.filtroPrecoAtivo && (
-      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-semibold text-gray-900">
-            {filtrosConfig.filtroPrecoNome}
-          </h3>
-        </div>
-        
-        {/* Slider de Range */}
-        <div className="mb-4">
-          <div className="relative h-2 bg-gray-200 rounded-full">
-            {/* Barra preenchida entre os valores */}
-            <div
-              className="absolute h-2 bg-primary rounded-full pointer-events-none z-0"
-              style={{
-                left: `${((precoMinSlider - precoMinRange) / (precoMaxRange - precoMinRange)) * 100}%`,
-                width: `${((precoMaxSlider - precoMinSlider) / (precoMaxRange - precoMinRange)) * 100}%`,
-              }}
-            />
-            {/* Slider Mínimo - Bola da Esquerda */}
-            <input
-              type="range"
-              min={precoMinRange}
-              max={precoMaxSlider}
-              value={precoMinSlider}
-              step="1"
-              onChange={(e) => {
-                const newValue = parseInt(e.target.value);
-                // O max já está limitando o range, então sempre será válido
-                handleMinSliderChange(newValue);
-              }}
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                setActiveSlider("min");
-              }}
-              onMouseUp={(e) => {
-                e.stopPropagation();
-                setActiveSlider(null);
-              }}
-              onTouchStart={(e) => {
-                e.stopPropagation();
-                setActiveSlider("min");
-              }}
-              onTouchEnd={(e) => {
-                e.stopPropagation();
-                setActiveSlider(null);
-              }}
-              className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer slider-thumb"
-              style={{ 
-                WebkitAppearance: 'none',
-                appearance: 'none',
-                height: '8px',
-                margin: 0,
-                padding: 0,
-                zIndex: activeSlider === "min" ? 30 : 20,
-                pointerEvents: activeSlider === "max" ? 'none' : 'auto',
-              }}
-            />
-            {/* Slider Máximo - Bola da Direita */}
-            <input
-              type="range"
-              min={precoMinSlider}
-              max={precoMaxRange}
-              value={precoMaxSlider}
-              step="1"
-              onChange={(e) => {
-                const newValue = parseInt(e.target.value);
-                // O min já está limitando o range, então sempre será válido
-                handleMaxSliderChange(newValue);
-              }}
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                setActiveSlider("max");
-              }}
-              onMouseUp={(e) => {
-                e.stopPropagation();
-                setActiveSlider(null);
-              }}
-              onTouchStart={(e) => {
-                e.stopPropagation();
-                setActiveSlider("max");
-              }}
-              onTouchEnd={(e) => {
-                e.stopPropagation();
-                setActiveSlider(null);
-              }}
-              className="absolute w-full h-2 bg-transparent appearance-none cursor-pointer slider-thumb"
-              style={{ 
-                WebkitAppearance: 'none',
-                appearance: 'none',
-                height: '8px',
-                margin: 0,
-                padding: 0,
-                zIndex: activeSlider === "max" ? 30 : 20,
-                pointerEvents: activeSlider === "min" ? 'none' : 'auto',
-              }}
-            />
-          </div>
-          
-          {/* Valores do Slider */}
-          <div className="flex justify-between mt-2">
-            <span className="text-sm font-medium text-gray-900">
-              {formatarPreco(precoMinSlider)}
-            </span>
-            <span className="text-sm font-medium text-gray-900">
-              {formatarPreco(precoMaxSlider)}
-            </span>
-          </div>
-        </div>
-
-        {/* Inputs Numéricos */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="flex flex-col">
-            <label htmlFor="preco-min" className="text-xs font-medium text-gray-700 mb-1.5">
-              Mínimo
-            </label>
-            <input
-              id="preco-min"
-              type="number"
-              placeholder="R$ 0"
-              value={precoMin}
-              onChange={(e) => handleInputChange("min", e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
-              min={precoMinRange}
-              max={precoMaxRange}
-              step="1"
-            />
-          </div>
-          <div className="flex flex-col">
-            <label htmlFor="preco-max" className="text-xs font-medium text-gray-700 mb-1.5">
-              Máximo
-            </label>
-            <input
-              id="preco-max"
-              type="number"
-              placeholder="R$ 0"
-              value={precoMax}
-              onChange={(e) => handleInputChange("max", e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
-              min={precoMinRange}
-              max={precoMaxRange}
-              step="1"
-            />
-          </div>
-        </div>
+      <div>
+        <PriceFilter
+          minLimit={precoMinRange}
+          maxLimit={precoMaxRange}
+          step={1}
+          value={priceRange}
+          onChange={(next) => setPriceRange(next)}
+          title={filtrosConfig.filtroPrecoNome}
+          onClear={() => {
+            setComDesconto(false);
+            if (onComDescontoChange) {
+              onComDescontoChange(false);
+            }
+          }}
+        />
 
         {/* Checkbox Com Desconto */}
-        <div className="mb-4">
+        <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
           <label className="flex cursor-pointer items-center gap-2 rounded p-2 hover:bg-gray-100 transition-colors">
             <input
               type="checkbox"
@@ -499,28 +268,6 @@ export function ProductSidebar({
             </span>
           </label>
         </div>
-
-        {/* Botão Limpar */}
-        {(precoMin || precoMax || comDesconto) && (
-          <button
-            onClick={() => {
-              setPrecoMin("");
-              setPrecoMax("");
-              setPrecoMinSlider(precoMinRange);
-              setPrecoMaxSlider(precoMaxRange);
-              setComDesconto(false);
-              if (onPrecoChange) {
-                onPrecoChange("", "");
-              }
-              if (onComDescontoChange) {
-                onComDescontoChange(false);
-              }
-            }}
-            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 active:bg-gray-100 transition-all duration-200"
-          >
-            Limpar Filtro
-          </button>
-        )}
       </div>
       )}
 
