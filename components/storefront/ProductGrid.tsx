@@ -110,18 +110,24 @@ export function ProductGrid({
           </div>
 
           {/* Ordenação */}
-          <select
-            value={sortBy}
-            onChange={(e) => onSortChange?.(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="default">Ordenação padrão</option>
-            <option value="name-asc">Nome: A-Z</option>
-            <option value="name-desc">Nome: Z-A</option>
-            <option value="price-asc">Preço: Menor para Maior</option>
-            <option value="price-desc">Preço: Maior para Menor</option>
-            <option value="newest">Mais recentes</option>
-          </select>
+          <div className="flex items-center gap-2">
+            <label htmlFor="sort-select" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+              Ordenar por:
+            </label>
+            <select
+              id="sort-select"
+              value={sortBy}
+              onChange={(e) => onSortChange?.(e.target.value)}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]"
+            >
+              <option value="default">Padrão</option>
+              <option value="name-asc">Nome: A-Z</option>
+              <option value="name-desc">Nome: Z-A</option>
+              <option value="price-asc">Preço: Menor para Maior</option>
+              <option value="price-desc">Preço: Maior para Menor</option>
+              <option value="newest">Mais recentes</option>
+            </select>
+          </div>
         </div>
       </div>
 

@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ok, notFound, unprocessable, serverError } from "@/lib/http";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { z } from "zod";
 
 const updateClienteSchema = z.object({
@@ -11,7 +10,7 @@ const updateClienteSchema = z.object({
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   try {
     // Verificar autenticação e permissão
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     const role = (session?.user as any)?.role;
     
     if (!session || !["ADMIN", "OPERADOR"].includes(role)) {
@@ -53,7 +52,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
     // Verificar autenticação e permissão
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     const role = (session?.user as any)?.role;
     
     if (!session || !["ADMIN", "OPERADOR"].includes(role)) {

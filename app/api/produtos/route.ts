@@ -7,7 +7,15 @@ export async function GET(req: Request) {
   const { limit, offset, q } = paginateParams(new URL(req.url).searchParams);
   const searchParams = new URL(req.url).searchParams;
   const categoriaId = searchParams.get("categoriaId");
+  const comDesconto = searchParams.get("comDesconto") === "true"; // Filtrar apenas produtos com desconto
   const all = searchParams.get("all") === "true"; // Parâmetro para retornar todos os produtos (sem filtros de status/tabela vigente)
+  
+  // Filtros de opções de produto
+  const medidas = searchParams.get("medidas")?.split(",").filter(Boolean).map(Number) || [];
+  const tecidos = searchParams.get("tecidos")?.split(",").filter(Boolean) || [];
+  const tipos = searchParams.get("tipos")?.split(",").filter(Boolean) || [];
+  const aberturas = searchParams.get("aberturas")?.split(",").filter(Boolean) || [];
+  const acionamentos = searchParams.get("acionamentos")?.split(",").filter(Boolean) || [];
   
   const where: any = {};
   
@@ -40,8 +48,31 @@ export async function GET(req: Request) {
     where.nome = { contains: q, mode: "insensitive" };
   }
   
-  if (categoriaId) {
+  // Suporte para múltiplas categorias
+  const categoriaIds = searchParams.get("categoriaIds")?.split(",").filter(Boolean) || [];
+  if (categoriaIds.length > 0) {
+    where.categoriaId = { in: categoriaIds };
+  } else if (categoriaId) {
+    // Compatibilidade com formato antigo (categoriaId único)
     where.categoriaId = categoriaId;
+  }
+
+  // Aplicar filtros de opções de produto
+  if (tipos.length > 0) {
+    where.tipo = { in: tipos };
+  }
+  if (aberturas.length > 0) {
+    where.abertura = { in: aberturas };
+  }
+  if (acionamentos.length > 0) {
+    // Para acionamento que pode ter múltiplos valores separados por vírgula
+    // Usar OR para buscar produtos que contenham qualquer um dos acionamentos
+    where.OR = [
+      ...(where.OR || []),
+      ...acionamentos.map(acionamento => ({
+        acionamento: { contains: acionamento, mode: "insensitive" }
+      }))
+    ];
   }
   
   const [items, total] = await Promise.all([
@@ -50,6 +81,10 @@ export async function GET(req: Request) {
       include: {
         categoria: { select: { id: true, nome: true } },
         familia: { select: { id: true, nome: true } },
+        variacoes: { select: { medida_cm: true } },
+        tecidos: {
+          include: { tecido: { select: { id: true, nome: true } } },
+        },
       },
       take: limit,
       skip: offset,
@@ -57,6 +92,19 @@ export async function GET(req: Request) {
     }).catch(() => prisma.produto.findMany({ where, take: limit, skip: offset })),
     prisma.produto.count({ where }),
   ]);
+
+  // Filtrar produtos que têm as variações/tecidos solicitados
+  let itemsFiltrados = items;
+  if (medidas.length > 0) {
+    itemsFiltrados = itemsFiltrados.filter(item => 
+      item.variacoes && item.variacoes.some((v: any) => medidas.includes(v.medida_cm))
+    );
+  }
+  if (tecidos.length > 0) {
+    itemsFiltrados = itemsFiltrados.filter(item => 
+      item.tecidos && item.tecidos.some((pt: any) => tecidos.includes(pt.tecidoId))
+    );
+  }
 
   // Buscar configurações do site para obter tabela vigente e descontos de produtos em destaque
   const siteConfig = await prisma.siteConfig.findUnique({
@@ -72,7 +120,7 @@ export async function GET(req: Request) {
 
   // Enriquecer produtos com preços e descontos
   const itemsEnriquecidos = await Promise.all(
-    items.map(async (item) => {
+    itemsFiltrados.map(async (item) => {
       const descontoProdutoDestaque = descontosProdutosDestaque[item.id] || 0;
       const { preco: precoOriginal, desconto: descontoLinha } = await getPrecoMinimoEDescontoProduto(item.id);
       
@@ -93,7 +141,12 @@ export async function GET(req: Request) {
     })
   );
 
-  return ok({ items: itemsEnriquecidos, total, limit, offset });
+  // Filtrar apenas produtos com desconto se o parâmetro comDesconto estiver ativo
+  const itemsFiltradosPorDesconto = comDesconto 
+    ? itemsEnriquecidos.filter(item => item.descontoPercentual && item.descontoPercentual > 0)
+    : itemsEnriquecidos;
+
+  return ok({ items: itemsFiltradosPorDesconto, total: itemsFiltradosPorDesconto.length, limit, offset });
 }
 
 export async function POST(req: Request) {

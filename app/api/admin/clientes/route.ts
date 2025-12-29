@@ -1,12 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { ok, unprocessable, serverError, paginateParams } from "@/lib/http";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 
 export async function GET(req: Request) {
   try {
     // Verificar autenticação e permissão
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     const role = (session?.user as any)?.role;
     
     if (!session || !["ADMIN", "OPERADOR"].includes(role)) {

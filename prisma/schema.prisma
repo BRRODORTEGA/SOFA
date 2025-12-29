@@ -444,6 +444,38 @@ model SiteConfig {
   // Ordem de exibição das categorias (opcional, para personalizar a ordem)
   ordemCategorias String[] @default([])
 
+  // Configurações do Hero/Banner da página inicial
+  heroTipo String? // "texto" ou "imagem"
+  heroTitulo String? // Título principal do hero
+  heroSubtitulo String? // Subtítulo/descrição do hero
+  heroBotaoTexto String? // Texto do botão CTA
+  heroBotaoLink String? // Link do botão CTA
+  heroImagemUrl String? // URL da imagem do hero (quando tipo = "imagem")
+  heroImagemLink String? // Link de clique da imagem do hero (quando tipo = "imagem")
+  heroImagemObjectFit String? // Modo de ajuste: "cover", "contain", "fill", "none", "scale-down"
+  heroImagemObjectPosition String? // Posicionamento: "center", "top", "bottom", "left", "right", "top left", etc. ou valores customizados como "50% 50%"
+
+  // Logo da empresa
+  logoUrl String? // URL do logo da empresa
+
+  // Configurações de Filtros
+  filtrosAtivos Boolean @default(true) // Mostrar ou ocultar filtros
+  filtrosTitulo Boolean @default(true) // Mostrar título "Filtros" ou "Filtrar por"
+  filtrosAplicados Boolean @default(true) // Mostrar texto "Filtros aplicados"
+  
+  // Configuração do filtro de categoria
+  filtroCategoriaAtivo Boolean @default(true)
+  filtroCategoriaNome String? // Nome personalizado (padrão: "Categoria")
+  filtroCategoriaCategorias String[] @default([]) // IDs das categorias a exibir no filtro (vazio = todas)
+  
+  // Configuração do filtro de preço
+  filtroPrecoAtivo Boolean @default(true)
+  filtroPrecoNome String? // Nome personalizado (padrão: "Preço")
+  
+  // Configuração do filtro de opções de produto
+  filtroOpcoesProdutoAtivo Boolean @default(true)
+  filtroOpcoesProdutoNome String? // Nome personalizado (padrão: "Opções de Produto")
+
   // Configurações adicionais em JSON (para futuras expansões)
   configuracoesExtras Json?
 

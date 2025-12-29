@@ -1,11 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     const role = (session?.user as any)?.role;
     if (!session || !["ADMIN", "OPERADOR"].includes(role)) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -16,6 +15,7 @@ export async function GET() {
       include: {
         tabelaPrecoVigente: true,
       },
+      // Não usar select aqui para retornar todos os campos
     });
 
     if (!siteConfig) {
@@ -46,14 +46,41 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     const role = (session?.user as any)?.role;
     if (!session || !["ADMIN", "OPERADOR"].includes(role)) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
     const body = await request.json();
-    const { categoriasDestaque, produtosDestaque, tabelaPrecoVigenteId, produtosAtivosTabelaVigente, descontosProdutosDestaque, ordemCategorias } = body;
+    const { 
+      categoriasDestaque, 
+      produtosDestaque, 
+      tabelaPrecoVigenteId, 
+      produtosAtivosTabelaVigente, 
+      descontosProdutosDestaque, 
+      ordemCategorias,
+      heroTipo,
+      heroTitulo,
+      heroSubtitulo,
+      heroBotaoTexto,
+      heroBotaoLink,
+      heroImagemUrl,
+      heroImagemLink,
+      heroImagemObjectFit,
+      heroImagemObjectPosition,
+      logoUrl,
+      filtrosAtivos,
+      filtrosTitulo,
+      filtrosAplicados,
+      filtroCategoriaAtivo,
+      filtroCategoriaNome,
+      filtroCategoriaCategorias,
+      filtroPrecoAtivo,
+      filtroPrecoNome,
+      filtroOpcoesProdutoAtivo,
+      filtroOpcoesProdutoNome
+    } = body;
 
     // Validar dados
     if (!Array.isArray(categoriasDestaque) || !Array.isArray(produtosDestaque)) {
@@ -124,6 +151,26 @@ export async function PUT(request: NextRequest) {
           produtosAtivosTabelaVigente: produtosAtivos,
           descontosProdutosDestaque: descontosValidos,
           ordemCategorias: ordemCategorias || categoriasDestaque,
+          heroTipo: heroTipo || null,
+          heroTitulo: heroTitulo || null,
+          heroSubtitulo: heroSubtitulo || null,
+          heroBotaoTexto: heroBotaoTexto || null,
+          heroBotaoLink: heroBotaoLink || null,
+          heroImagemUrl: heroImagemUrl || null,
+          heroImagemLink: heroImagemLink || null,
+          heroImagemObjectFit: heroImagemObjectFit || null,
+          heroImagemObjectPosition: heroImagemObjectPosition || null,
+          logoUrl: logoUrl || null,
+          filtrosAtivos: filtrosAtivos !== undefined ? filtrosAtivos : true,
+          filtrosTitulo: filtrosTitulo !== undefined ? filtrosTitulo : true,
+          filtrosAplicados: filtrosAplicados !== undefined ? filtrosAplicados : true,
+          filtroCategoriaAtivo: filtroCategoriaAtivo !== undefined ? filtroCategoriaAtivo : true,
+          filtroCategoriaNome: filtroCategoriaNome || null,
+          filtroCategoriaCategorias: Array.isArray(filtroCategoriaCategorias) ? filtroCategoriaCategorias : [],
+          filtroPrecoAtivo: filtroPrecoAtivo !== undefined ? filtroPrecoAtivo : true,
+          filtroPrecoNome: filtroPrecoNome || null,
+          filtroOpcoesProdutoAtivo: filtroOpcoesProdutoAtivo !== undefined ? filtroOpcoesProdutoAtivo : true,
+          filtroOpcoesProdutoNome: filtroOpcoesProdutoNome || null,
         } as any, // Type assertion temporária até regenerar Prisma Client
         create: {
           id: "site-config",
@@ -133,6 +180,26 @@ export async function PUT(request: NextRequest) {
           produtosAtivosTabelaVigente: produtosAtivos,
           descontosProdutosDestaque: descontosValidos,
           ordemCategorias: ordemCategorias || categoriasDestaque,
+          heroTipo: heroTipo || null,
+          heroTitulo: heroTitulo || null,
+          heroSubtitulo: heroSubtitulo || null,
+          heroBotaoTexto: heroBotaoTexto || null,
+          heroBotaoLink: heroBotaoLink || null,
+          heroImagemUrl: heroImagemUrl || null,
+          heroImagemLink: heroImagemLink || null,
+          heroImagemObjectFit: heroImagemObjectFit || null,
+          heroImagemObjectPosition: heroImagemObjectPosition || null,
+          logoUrl: logoUrl || null,
+          filtrosAtivos: filtrosAtivos !== undefined ? filtrosAtivos : true,
+          filtrosTitulo: filtrosTitulo !== undefined ? filtrosTitulo : true,
+          filtrosAplicados: filtrosAplicados !== undefined ? filtrosAplicados : true,
+          filtroCategoriaAtivo: filtroCategoriaAtivo !== undefined ? filtroCategoriaAtivo : true,
+          filtroCategoriaNome: filtroCategoriaNome || null,
+          filtroCategoriaCategorias: Array.isArray(filtroCategoriaCategorias) ? filtroCategoriaCategorias : [],
+          filtroPrecoAtivo: filtroPrecoAtivo !== undefined ? filtroPrecoAtivo : true,
+          filtroPrecoNome: filtroPrecoNome || null,
+          filtroOpcoesProdutoAtivo: filtroOpcoesProdutoAtivo !== undefined ? filtroOpcoesProdutoAtivo : true,
+          filtroOpcoesProdutoNome: filtroOpcoesProdutoNome || null,
         } as any, // Type assertion temporária até regenerar Prisma Client
         include: {
           tabelaPrecoVigente: true,

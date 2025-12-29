@@ -30,7 +30,26 @@ export default function ProdutosPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState("default");
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>("");
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState<string[]>([]);
+  const [precoMin, setPrecoMin] = useState<string>("");
+  const [precoMax, setPrecoMax] = useState<string>("");
+  const [precoMinRange, setPrecoMinRange] = useState<number>(0);
+  const [precoMaxRange, setPrecoMaxRange] = useState<number>(50000);
+  const comDescontoUrl = searchParams.get("comDesconto") === "true";
+  const [comDesconto, setComDesconto] = useState<boolean>(comDescontoUrl);
+  const [filtrosOpcoes, setFiltrosOpcoes] = useState<{
+    medidas: number[];
+    tecidos: string[];
+    tipos: string[];
+    aberturas: string[];
+    acionamentos: string[];
+  }>({
+    medidas: [],
+    tecidos: [],
+    tipos: [],
+    aberturas: [],
+    acionamentos: [],
+  });
 
   // Carregar categorias
   useEffect(() => {
@@ -51,11 +70,31 @@ export default function ProdutosPage() {
       const params = new URLSearchParams();
       params.set("limit", "100"); // Limite alto para mostrar todos
       params.set("offset", "0");
-      if (categoriaSelecionada) {
-        params.set("categoriaId", categoriaSelecionada);
+      if (categoriaSelecionada.length > 0) {
+        params.set("categoriaIds", categoriaSelecionada.join(","));
       }
       if (searchQuery) {
         params.set("q", searchQuery);
+      }
+      // Usar comDesconto do estado ou da URL
+      const comDescontoAtivo = comDesconto || comDescontoUrl;
+      if (comDescontoAtivo) {
+        params.set("comDesconto", "true");
+      }
+      if (filtrosOpcoes.medidas.length > 0) {
+        params.set("medidas", filtrosOpcoes.medidas.join(","));
+      }
+      if (filtrosOpcoes.tecidos.length > 0) {
+        params.set("tecidos", filtrosOpcoes.tecidos.join(","));
+      }
+      if (filtrosOpcoes.tipos.length > 0) {
+        params.set("tipos", filtrosOpcoes.tipos.join(","));
+      }
+      if (filtrosOpcoes.aberturas.length > 0) {
+        params.set("aberturas", filtrosOpcoes.aberturas.join(","));
+      }
+      if (filtrosOpcoes.acionamentos.length > 0) {
+        params.set("acionamentos", filtrosOpcoes.acionamentos.join(","));
       }
 
       const res = await fetch(`/api/produtos?${params.toString()}`);
@@ -63,6 +102,30 @@ export default function ProdutosPage() {
 
       if (data.ok && data.data?.items) {
         let produtosFiltrados = data.data.items;
+
+        // Calcular range de preços se ainda não foi calculado
+        if (produtosFiltrados.length > 0 && precoMaxRange === 50000) {
+          const precos = produtosFiltrados
+            .map((p: Produto) => p.preco || 0)
+            .filter((p: number) => p > 0);
+          
+          if (precos.length > 0) {
+            const min = Math.floor(Math.min(...precos) * 0.9);
+            const max = Math.ceil(Math.max(...precos) * 1.1);
+            setPrecoMinRange(min);
+            setPrecoMaxRange(max);
+          }
+        }
+
+        // Aplicar filtro de preço
+        if (precoMin || precoMax) {
+          const min = precoMin ? parseFloat(precoMin) : 0;
+          const max = precoMax ? parseFloat(precoMax) : Infinity;
+          produtosFiltrados = produtosFiltrados.filter((produto) => {
+            const preco = produto.preco || 0;
+            return preco >= min && preco <= max;
+          });
+        }
 
         // Aplicar ordenação
         if (sortBy === "name-asc") {
@@ -87,7 +150,7 @@ export default function ProdutosPage() {
     } finally {
       setLoading(false);
     }
-  }, [categoriaSelecionada, searchQuery, sortBy]);
+  }, [categoriaSelecionada, searchQuery, sortBy, precoMin, precoMax, comDesconto, comDescontoUrl, filtrosOpcoes]);
 
   // Carregar best sellers
   useEffect(() => {
@@ -106,7 +169,13 @@ export default function ProdutosPage() {
   }, [buscarProdutos]);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="mx-auto w-full px-4 md:px-6 lg:px-8 py-8">
+      {(comDesconto || comDescontoUrl) && (
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Produtos em Desconto</h1>
+          <p className="text-gray-600">Aproveite nossas ofertas especiais!</p>
+        </div>
+      )}
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Sidebar */}
         <ProductSidebar
@@ -114,6 +183,17 @@ export default function ProdutosPage() {
           produtosBestSellers={produtosBestSellers}
           categoriaSelecionada={categoriaSelecionada}
           onCategoriaChange={setCategoriaSelecionada}
+          precoMin={precoMin}
+          precoMax={precoMax}
+          onPrecoChange={(min, max) => {
+            setPrecoMin(min);
+            setPrecoMax(max);
+          }}
+          precoMinRange={precoMinRange}
+          precoMaxRange={precoMaxRange}
+          comDesconto={comDesconto}
+          onComDescontoChange={setComDesconto}
+          onOpcoesChange={setFiltrosOpcoes}
         />
 
         {/* Área principal com grid de produtos */}

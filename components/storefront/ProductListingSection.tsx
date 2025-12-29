@@ -38,7 +38,56 @@ export function ProductListingSection({
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState("default");
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>("");
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState<string[]>([]);
+  const [precoMin, setPrecoMin] = useState<string>("");
+  const [precoMax, setPrecoMax] = useState<string>("");
+  const [comDesconto, setComDesconto] = useState<boolean>(false);
+  const [filtrosOpcoes, setFiltrosOpcoes] = useState<{
+    medidas: number[];
+    tecidos: string[];
+    tipos: string[];
+    aberturas: string[];
+    acionamentos: string[];
+  }>({
+    medidas: [],
+    tecidos: [],
+    tipos: [],
+    aberturas: [],
+    acionamentos: [],
+  });
+
+  // Calcular range de preços dos produtos
+  const calcularRangePrecos = useCallback(() => {
+    if (produtosIniciais.length === 0) return { min: 0, max: 50000 };
+    
+    const precos = produtosIniciais
+      .map(p => p.preco || p.precoComDesconto || p.precoOriginal || 0)
+      .filter(p => p > 0);
+    
+    if (precos.length === 0) return { min: 0, max: 50000 };
+    
+    const min = Math.floor(Math.min(...precos) * 0.9); // 10% abaixo do mínimo
+    const max = Math.ceil(Math.max(...precos) * 1.1); // 10% acima do máximo
+    
+    return { min, max };
+  }, [produtosIniciais]);
+
+  const { min: precoMinRange, max: precoMaxRange } = calcularRangePrecos();
+
+  // Função para filtrar produtos por preço
+  const filtrarPorPreco = useCallback((produtosLista: Produto[], min: string, max: string): Produto[] => {
+    if (!min && !max) {
+      return produtosLista;
+    }
+
+    const minValue = min ? parseFloat(min) : 0;
+    const maxValue = max ? parseFloat(max) : Infinity;
+
+    return produtosLista.filter((produto) => {
+      const preco = produto.preco || produto.precoComDesconto || produto.precoOriginal || 0;
+      return preco >= minValue && preco <= maxValue;
+    });
+  }, []);
 
   // Carregar produtos quando filtros mudarem
   const buscarProdutos = useCallback(async () => {
@@ -47,11 +96,29 @@ export function ProductListingSection({
       const params = new URLSearchParams();
       params.set("limit", "100");
       params.set("offset", "0");
-      if (categoriaSelecionada) {
-        params.set("categoriaId", categoriaSelecionada);
+      if (categoriaSelecionada.length > 0) {
+        params.set("categoriaIds", categoriaSelecionada.join(","));
       }
       if (searchQuery) {
         params.set("q", searchQuery);
+      }
+      if (filtrosOpcoes.medidas.length > 0) {
+        params.set("medidas", filtrosOpcoes.medidas.join(","));
+      }
+      if (filtrosOpcoes.tecidos.length > 0) {
+        params.set("tecidos", filtrosOpcoes.tecidos.join(","));
+      }
+      if (filtrosOpcoes.tipos.length > 0) {
+        params.set("tipos", filtrosOpcoes.tipos.join(","));
+      }
+      if (filtrosOpcoes.aberturas.length > 0) {
+        params.set("aberturas", filtrosOpcoes.aberturas.join(","));
+      }
+      if (filtrosOpcoes.acionamentos.length > 0) {
+        params.set("acionamentos", filtrosOpcoes.acionamentos.join(","));
+      }
+      if (comDesconto) {
+        params.set("comDesconto", "true");
       }
 
       const res = await fetch(`/api/produtos?${params.toString()}`);
@@ -59,6 +126,9 @@ export function ProductListingSection({
 
       if (data.ok && data.data?.items) {
         let produtosFiltrados = data.data.items;
+
+        // Aplicar filtro de preço
+        produtosFiltrados = filtrarPorPreco(produtosFiltrados, precoMin, precoMax);
 
         // Aplicar ordenação
         if (sortBy === "name-asc") {
@@ -79,22 +149,30 @@ export function ProductListingSection({
       }
     } catch (error) {
       console.error("Erro ao buscar produtos:", error);
-      setProdutos([]);
+        setProdutos([]);
     } finally {
       setLoading(false);
     }
-  }, [categoriaSelecionada, searchQuery, sortBy]);
+  }, [categoriaSelecionada, searchQuery, sortBy, precoMin, precoMax, filtrarPorPreco, filtrosOpcoes, comDesconto]);
 
   // Aplicar filtros e ordenação
   useEffect(() => {
     if (categoriaSelecionada) {
       // Se há categoria selecionada, buscar da API
       buscarProdutos();
-    } else if (searchQuery) {
-      // Se há busca mas não categoria, filtrar produtos iniciais
-      const filtrados = produtosIniciais.filter(p => 
-        p.nome.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+    } else if (searchQuery || precoMin || precoMax) {
+      // Se há busca ou filtro de preço, filtrar produtos iniciais
+      let filtrados = produtosIniciais;
+      
+      // Aplicar filtro de busca
+      if (searchQuery) {
+        filtrados = filtrados.filter(p => 
+          p.nome.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+      
+      // Aplicar filtro de preço
+      filtrados = filtrarPorPreco(filtrados, precoMin, precoMax);
       
       // Aplicar ordenação
       let produtosOrdenados = [...filtrados];
@@ -123,7 +201,7 @@ export function ProductListingSection({
       }
       setProdutos(produtosOrdenados);
     }
-  }, [categoriaSelecionada, searchQuery, sortBy, buscarProdutos, produtosIniciais]);
+  }, [categoriaSelecionada, searchQuery, sortBy, precoMin, precoMax, buscarProdutos, produtosIniciais, filtrarPorPreco]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-8">
@@ -133,6 +211,17 @@ export function ProductListingSection({
         produtosBestSellers={produtosBestSellers}
         categoriaSelecionada={categoriaSelecionada}
         onCategoriaChange={setCategoriaSelecionada}
+        precoMin={precoMin}
+        precoMax={precoMax}
+        onPrecoChange={(min, max) => {
+          setPrecoMin(min);
+          setPrecoMax(max);
+        }}
+        precoMinRange={precoMinRange}
+        precoMaxRange={precoMaxRange}
+        comDesconto={comDesconto}
+        onComDescontoChange={setComDesconto}
+        onOpcoesChange={setFiltrosOpcoes}
       />
 
       {/* Grid de Produtos */}

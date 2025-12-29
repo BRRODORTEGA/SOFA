@@ -199,35 +199,81 @@ export default async function HomePage() {
     })
   );
 
+  // Obter configurações do hero com valores padrão
+  const siteConfigTypedHero = siteConfig as any;
+  const heroTipo = siteConfigTypedHero?.heroTipo || "texto";
+  const heroTitulo = siteConfigTypedHero?.heroTitulo || "Sofás sob medida com o conforto que você merece";
+  const heroSubtitulo = siteConfigTypedHero?.heroSubtitulo || "Escolha seu modelo, tecido e medida ideal. Personalize seu sofá do jeito que você sempre sonhou.";
+  const heroBotaoTexto = siteConfigTypedHero?.heroBotaoTexto || "Ver Catálogo";
+  const heroBotaoLink = siteConfigTypedHero?.heroBotaoLink || "/categorias";
+  const heroImagemUrl = siteConfigTypedHero?.heroImagemUrl || null;
+  const heroImagemLink = siteConfigTypedHero?.heroImagemLink || null;
+  const heroImagemObjectFit = siteConfigTypedHero?.heroImagemObjectFit || "cover";
+  const heroImagemObjectPosition = siteConfigTypedHero?.heroImagemObjectPosition || "center";
+
   return (
     <div className="overflow-hidden">
       {/* Hero Section - Mais Impactante */}
-      <section className="relative bg-gradient-to-br from-bg-2 via-bg-3 to-bg-4 py-20 md:py-32 lg:py-40">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]"></div>
-        <div className="container relative mx-auto px-4">
-          <div className="mx-auto max-w-4xl text-center">
-            <h1 className="text-display font-light text-foreground mb-6 leading-[115%]">
-              Sofás sob medida com o conforto que você merece
-            </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground font-light leading-[150%] max-w-2xl mx-auto mb-10">
-              Escolha seu modelo, tecido e medida ideal. Personalize seu sofá do jeito que você sempre sonhou.
-            </p>
-            <Link
-              href="/categorias"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-8 py-4 text-primary-foreground font-medium hover:bg-primary/90 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
-            >
-              Ver Catálogo
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-            </Link>
-          </div>
-        </div>
+      <section className={`relative ${heroTipo === "imagem" && heroImagemUrl ? "min-h-[500px] md:min-h-[600px] lg:min-h-[700px]" : "bg-gradient-to-br from-bg-2 via-bg-3 to-bg-4 py-20 md:py-32 lg:py-40"}`}>
+        {heroTipo === "imagem" && heroImagemUrl ? (
+          <>
+            {/* Hero com Imagem - Clicável se houver link */}
+            <div className="absolute inset-0 overflow-hidden">
+              {heroImagemLink ? (
+                <Link href={heroImagemLink} className="block h-full w-full cursor-pointer">
+                  <img
+                    src={heroImagemUrl}
+                    alt="Hero Banner"
+                    className="h-full w-full transition-transform duration-300 hover:scale-105"
+                    style={{
+                      objectFit: heroImagemObjectFit as any,
+                      objectPosition: heroImagemObjectPosition,
+                    }}
+                  />
+                </Link>
+              ) : (
+                <img
+                  src={heroImagemUrl}
+                  alt="Hero Banner"
+                  className="h-full w-full"
+                  style={{
+                    objectFit: heroImagemObjectFit as any,
+                    objectPosition: heroImagemObjectPosition,
+                  }}
+                />
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Hero com Texto */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]"></div>
+            <div className="relative mx-auto px-4 md:px-6 lg:px-8">
+              <div className="mx-auto max-w-4xl text-center">
+                <h1 className="text-display font-light text-foreground mb-6 leading-[115%]">
+                  {heroTitulo}
+                </h1>
+                <p className="text-xl md:text-2xl text-muted-foreground font-light leading-[150%] max-w-2xl mx-auto mb-10">
+                  {heroSubtitulo}
+                </p>
+                <Link
+                  href={heroBotaoLink}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-8 py-4 text-primary-foreground font-medium hover:bg-primary/90 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
+                >
+                  {heroBotaoTexto}
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </Link>
+              </div>
+            </div>
+          </>
+        )}
       </section>
 
       {/* Seção de Produtos com Sidebar e Grid */}
       <section className="py-8 md:py-12 bg-background">
-        <div className="container mx-auto px-4">
+        <div className="mx-auto px-4 md:px-6 lg:px-8">
           <ProductListingSection
             categorias={categorias.map(cat => ({
               id: cat.id,
@@ -262,7 +308,7 @@ export default async function HomePage() {
 
       {/* Seção de Confiança */}
       <section className="py-12 md:py-16 bg-background border-t border-border">
-        <div className="container mx-auto px-4">
+        <div className="mx-auto px-4 md:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
             <div className="flex flex-col items-center">
               <div className="w-16 h-16 rounded-full bg-bg-2 flex items-center justify-center mb-4">

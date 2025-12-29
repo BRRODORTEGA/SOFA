@@ -120,7 +120,7 @@ function CategoriaFiltrosContent({
   const temFiltrosAtivos = familiaId || tipo || abertura || acionamento;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="mx-auto w-full px-4 md:px-6 lg:px-8 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">{categoriaNome}</h1>
         <p className="mt-2 text-gray-600">
@@ -304,7 +304,7 @@ function CategoriaFiltrosContent({
 export default function CategoriaFiltros(props: CategoriaFiltrosProps) {
   return (
     <Suspense fallback={
-      <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="mx-auto w-full px-4 md:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">{props.categoriaNome}</h1>
           <p className="mt-2 text-gray-600">Carregando...</p>
