@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ProductImageGallery } from "@/components/storefront/ProductImageGallery";
 
 type ProdutoImagem = {
   id: string;
@@ -42,7 +43,6 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
   const [precoLoading, setPrecoLoading] = useState(false);
   const [qtd, setQtd] = useState(1);
   const [adding, setAdding] = useState(false);
-  const [imagemAtual, setImagemAtual] = useState(0);
   const [pendingCartProcessed, setPendingCartProcessed] = useState(false);
 
   // Função para adicionar ao carrinho após login
@@ -87,8 +87,6 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
           if (d.data.variacoes.length > 0) {
             setMedida(d.data.variacoes[0].medida_cm);
           }
-          // Resetar imagem atual quando produto carregar
-          setImagemAtual(0);
         }
       })
       .catch((err) => console.error("Erro ao carregar produto:", err))
@@ -116,12 +114,6 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
     return produto.imagens || [];
   })() : [];
   
-  // Resetar imagem atual quando tecido mudar ou imagens filtradas mudarem
-  useEffect(() => {
-    if (imagensFiltradas.length > 0 && imagemAtual >= imagensFiltradas.length) {
-      setImagemAtual(0);
-    }
-  }, [tecidoId, imagensFiltradas.length, imagemAtual]);
 
   // Verificar item pendente após login
   useEffect(() => {
@@ -271,60 +263,17 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
         {/* Galeria de Imagens */}
         <div>
           {imagensFiltradas.length > 0 ? (
-            <div>
-              <div className="aspect-square relative overflow-hidden rounded-lg bg-gray-100 mb-4">
-                <img
-                  src={imagensFiltradas[imagemAtual]}
-                  alt={produto.nome}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              {imagensFiltradas.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto">
-                  {imagensFiltradas.map((img, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setImagemAtual(idx)}
-                      className={`flex-shrink-0 rounded border-2 ${
-                        imagemAtual === idx ? "border-blue-600" : "border-gray-200"
-                      }`}
-                    >
-                      <img src={img} alt={`${produto.nome} ${idx + 1}`} className="h-20 w-20 object-cover" />
-                    </button>
-                  ))}
-                </div>
-              )}
-              {tecidoId && produto.imagensDetalhadas && (
-                <p className="mt-2 text-xs text-gray-500 text-center">
-                  Mostrando {imagensFiltradas.length} foto(s) para este tecido
-                </p>
-              )}
-            </div>
+            <ProductImageGallery
+              imagens={imagensFiltradas}
+              produtoNome={produto.nome}
+              tecidoId={tecidoId || undefined}
+              totalFotos={imagensFiltradas.length}
+            />
           ) : produto.imagens && produto.imagens.length > 0 ? (
-            <div>
-              <div className="aspect-square relative overflow-hidden rounded-lg bg-gray-100 mb-4">
-                <img
-                  src={produto.imagens[imagemAtual]}
-                  alt={produto.nome}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              {produto.imagens.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto">
-                  {produto.imagens.map((img, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setImagemAtual(idx)}
-                      className={`flex-shrink-0 rounded border-2 ${
-                        imagemAtual === idx ? "border-blue-600" : "border-gray-200"
-                      }`}
-                    >
-                      <img src={img} alt={`${produto.nome} ${idx + 1}`} className="h-20 w-20 object-cover" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <ProductImageGallery
+              imagens={produto.imagens}
+              produtoNome={produto.nome}
+            />
           ) : (
             <div className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center">
               <span className="text-gray-400">Sem imagem</span>
