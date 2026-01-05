@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { produtoSchema } from "@/lib/validators";
 import { FormShell } from "@/components/admin/form-shell";
@@ -62,6 +62,7 @@ export default function EditProduto({ item }: { item: any }) {
 
   const { register, handleSubmit, control, watch, setValue, getValues, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(produtoSchema),
+    mode: "onChange", // Validar apenas quando o campo mudar
     defaultValues: { 
       categoriaId: item.categoriaId || "",
       familiaId: item.familiaId || "",
@@ -84,40 +85,75 @@ export default function EditProduto({ item }: { item: any }) {
 
   useEffect(() => {
     async function loadData() {
-      const [catRes, famRes, nomesRes, tecidosRes] = await Promise.all([
-        fetch("/api/categorias").then(r=>r.json()),
-        fetch("/api/familias").then(r=>r.json()),
-        fetch("/api/nomes-padrao-produto?limit=100").then(r => r.json()),
-        fetch(`/api/produtos/${item.id}`).then(r => r.json())
-      ]);
-      
-      const cats = catRes.data?.items || [];
-      const fams = famRes.data?.items || [];
-      const nomes = nomesRes.data?.items?.filter((n: any) => n.ativo) || [];
-      const produto = tecidosRes.data || {};
-      const tecs = produto.tecidos || [];
-      
-      setCategorias(cats);
-      setFamilias(fams);
-      setNomesPadrao(nomes);
-      setTecidos(tecs);
+      try {
+        const [catRes, famRes, nomesRes, tecidosRes] = await Promise.all([
+          fetch("/api/categorias").then(async r => {
+            const text = await r.text();
+            return text ? JSON.parse(text) : { data: { items: [] } };
+          }),
+          fetch("/api/familias").then(async r => {
+            const text = await r.text();
+            return text ? JSON.parse(text) : { data: { items: [] } };
+          }),
+          fetch("/api/nomes-padrao-produto?limit=100").then(async r => {
+            const text = await r.text();
+            return text ? JSON.parse(text) : { data: { items: [] } };
+          }),
+          fetch(`/api/produtos/${item.id}`).then(async r => {
+            const text = await r.text();
+            if (!text) {
+              console.warn(`Resposta vazia da API /api/produtos/${item.id}`);
+              return { data: {} };
+            }
+            try {
+              return JSON.parse(text);
+            } catch (e) {
+              console.error(`Erro ao fazer parse do JSON da API /api/produtos/${item.id}:`, e);
+              console.error("Resposta recebida:", text.substring(0, 200));
+              return { data: {} };
+            }
+          })
+        ]);
+        
+        const cats = catRes.data?.items || [];
+        const fams = famRes.data?.items || [];
+        const nomes = nomesRes.data?.items?.filter((n: any) => n.ativo) || [];
+        const produto = tecidosRes.data || {};
+        const tecs = produto.tecidos || [];
+        
+        setCategorias(cats);
+        setFamilias(fams);
+        setNomesPadrao(nomes);
+        setTecidos(tecs);
+        
+        // Definir valores após carregar as opções - usar requestAnimationFrame para garantir que o DOM foi atualizado
+        requestAnimationFrame(() => {
+          // Definir valores após carregar as opções
+          if (cats.length > 0 && item.categoriaId) {
+            const categoriaExiste = cats.some((c: any) => c.id === item.categoriaId);
+            if (categoriaExiste) {
+              setValue("categoriaId", item.categoriaId, { shouldValidate: false, shouldDirty: false });
+            }
+          }
+          
+          if (fams.length > 0 && item.familiaId) {
+            const familiaExiste = fams.some((f: any) => f.id === item.familiaId);
+            if (familiaExiste) {
+              setValue("familiaId", item.familiaId, { shouldValidate: false, shouldDirty: false });
+            }
+          }
+          
+          if (item.nome) {
+            setValue("nome", item.nome, { shouldValidate: false, shouldDirty: false });
+          }
+        });
+      } catch (error) {
+        console.error("Erro ao carregar dados:", error);
+      }
     }
     
     loadData();
-  }, [item.id]);
-
-  // Garantir que os valores sejam definidos após carregar as opções
-  useEffect(() => {
-    if (categorias.length > 0 && item.categoriaId) {
-      setValue("categoriaId", item.categoriaId, { shouldValidate: false });
-    }
-  }, [categorias, item.categoriaId, setValue]);
-
-  useEffect(() => {
-    if (familias.length > 0 && item.familiaId) {
-      setValue("familiaId", item.familiaId, { shouldValidate: false });
-    }
-  }, [familias, item.familiaId, setValue]);
+  }, [item.id, item.categoriaId, item.familiaId, item.nome, setValue]);
 
   // Filtrar famílias: se categoriaId estiver selecionado, mostrar apenas famílias dessa categoria
   // Se categoriaId for null/undefined na família, mostrar também (famílias sem categoria)
@@ -379,26 +415,69 @@ export default function EditProduto({ item }: { item: any }) {
       <form id="edit-produto-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Categoria</label>
-          <select {...register("categoriaId")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Selecione...</option>
-            {categorias.map((c:any)=>(<option key={c.id} value={c.id}>{c.nome}</option>))}
-          </select>
+          <Controller
+            name="categoriaId"
+            control={control}
+            rules={{
+              required: "Selecione uma categoria",
+              validate: (value) => {
+                if (!value || value === "") {
+                  return "Selecione uma categoria";
+                }
+                return true;
+              }
+            }}
+            defaultValue={item.categoriaId || ""}
+            render={({ field }) => (
+              <select 
+                {...field}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Selecione...</option>
+                {categorias.map((c:any)=>(<option key={c.id} value={c.id}>{c.nome}</option>))}
+              </select>
+            )}
+          />
           {errors.categoriaId && <p className="mt-2 text-sm font-medium text-red-600">{String(errors.categoriaId.message)}</p>}
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Família</label>
-          <select {...register("familiaId")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Selecione...</option>
-            {familiasFiltradas.map((f:any)=>(<option key={f.id} value={f.id}>{f.nome}</option>))}
-          </select>
+          <Controller
+            name="familiaId"
+            control={control}
+            rules={{
+              required: "Selecione uma família",
+              validate: (value) => {
+                if (!value || value === "") {
+                  return "Selecione uma família";
+                }
+                return true;
+              }
+            }}
+            defaultValue={item.familiaId || ""}
+            render={({ field }) => (
+              <select 
+                {...field}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Selecione...</option>
+                {familiasFiltradas.map((f:any)=>(<option key={f.id} value={f.id}>{f.nome}</option>))}
+              </select>
+            )}
+          />
           {errors.familiaId && <p className="mt-2 text-sm font-medium text-red-600">{String(errors.familiaId.message)}</p>}
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Nome <span className="text-red-500">*</span></label>
-          <select 
-            {...register("nome", { 
+          <Controller
+            name="nome"
+            control={control}
+            rules={{
               required: "Selecione um nome padrão",
               validate: (value) => {
+                if (!value || value === "") {
+                  return "Selecione um nome padrão";
+                }
                 // Verificar se o nome atual do produto está na lista (pode estar desativado)
                 const nomeAtualValido = item.nome === value;
                 const nomeValido = nomesPadrao.some((n: any) => n.nome === value);
@@ -407,20 +486,26 @@ export default function EditProduto({ item }: { item: any }) {
                 }
                 return true;
               }
-            })} 
-            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-          >
-            <option value="">Selecione um nome padrão...</option>
-            {/* Mostrar o nome atual mesmo que não esteja na lista (pode estar desativado) */}
-            {!nomesPadrao.some((n: any) => n.nome === item.nome) && (
-              <option value={item.nome}>{item.nome} (atual)</option>
+            }}
+            defaultValue={item.nome || ""}
+            render={({ field }) => (
+              <select 
+                {...field}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+              >
+                <option value="">Selecione um nome padrão...</option>
+                {/* Mostrar o nome atual mesmo que não esteja na lista (pode estar desativado) */}
+                {item.nome && !nomesPadrao.some((n: any) => n.nome === item.nome) && (
+                  <option value={item.nome}>{item.nome} (atual)</option>
+                )}
+                {nomesPadrao.map((nome: any) => (
+                  <option key={nome.id} value={nome.nome}>
+                    {nome.nome}
+                  </option>
+                ))}
+              </select>
             )}
-            {nomesPadrao.map((nome: any) => (
-              <option key={nome.id} value={nome.nome}>
-                {nome.nome}
-              </option>
-            ))}
-          </select>
+          />
           {errors.nome && <p className="mt-2 text-sm font-medium text-red-600">{String(errors.nome.message)}</p>}
           {nomesPadrao.length === 0 && (
             <p className="mt-2 text-sm text-yellow-600">

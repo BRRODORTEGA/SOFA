@@ -127,22 +127,25 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       });
       
       // Se houver imagensDetalhadas, atualizar
-      if (imagensDetalhadas && Array.isArray(imagensDetalhadas)) {
+      if (imagensDetalhadas && Array.isArray(imagensDetalhadas) && imagensDetalhadas.length > 0) {
         // Remover todas as imagens detalhadas existentes
         await tx.produtoImagem.deleteMany({ where: { produtoId: params.id } });
         
         // Criar novas imagens detalhadas
-        if (imagensDetalhadas.length > 0) {
-          await tx.produtoImagem.createMany({
-            data: imagensDetalhadas.map((img: any, index: number) => ({
+        await tx.produtoImagem.createMany({
+          data: imagensDetalhadas
+            .filter((img: any) => img && img.url && typeof img.url === 'string' && img.url.trim() !== "")
+            .map((img: any, index: number) => ({
               produtoId: params.id,
-              url: img.url,
-              tecidoId: img.tecidoId || null,
+              url: img.url.trim(),
+              tecidoId: img.tecidoId && img.tecidoId.trim() !== "" ? img.tecidoId : null,
               tipo: img.tipo || "complementar",
               ordem: img.ordem ?? index,
             })),
-          });
-        }
+        });
+      } else if (imagensDetalhadas && Array.isArray(imagensDetalhadas) && imagensDetalhadas.length === 0) {
+        // Se o array estiver vazio, remover todas as imagens existentes
+        await tx.produtoImagem.deleteMany({ where: { produtoId: params.id } });
       }
       
       return produtoAtualizado;
@@ -152,8 +155,19 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     return ok(updated);
   } catch (e: any) {
     console.error("Erro ao atualizar produto:", e); // Debug
+    console.error("Código do erro:", e?.code);
+    console.error("Mensagem do erro:", e?.message);
+    console.error("Meta do erro:", e?.meta);
+    
     if (e?.code === "P2025") return notFound();
-    return serverError(e?.message || "Erro interno do servidor");
+    if (e?.code === "P2021") {
+      // Tabela não existe
+      return serverError(`Tabela não encontrada: ${e?.meta?.table || 'desconhecida'}. Verifique se as migrações foram aplicadas.`);
+    }
+    
+    // Retornar mensagem de erro mais detalhada
+    const errorMessage = e?.message || "Erro interno do servidor";
+    return serverError(errorMessage);
   }
 }
 

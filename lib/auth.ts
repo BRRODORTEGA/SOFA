@@ -3,7 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { getServerSession } from "next-auth/next";
 import { ENV } from "./env";
 import { prisma } from "./prisma";
-import bcrypt from "bcryptjs";
+import bcryptjs from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
   secret: ENV.NEXTAUTH_SECRET || "changeme",
@@ -25,7 +25,7 @@ export const authOptions: NextAuthOptions = {
 
           if (user) {
             // Verificar senha com bcrypt
-            const isValid = await bcrypt.compare(credentials.password, user.password);
+            const isValid = await bcryptjs.compare(credentials.password, user.password);
             if (isValid) {
               return {
                 id: user.id,
