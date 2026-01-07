@@ -9,3 +9,4 @@ ALTER TABLE "SiteConfig" ADD COLUMN IF NOT EXISTS "heroImagemLink" TEXT;
 ALTER TABLE "SiteConfig" ADD COLUMN IF NOT EXISTS "heroImagemObjectFit" TEXT;
 ALTER TABLE "SiteConfig" ADD COLUMN IF NOT EXISTS "heroImagemObjectPosition" TEXT;
 
+

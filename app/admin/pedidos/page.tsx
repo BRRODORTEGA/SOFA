@@ -18,33 +18,81 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
       ];
     }
 
-    const [items, total] = await Promise.all([
-      prisma.pedido.findMany({
-        where,
-        take: limit,
-        skip: offset,
-        orderBy: { createdAt: "desc" },
-        include: {
-          cliente: { select: { id: true, name: true, email: true } },
-          mensagens: {
-            orderBy: { createdAt: "desc" },
-            select: {
-              id: true,
-              role: true,
-              createdAt: true,
-            },
-            take: 1, // Apenas a última mensagem para verificar
+    // Função para garantir que a coluna ultimaVisualizacaoAdmin existe
+    try {
+      const columnExists = await prisma.$queryRawUnsafe<Array<{ column_name: string }>>(
+        `SELECT column_name 
+         FROM information_schema.columns 
+         WHERE table_schema = 'public' 
+         AND table_name = 'Pedido' 
+         AND column_name = 'ultimaVisualizacaoAdmin'`
+      );
+      
+      if (columnExists.length === 0) {
+        await prisma.$executeRawUnsafe(
+          `DO $$ 
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns 
+              WHERE table_schema = 'public' 
+              AND table_name = 'Pedido' 
+              AND column_name = 'ultimaVisualizacaoAdmin'
+            ) THEN
+              ALTER TABLE "Pedido" ADD COLUMN "ultimaVisualizacaoAdmin" TIMESTAMP(3);
+            END IF;
+          END $$;`
+        );
+        console.log("Coluna ultimaVisualizacaoAdmin criada com sucesso");
+      }
+    } catch (e: any) {
+      console.log("Erro ao verificar/criar coluna ultimaVisualizacaoAdmin:", e?.message);
+    }
+
+    // Buscar pedidos usando include primeiro para evitar erro se a coluna não existir ainda
+    const pedidosRaw = await prisma.pedido.findMany({
+      where,
+      take: limit,
+      skip: offset,
+      orderBy: { createdAt: "desc" },
+      include: {
+        cliente: { select: { id: true, name: true, email: true } },
+        mensagens: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            role: true,
+            createdAt: true,
           },
+          // Buscar todas as mensagens para verificar se há alguma nova do cliente
         },
-      }),
-      prisma.pedido.count({ where }),
-    ]);
+      },
+    });
+
+    const total = await prisma.pedido.count({ where });
+
+    // Mapear os resultados incluindo ultimaVisualizacaoAdmin se disponível
+    const items = pedidosRaw.map((item: any) => ({
+      id: item.id,
+      codigo: item.codigo,
+      status: item.status,
+      createdAt: item.createdAt,
+      ultimaVisualizacaoAdmin: item.ultimaVisualizacaoAdmin || null,
+      cliente: item.cliente,
+      mensagens: item.mensagens,
+    }));
 
     const rowsWithFormatted = items.map((item) => {
-      // Verificar se há nova mensagem do cliente
-      // Nova mensagem = última mensagem é do cliente (role = "CLIENTE")
-      const ultimaMensagem = item.mensagens[0];
-      const temNovaMensagemCliente = ultimaMensagem && ultimaMensagem.role === "CLIENTE";
+      // Verificar se há nova mensagem do cliente não visualizada pelo admin
+      // Buscar todas as mensagens do cliente e verificar se alguma é mais recente que a última visualização
+      const mensagensCliente = item.mensagens.filter((m: any) => m.role === "CLIENTE");
+      const dataReferencia = item.ultimaVisualizacaoAdmin 
+        ? new Date(item.ultimaVisualizacaoAdmin)
+        : new Date(0); // Se nunca visualizou, qualquer mensagem é nova
+      
+      // Verificar se há alguma mensagem do cliente mais recente que a última visualização
+      const temNovaMensagemCliente = mensagensCliente.some((msg: any) => 
+        new Date(msg.createdAt) > dataReferencia
+      );
 
       return {
         ...item,

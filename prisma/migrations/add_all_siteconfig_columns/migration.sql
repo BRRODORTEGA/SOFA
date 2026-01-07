@@ -31,3 +31,4 @@ ALTER TABLE "SiteConfig" ADD COLUMN IF NOT EXISTS "filtroPrecoNome" TEXT;
 ALTER TABLE "SiteConfig" ADD COLUMN IF NOT EXISTS "filtroOpcoesProdutoAtivo" BOOLEAN DEFAULT true;
 ALTER TABLE "SiteConfig" ADD COLUMN IF NOT EXISTS "filtroOpcoesProdutoNome" TEXT;
 
+

@@ -32,6 +32,10 @@ type Mensagem = {
   texto: string;
   role: string | null;
   createdAt: string;
+  editada?: boolean;
+  editadaEm?: string;
+  excluida?: boolean;
+  excluidaEm?: string;
 };
 
 export default function PedidoAdminDetailPage() {
@@ -42,6 +46,8 @@ export default function PedidoAdminDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
   const { register: registerStatus, handleSubmit: handleSubmitStatus } = useForm<{ novoStatus: string; motivo?: string }>();
   const { register: registerMsg, handleSubmit: handleSubmitMsg, reset } = useForm<{ texto: string }>();
 
@@ -56,6 +62,17 @@ export default function PedidoAdminDetailPage() {
         const data = await res.json();
         setPedido(data.data.pedido);
         setMensagens(data.data.mensagens);
+        
+        // Marcar o pedido como visualizado pelo admin quando acessa a página
+        // Aguardar a resposta para garantir que foi marcado
+        try {
+          await fetch(`/api/admin/pedidos/${params.id}/marcar-visualizado`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          });
+        } catch (error) {
+          console.error("Erro ao marcar pedido como visualizado:", error);
+        }
       }
     } catch (error) {
       console.error("Erro ao carregar pedido:", error);
@@ -104,6 +121,60 @@ export default function PedidoAdminDetailPage() {
       console.error("Erro ao enviar mensagem:", error);
     } finally {
       setSending(false);
+    }
+  }
+
+  function startEditMessage(msg: Mensagem) {
+    setEditingMsgId(msg.id);
+    setEditText(msg.texto);
+  }
+
+  function cancelEdit() {
+    setEditingMsgId(null);
+    setEditText("");
+  }
+
+  async function saveEditMessage() {
+    if (!editingMsgId || !editText.trim()) return;
+
+    try {
+      const res = await fetch(`/api/admin/pedidos/${params.id}/mensagens/${editingMsgId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto: editText.trim() }),
+      });
+
+      if (res.ok) {
+        setEditingMsgId(null);
+        setEditText("");
+        loadPedido();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Erro ao editar mensagem");
+      }
+    } catch (error) {
+      console.error("Erro ao editar mensagem:", error);
+      alert("Erro ao editar mensagem");
+    }
+  }
+
+  async function deleteMessage(msgId: string) {
+    if (!confirm("Tem certeza que deseja excluir esta mensagem?")) return;
+
+    try {
+      const res = await fetch(`/api/admin/pedidos/${params.id}/mensagens/${msgId}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        loadPedido();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Erro ao excluir mensagem");
+      }
+    } catch (error) {
+      console.error("Erro ao excluir mensagem:", error);
+      alert("Erro ao excluir mensagem");
     }
   }
 
@@ -242,7 +313,7 @@ export default function PedidoAdminDetailPage() {
           {mensagens.map((msg) => (
             <div
               key={msg.id}
-              className={`rounded p-2 ${
+              className={`rounded p-2 relative group ${
                 msg.role === "CLIENTE"
                   ? "bg-blue-50"
                   : msg.role === "ADMIN" || msg.role === "OPERADOR"
@@ -250,11 +321,82 @@ export default function PedidoAdminDetailPage() {
                     : "bg-green-50"
               }`}
             >
-              <div className="flex justify-between text-xs text-gray-600">
-                <span>{msg.role || "Sistema"}</span>
-                <span>{new Date(msg.createdAt).toLocaleString("pt-BR")}</span>
+              <div className="flex justify-between items-start text-xs text-gray-600">
+                <div className="flex items-center gap-2">
+                  <span>{msg.role || "Sistema"}</span>
+                  {msg.editada && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-1.5 py-0.5 text-xs font-medium text-yellow-800" title={`Editada em ${msg.editadaEm ? new Date(msg.editadaEm).toLocaleString("pt-BR") : ''}`}>
+                      <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Editada
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>{new Date(msg.createdAt).toLocaleString("pt-BR")}</span>
+                  {(msg.role === "ADMIN" || msg.role === "OPERADOR") && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {editingMsgId === msg.id ? (
+                        <>
+                          <button
+                            onClick={saveEditMessage}
+                            className="text-green-600 hover:text-green-800"
+                            title="Salvar"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="text-gray-600 hover:text-gray-800"
+                            title="Cancelar"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => startEditMessage(msg)}
+                            className="text-blue-600 hover:text-blue-800"
+                            title="Editar"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => deleteMessage(msg.id)}
+                            className="text-red-600 hover:text-red-800"
+                            title="Excluir"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-              <p className="mt-1">{msg.texto}</p>
+              {editingMsgId === msg.id ? (
+                <div className="mt-2">
+                  <textarea
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    className="w-full rounded border px-3 py-2 text-sm"
+                    rows={3}
+                    autoFocus
+                  />
+                </div>
+              ) : (
+                <p className="mt-1">{msg.texto}</p>
+              )}
             </div>
           ))}
         </div>

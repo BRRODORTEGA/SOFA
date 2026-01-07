@@ -39,9 +39,15 @@ export default function MeusPedidosPage() {
       const res = await fetch("/api/meus-pedidos");
       if (res.ok) {
         const data = await res.json();
-        setPedidos(data.data.items);
+        const pedidosComAtualizacoes = data.data.items;
+        
         // Contar total de atualizações
-        const total = data.data.items.filter((p: Pedido) => p.temAtualizacao).length;
+        const total = pedidosComAtualizacoes.filter((p: Pedido) => p.temAtualizacao).length;
+        
+        // NÃO marcar como visualizado automaticamente - deixar o usuário ver quais pedidos têm atualizações
+        // A marcação será feita quando o usuário clicar em um pedido específico
+        
+        setPedidos(pedidosComAtualizacoes);
         setTotalAtualizacoes(total);
       }
     } catch (error) {
@@ -105,7 +111,11 @@ export default function MeusPedidosPage() {
               <Link
                 key={pedido.id}
                 href={`/meus-pedidos/${pedido.id}`}
-                className="block rounded border p-4 hover:bg-gray-50 relative"
+                className={`block rounded border p-4 hover:bg-gray-50 relative transition-all ${
+                  pedido.temAtualizacao 
+                    ? 'border-red-300 bg-red-50/30 shadow-sm' 
+                    : 'border-gray-200'
+                }`}
               >
                 {pedido.temAtualizacao && (
                   <div className="absolute top-2 right-2">
@@ -118,12 +128,11 @@ export default function MeusPedidosPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{pedido.codigo}</h3>
+                      <h3 className={`font-semibold ${pedido.temAtualizacao ? 'text-red-700' : ''}`}>
+                        {pedido.codigo}
+                      </h3>
                       {pedido.temAtualizacao && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
-                          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-                          </svg>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800 border border-red-200">
                           {pedido.temNovaMensagem && pedido.temAtualizacaoStatus ? 'Nova mensagem e status' :
                            pedido.temNovaMensagem ? 'Nova mensagem' :
                            pedido.temAtualizacaoStatus ? 'Status atualizado' : 'Atualização'}

@@ -32,6 +32,10 @@ type Mensagem = {
   texto: string;
   role: string | null;
   createdAt: string;
+  editada?: boolean;
+  editadaEm?: string;
+  excluida?: boolean;
+  excluidaEm?: string;
 };
 
 export default function PedidoDetailPage() {
@@ -62,6 +66,15 @@ export default function PedidoDetailPage() {
         const data = await res.json();
         setPedido(data.data.pedido);
         setMensagens(data.data.mensagens);
+        
+        // Marcar este pedido específico como visualizado quando o usuário acessa a página
+        fetch("/api/meus-pedidos/marcar-visualizado", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pedidoId: params.id }),
+        }).catch(() => {
+          // Ignorar erros silenciosamente
+        });
       }
     } catch (error) {
       console.error("Erro ao carregar pedido:", error);
@@ -192,7 +205,17 @@ export default function PedidoDetailPage() {
               }`}
             >
               <div className="flex justify-between text-xs text-gray-600">
-                <span>{msg.role || "Sistema"}</span>
+                <div className="flex items-center gap-2">
+                  <span>{msg.role || "Sistema"}</span>
+                  {msg.editada && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-1.5 py-0.5 text-xs font-medium text-yellow-800" title={`Editada em ${msg.editadaEm ? new Date(msg.editadaEm).toLocaleString("pt-BR") : ''}`}>
+                      <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Editada
+                    </span>
+                  )}
+                </div>
                 <span>{new Date(msg.createdAt).toLocaleString("pt-BR")}</span>
               </div>
               <p className="mt-1">{msg.texto}</p>

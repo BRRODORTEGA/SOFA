@@ -312,6 +312,8 @@ model Pedido {
   status    String   @default("Solicitado")
   cupomCodigo String? // Código do cupom aplicado
   descontoCupom Decimal? @db.Decimal(10, 2) // Valor do desconto do cupom aplicado
+  ultimaVisualizacaoCliente DateTime? // Data da última vez que o cliente visualizou as atualizações do pedido
+  ultimaVisualizacaoAdmin DateTime? // Data da última vez que o admin/operador visualizou as mensagens do cliente
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -394,7 +396,12 @@ model MensagemPedido {
   userId    String? // null = mensagem do sistema
   role      Role? // redundante para exibição (ADMIN/OPERADOR/CLIENTE/FABRICA)
   texto     String
+  editada   Boolean  @default(false) // Indica se a mensagem foi editada
+  editadaEm DateTime? // Data da última edição
+  excluida  Boolean  @default(false) // Soft delete - indica se a mensagem foi excluída
+  excluidaEm DateTime? // Data da exclusão
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   pedido Pedido @relation(fields: [pedidoId], references: [id])
 
