@@ -10,6 +10,12 @@ interface Categoria {
   _count?: { produtos: number };
 }
 
+interface Familia {
+  id: string;
+  nome: string;
+  _count?: { produtos: number };
+}
+
 interface ProdutoBestSeller {
   id: string;
   nome: string;
@@ -40,9 +46,12 @@ interface FiltrosOpcoes {
 
 interface ProductSidebarProps {
   categorias: Categoria[];
+  familias?: Familia[];
   produtosBestSellers?: ProdutoBestSeller[];
   categoriaSelecionada?: string | string[]; // Aceita string única ou array para múltipla seleção
   onCategoriaChange?: (categoriaIds: string[]) => void; // Sempre passa array
+  familiaSelecionada?: string | string[]; // Aceita string única ou array para múltipla seleção
+  onFamiliaChange?: (familiaIds: string[]) => void; // Sempre passa array
   precoMin?: string;
   precoMax?: string;
   onPrecoChange?: (min: string, max: string) => void;
@@ -63,9 +72,12 @@ function priceRangeToStrings(range: { min: number; max: number }, minLimit: numb
 
 export function ProductSidebar({
   categorias,
+  familias = [],
   produtosBestSellers = [],
   categoriaSelecionada,
   onCategoriaChange,
+  familiaSelecionada,
+  onFamiliaChange,
   precoMin: precoMinProp,
   precoMax: precoMaxProp,
   onPrecoChange,
@@ -121,6 +133,17 @@ export function ProductSidebar({
     aberturas: [],
     acionamentos: [],
   });
+
+  // Estados para controlar o colapso das seções - todas começam colapsadas
+  const [categoriaExpandida, setCategoriaExpandida] = useState(false);
+  const [familiaExpandida, setFamiliaExpandida] = useState(false);
+  const [precoExpandido, setPrecoExpandido] = useState(false);
+  const [opcoesProdutoExpandida, setOpcoesProdutoExpandida] = useState(false);
+  const [tamanhoExpandido, setTamanhoExpandido] = useState(false);
+  const [tipoExpandido, setTipoExpandido] = useState(false);
+  const [aberturaExpandida, setAberturaExpandida] = useState(false);
+  const [acionamentoExpandido, setAcionamentoExpandido] = useState(false);
+  const [tecidoExpandido, setTecidoExpandido] = useState(false);
 
   // Notificar mudanças nos filtros de opções
   useEffect(() => {
@@ -181,9 +204,30 @@ export function ProductSidebar({
       {/* CATEGORIES */}
       {filtrosConfig?.filtroCategoriaAtivo && (
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 uppercase">
-          {filtrosConfig.filtroCategoriaNome}
-        </h3>
+        <button
+          onClick={() => setCategoriaExpandida(!categoriaExpandida)}
+          className="flex items-center justify-between w-full mb-4 group"
+        >
+          <h3 className="text-lg font-semibold text-gray-900 uppercase">
+            {filtrosConfig.filtroCategoriaNome}
+          </h3>
+          <svg
+            className={`w-5 h-5 text-gray-600 transition-transform duration-200 ${
+              categoriaExpandida ? "rotate-180" : ""
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
+        {categoriaExpandida && (
         <div className="space-y-2">
           {categoriasFiltradas.map((cat) => {
             const count = cat._count?.produtos || 0;
@@ -233,55 +277,203 @@ export function ProductSidebar({
             );
           })}
         </div>
+        )}
+      </div>
+      )}
+
+      {/* FAMILIAS */}
+      {familias.length > 0 && (
+      <div>
+        <button
+          onClick={() => setFamiliaExpandida(!familiaExpandida)}
+          className="flex items-center justify-between w-full mb-4 group"
+        >
+          <h3 className="text-lg font-semibold text-gray-900 uppercase">
+            FAMÍLIA
+          </h3>
+          <svg
+            className={`w-5 h-5 text-gray-600 transition-transform duration-200 ${
+              familiaExpandida ? "rotate-180" : ""
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
+        {familiaExpandida && (
+        <div className="space-y-2">
+          {familias.map((fam) => {
+            const count = fam._count?.produtos || 0;
+            // Converter familiaSelecionada para array se necessário
+            const familiasSelecionadasArray = Array.isArray(familiaSelecionada) 
+              ? familiaSelecionada 
+              : familiaSelecionada 
+                ? [familiaSelecionada] 
+                : [];
+            const isSelected = familiasSelecionadasArray.includes(fam.id);
+            return (
+              <div key={fam.id}>
+                {onFamiliaChange ? (
+                  <label className="flex cursor-pointer items-center gap-2 rounded p-2 hover:bg-gray-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        const novasFamilias = e.target.checked
+                          ? [...familiasSelecionadasArray, fam.id]
+                          : familiasSelecionadasArray.filter(id => id !== fam.id);
+                        onFamiliaChange(novasFamilias);
+                      }}
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <span className={`text-sm font-medium transition-colors ${
+                      isSelected
+                        ? "text-primary font-semibold"
+                        : "text-gray-700"
+                    }`}>
+                      {fam.nome} ({count})
+                    </span>
+                  </label>
+                ) : (
+                  <span className={`block text-sm font-medium transition-colors p-2 rounded ${
+                    isSelected
+                      ? "text-primary font-semibold"
+                      : "text-gray-600"
+                  }`}>
+                    {fam.nome} ({count})
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        )}
       </div>
       )}
 
       {/* FILTER BY PRICE */}
       {filtrosConfig?.filtroPrecoAtivo && (
       <div>
-        <PriceFilter
-          minLimit={precoMinRange}
-          maxLimit={precoMaxRange}
-          step={1}
-          value={priceRange}
-          onChange={(next) => setPriceRange(next)}
-          title={filtrosConfig.filtroPrecoNome}
-          onClear={() => {
-            setComDesconto(false);
-            if (onComDescontoChange) {
-              onComDescontoChange(false);
-            }
-          }}
-        />
-
-        {/* Checkbox Com Desconto */}
-        <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
-          <label className="flex cursor-pointer items-center gap-2 rounded p-2 hover:bg-gray-100 transition-colors">
-            <input
-              type="checkbox"
-              checked={comDesconto}
-              onChange={(e) => setComDesconto(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+        <button
+          onClick={() => setPrecoExpandido(!precoExpandido)}
+          className="flex items-center justify-between w-full mb-4 group"
+        >
+          <h3 className="text-lg font-semibold text-gray-900 uppercase">
+            {filtrosConfig.filtroPrecoNome}
+          </h3>
+          <svg
+            className={`w-5 h-5 text-gray-600 transition-transform duration-200 ${
+              precoExpandido ? "rotate-180" : ""
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
             />
-            <span className="text-sm font-medium text-gray-700">
-              Com desconto
-            </span>
-          </label>
+          </svg>
+        </button>
+        {precoExpandido && (
+        <div>
+          <PriceFilter
+            minLimit={precoMinRange}
+            maxLimit={precoMaxRange}
+            step={1}
+            value={priceRange}
+            onChange={(next) => setPriceRange(next)}
+            title=""
+            onClear={() => {
+              setComDesconto(false);
+              if (onComDescontoChange) {
+                onComDescontoChange(false);
+              }
+            }}
+          />
+
+          {/* Checkbox Com Desconto */}
+          <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <label className="flex cursor-pointer items-center gap-2 rounded p-2 hover:bg-gray-100 transition-colors">
+              <input
+                type="checkbox"
+                checked={comDesconto}
+                onChange={(e) => setComDesconto(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <span className="text-sm font-medium text-gray-700">
+                Com desconto
+              </span>
+            </label>
+          </div>
         </div>
+        )}
       </div>
       )}
 
       {/* FILTER BY PRODUCT OPTIONS */}
       {filtrosConfig?.filtroOpcoesProdutoAtivo && opcoesProduto && (
       <div className="space-y-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 uppercase">
-          {filtrosConfig.filtroOpcoesProdutoNome}
-        </h3>
+        <button
+          onClick={() => setOpcoesProdutoExpandida(!opcoesProdutoExpandida)}
+          className="flex items-center justify-between w-full mb-4 group"
+        >
+          <h3 className="text-lg font-semibold text-gray-900 uppercase">
+            {filtrosConfig.filtroOpcoesProdutoNome}
+          </h3>
+          <svg
+            className={`w-5 h-5 text-gray-600 transition-transform duration-200 ${
+              opcoesProdutoExpandida ? "rotate-180" : ""
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
+        {opcoesProdutoExpandida && (
+        <div className="space-y-6">
 
         {/* Filtro por Tamanho (Medidas) */}
         {opcoesProduto.medidas.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-3">Tamanho</h4>
+            <button
+              onClick={() => setTamanhoExpandido(!tamanhoExpandido)}
+              className="flex items-center justify-between w-full mb-3 group"
+            >
+              <h4 className="text-sm font-medium text-gray-700">Tamanho</h4>
+              <svg
+                className={`w-4 h-4 text-gray-600 transition-transform duration-200 ${
+                  tamanhoExpandido ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {tamanhoExpandido && (
             <div className="flex flex-wrap gap-2">
               {opcoesProduto.medidas.map((medida) => {
                 const isSelected = filtrosOpcoes.medidas.includes(medida);
@@ -307,13 +499,35 @@ export function ProductSidebar({
                 );
               })}
             </div>
+            )}
           </div>
         )}
 
         {/* Filtro por Tipo */}
         {opcoesProduto.tipos.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-3">Tipo</h4>
+            <button
+              onClick={() => setTipoExpandido(!tipoExpandido)}
+              className="flex items-center justify-between w-full mb-3 group"
+            >
+              <h4 className="text-sm font-medium text-gray-700">Tipo</h4>
+              <svg
+                className={`w-4 h-4 text-gray-600 transition-transform duration-200 ${
+                  tipoExpandido ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {tipoExpandido && (
             <div className="space-y-2">
               {opcoesProduto.tipos.map((tipo) => {
                 const isSelected = filtrosOpcoes.tipos.includes(tipo);
@@ -340,13 +554,35 @@ export function ProductSidebar({
                 );
               })}
             </div>
+            )}
           </div>
         )}
 
         {/* Filtro por Abertura */}
         {opcoesProduto.aberturas.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-3">Abertura</h4>
+            <button
+              onClick={() => setAberturaExpandida(!aberturaExpandida)}
+              className="flex items-center justify-between w-full mb-3 group"
+            >
+              <h4 className="text-sm font-medium text-gray-700">Abertura</h4>
+              <svg
+                className={`w-4 h-4 text-gray-600 transition-transform duration-200 ${
+                  aberturaExpandida ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {aberturaExpandida && (
             <div className="space-y-2">
               {opcoesProduto.aberturas.map((abertura) => {
                 const isSelected = filtrosOpcoes.aberturas.includes(abertura);
@@ -373,13 +609,35 @@ export function ProductSidebar({
                 );
               })}
             </div>
+            )}
           </div>
         )}
 
         {/* Filtro por Acionamento */}
         {opcoesProduto.acionamentos.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-3">Acionamento</h4>
+            <button
+              onClick={() => setAcionamentoExpandido(!acionamentoExpandido)}
+              className="flex items-center justify-between w-full mb-3 group"
+            >
+              <h4 className="text-sm font-medium text-gray-700">Acionamento</h4>
+              <svg
+                className={`w-4 h-4 text-gray-600 transition-transform duration-200 ${
+                  acionamentoExpandido ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {acionamentoExpandido && (
             <div className="space-y-2">
               {opcoesProduto.acionamentos.map((acionamento) => {
                 const isSelected = filtrosOpcoes.acionamentos.includes(acionamento);
@@ -406,13 +664,35 @@ export function ProductSidebar({
                 );
               })}
             </div>
+            )}
           </div>
         )}
 
         {/* Filtro por Tecido (Cores) */}
         {opcoesProduto.tecidos.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-3">Tecido</h4>
+            <button
+              onClick={() => setTecidoExpandido(!tecidoExpandido)}
+              className="flex items-center justify-between w-full mb-3 group"
+            >
+              <h4 className="text-sm font-medium text-gray-700">Tecido</h4>
+              <svg
+                className={`w-4 h-4 text-gray-600 transition-transform duration-200 ${
+                  tecidoExpandido ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {tecidoExpandido && (
             <div className="space-y-2">
               {opcoesProduto.tecidos.map((tecido) => {
                 const isSelected = filtrosOpcoes.tecidos.includes(tecido.id);
@@ -439,7 +719,10 @@ export function ProductSidebar({
                 );
               })}
             </div>
+            )}
           </div>
+        )}
+        </div>
         )}
       </div>
       )}

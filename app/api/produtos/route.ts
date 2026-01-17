@@ -57,6 +57,12 @@ export async function GET(req: Request) {
     where.categoriaId = categoriaId;
   }
 
+  // Suporte para múltiplas famílias
+  const familiaIds = searchParams.get("familiaIds")?.split(",").filter(Boolean) || [];
+  if (familiaIds.length > 0) {
+    where.familiaId = { in: familiaIds };
+  }
+
   // Aplicar filtros de opções de produto
   if (tipos.length > 0) {
     where.tipo = { in: tipos };

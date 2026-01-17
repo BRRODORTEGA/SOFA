@@ -111,8 +111,36 @@ export default async function HomePage() {
     orderBy: { nome: "asc" },
   });
 
+  // Buscar todas as famílias ativas com contagem de produtos ativos da tabela vigente
+  const familias = await prisma.familia.findMany({
+    where: { ativo: true },
+    include: {
+      _count: {
+        select: {
+          produtos: {
+            where: produtosAtivosFilterContagem
+          }
+        }
+      }
+    },
+    orderBy: { nome: "asc" },
+  });
+
+  // Preparar filtro para produtos ativos (considerando tabela vigente)
+  const produtosAtivosFilter: any = { status: true };
+  if (siteConfigTypedContagem?.tabelaPrecoVigenteId) {
+    const produtosAtivos = siteConfigTypedContagem.produtosAtivosTabelaVigente || [];
+    if (produtosAtivos.length > 0) {
+      produtosAtivosFilter.id = { in: produtosAtivos };
+    } else {
+      produtosAtivosFilter.id = { in: [] };
+    }
+  }
+
   // Buscar produtos em destaque configurados no admin
   const produtosDestaqueIds = siteConfig.produtosDestaque || [];
+  
+  // Se houver produtos em destaque, usar eles. Caso contrário, buscar todos os produtos ativos
   const produtosRaw = produtosDestaqueIds.length > 0
     ? await prisma.produto.findMany({
         where: {
@@ -125,7 +153,15 @@ export default async function HomePage() {
         },
         orderBy: { createdAt: "desc" },
       })
-    : []; // Se não houver produtos em destaque, não exibir nenhum
+    : await prisma.produto.findMany({
+        where: produtosAtivosFilter,
+        include: {
+          familia: { select: { nome: true } },
+          categoria: { select: { nome: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100, // Limitar a 100 produtos para performance
+      });
 
   // Buscar descontos e calcular preços com desconto
   const siteConfigTypedDescontos = siteConfig as any;
@@ -156,17 +192,6 @@ export default async function HomePage() {
 
   // Buscar produtos best sellers (top 3 mais recentes por enquanto)
   // Filtrar apenas produtos ativos da tabela vigente
-  const produtosAtivosFilter: any = { status: true };
-  const siteConfigTyped = siteConfig as any; // Type assertion temporária até regenerar Prisma Client
-  if (siteConfigTyped?.tabelaPrecoVigenteId) {
-    const produtosAtivos = siteConfigTyped.produtosAtivosTabelaVigente || [];
-    if (produtosAtivos.length > 0) {
-      produtosAtivosFilter.id = { in: produtosAtivos };
-    } else {
-      produtosAtivosFilter.id = { in: [] };
-    }
-  }
-
   const produtosBestSellersRaw = await prisma.produto.findMany({
     where: produtosAtivosFilter,
     include: {
@@ -279,6 +304,11 @@ export default async function HomePage() {
               id: cat.id,
               nome: cat.nome,
               _count: { produtos: cat._count?.produtos || 0 }
+            }))}
+            familias={familias.map(fam => ({
+              id: fam.id,
+              nome: fam.nome,
+              _count: { produtos: fam._count?.produtos || 0 }
             }))}
             produtosIniciais={produtos.map(p => ({
               id: p.id,

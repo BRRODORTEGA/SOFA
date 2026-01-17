@@ -16,6 +16,7 @@ type CarrinhoItem = {
   tecido: { id: string; nome: string; grade: string };
   variacaoMedida_cm: number;
   quantidade: number;
+  lado: string | null; // "esquerdo" ou "direito" - apenas quando produto possuiLados = true
   previewPrecoUnit: number | null | string; // Preço com desconto aplicado
   precoOriginal?: number; // Preço original sem desconto
   descontoPercentual?: number | null; // Percentual de desconto
@@ -318,7 +319,7 @@ export default function CartPage() {
             <div className="flex-1">
               <h3 className="font-medium">{item.produto.nome}</h3>
               <p className="text-sm text-gray-600">
-                Medida: {item.variacaoMedida_cm}cm | Tecido: {item.tecido.nome} ({item.tecido.grade})
+                Medida: {item.variacaoMedida_cm}cm{item.lado && ` | Lado: ${item.lado.charAt(0).toUpperCase() + item.lado.slice(1)}`} | Tecido: {item.tecido.nome} ({item.tecido.grade})
               </p>
               <div className="mt-1">
                 {item.descontoPercentual && item.descontoPercentual > 0 && item.precoOriginal ? (

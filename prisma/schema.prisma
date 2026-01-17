@@ -375,6 +375,7 @@ model CarrinhoItem {
   tecidoId          String
   variacaoMedida_cm Int
   quantidade        Int    @default(1)
+  lado              String? // "esquerdo" ou "direito" - apenas quando produto possuiLados = true
 
   // snapshot opcional (apenas para exibir carrinho rápido; o preço "oficial" será resolvido no checkout)
   previewPrecoUnit Decimal? @db.Decimal(10, 2)
@@ -384,7 +385,7 @@ model CarrinhoItem {
   tecido   Tecido   @relation(fields: [tecidoId], references: [id])
 
   @@index([carrinhoId])
-  @@index([produtoId, variacaoMedida_cm, tecidoId])
+  @@index([produtoId, variacaoMedida_cm, tecidoId, lado])
 }
 
 /**

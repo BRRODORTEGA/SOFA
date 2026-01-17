@@ -42,8 +42,9 @@ export default function Navbar() {
       if (searchOpen) {
         const isSearchButton = target.closest('.search-button');
         const isSearchInput = searchInputRef.current && searchInputRef.current.contains(target);
+        const isSearchForm = target.closest('form');
         
-        if (!isSearchButton && !isSearchInput) {
+        if (!isSearchButton && !isSearchInput && !isSearchForm) {
           setSearchOpen(false);
         }
       }
@@ -223,18 +224,27 @@ export default function Navbar() {
                 </svg>
               </button>
             ) : (
-              <form onSubmit={handleSearch} className="flex items-center">
+              <form onSubmit={handleSearch} className="flex items-center relative z-50">
                 <div className="relative" ref={searchInputRef}>
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Buscar produtos..."
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        setSearchOpen(false);
+                        setSearchQuery("");
+                      }
+                    }}
+                    placeholder="Buscar no site..."
                     className="w-64 rounded-lg border border-gray-300 bg-white px-4 py-2 pl-10 pr-10 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-300"
+                    autoComplete="off"
+                    autoFocus
                   />
                   <button
                     type="submit"
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 pointer-events-none"
+                    tabIndex={-1}
                   >
                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -242,7 +252,9 @@ export default function Navbar() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       setSearchOpen(false);
                       setSearchQuery("");
                     }}
@@ -272,18 +284,27 @@ export default function Navbar() {
                 </svg>
               </button>
             ) : (
-              <form onSubmit={handleSearch} className="flex items-center w-full">
+              <form onSubmit={handleSearch} className="flex items-center w-full relative z-50">
                 <div className="relative w-full" ref={searchInputRef}>
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Buscar..."
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        setSearchOpen(false);
+                        setSearchQuery("");
+                      }
+                    }}
+                    placeholder="Buscar no site..."
                     className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 pl-10 pr-10 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-300"
+                    autoComplete="off"
+                    autoFocus
                   />
                   <button
                     type="submit"
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                    tabIndex={-1}
                   >
                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -291,7 +312,9 @@ export default function Navbar() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       setSearchOpen(false);
                       setSearchQuery("");
                     }}

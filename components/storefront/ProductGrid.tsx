@@ -10,6 +10,8 @@ interface Produto {
   imagens: string[];
   familia?: { nome: string } | null;
   categoria?: { nome: string } | null;
+  tipo?: string | null;
+  abertura?: string | null;
   preco?: number | null;
   precoOriginal?: number | null;
   precoComDesconto?: number | null;
@@ -23,6 +25,8 @@ interface ProductGridProps {
   onViewModeChange?: (mode: "grid" | "list") => void;
   sortBy?: string;
   onSortChange?: (sort: string) => void;
+  groupBy?: "none" | "categoria" | "tipo" | "abertura" | "familia";
+  onGroupByChange?: (group: "none" | "categoria" | "tipo" | "abertura" | "familia") => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
 }
@@ -34,6 +38,8 @@ export function ProductGrid({
   onViewModeChange,
   sortBy = "default",
   onSortChange,
+  groupBy = "none",
+  onGroupByChange,
   searchQuery = "",
   onSearchChange,
 }: ProductGridProps) {
@@ -128,6 +134,25 @@ export function ProductGrid({
               <option value="newest">Mais recentes</option>
             </select>
           </div>
+
+          {/* Agrupamento */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="group-select" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+              Agrupar por:
+            </label>
+            <select
+              id="group-select"
+              value={groupBy}
+              onChange={(e) => onGroupByChange?.(e.target.value as "none" | "categoria" | "tipo" | "abertura" | "familia")}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary min-w-[200px]"
+            >
+              <option value="none">Nenhum</option>
+              <option value="categoria">Categoria</option>
+              <option value="familia">Família</option>
+              <option value="tipo">Tipo</option>
+              <option value="abertura">Abertura</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -140,23 +165,85 @@ export function ProductGrid({
         <div className="rounded-lg border bg-white p-12 text-center">
           <p className="text-gray-600">Nenhum produto encontrado.</p>
         </div>
-      ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {produtos.map((produto) => {
-            // Se tiver desconto, usar ProductCardDestaque, senão usar ProductCard normal
-            if (produto.descontoPercentual && produto.descontoPercentual > 0) {
-              return <ProductCardDestaque key={produto.id} produto={produto} />;
-            }
-            return <ProductCard key={produto.id} produto={produto} />;
-          })}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {produtos.map((produto) => (
-            <ProductListItem key={produto.id} produto={produto} />
-          ))}
-        </div>
-      )}
+      ) : (() => {
+        // Agrupar produtos se necessário
+        if (groupBy === "none") {
+          // Sem agrupamento - renderizar normalmente
+          return viewMode === "grid" ? (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {produtos.map((produto) => {
+                if (produto.descontoPercentual && produto.descontoPercentual > 0) {
+                  return <ProductCardDestaque key={produto.id} produto={produto} />;
+                }
+                return <ProductCard key={produto.id} produto={produto} />;
+              })}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {produtos.map((produto) => (
+                <ProductListItem key={produto.id} produto={produto} />
+              ))}
+            </div>
+          );
+        }
+
+        // Agrupar produtos
+        const grupos: Record<string, Produto[]> = {};
+        produtos.forEach((produto) => {
+          let chaveGrupo = "Sem categoria";
+          
+          if (groupBy === "categoria") {
+            chaveGrupo = produto.categoria?.nome || "Sem categoria";
+          } else if (groupBy === "familia") {
+            chaveGrupo = produto.familia?.nome || "Sem família";
+          } else if (groupBy === "tipo") {
+            chaveGrupo = produto.tipo || "Sem tipo";
+          } else if (groupBy === "abertura") {
+            chaveGrupo = produto.abertura || "Sem abertura";
+          }
+
+          if (!grupos[chaveGrupo]) {
+            grupos[chaveGrupo] = [];
+          }
+          grupos[chaveGrupo].push(produto);
+        });
+
+        // Ordenar grupos alfabeticamente
+        const gruposOrdenados = Object.keys(grupos).sort();
+
+        return (
+          <div className="space-y-8">
+            {gruposOrdenados.map((nomeGrupo) => (
+              <div key={nomeGrupo} className="space-y-4">
+                <div className="border-b border-gray-200 pb-2">
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {nomeGrupo}
+                    <span className="ml-2 text-sm font-normal text-gray-500">
+                      ({grupos[nomeGrupo].length} {grupos[nomeGrupo].length === 1 ? "produto" : "produtos"})
+                    </span>
+                  </h2>
+                </div>
+                {viewMode === "grid" ? (
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {grupos[nomeGrupo].map((produto) => {
+                      if (produto.descontoPercentual && produto.descontoPercentual > 0) {
+                        return <ProductCardDestaque key={produto.id} produto={produto} />;
+                      }
+                      return <ProductCard key={produto.id} produto={produto} />;
+                    })}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {grupos[nomeGrupo].map((produto) => (
+                      <ProductListItem key={produto.id} produto={produto} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }

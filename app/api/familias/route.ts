@@ -19,10 +19,40 @@ export async function GET(req: Request) {
     where.nome = { contains: q, mode: "insensitive" };
   }
   
+  // Preparar filtro de produtos ativos para contagem (similar ao usado em categorias)
+  const produtosAtivosFilterContagem: any = { status: true };
+  
+  // Buscar configurações do site para verificar tabela vigente
+  const siteConfig = await prisma.siteConfig.findUnique({
+    where: { id: "site-config" },
+    select: {
+      tabelaPrecoVigenteId: true,
+      produtosAtivosTabelaVigente: true,
+    },
+  }) as any;
+
+  if (siteConfig?.tabelaPrecoVigenteId) {
+    const produtosAtivosContagem = siteConfig.produtosAtivosTabelaVigente || [];
+    if (produtosAtivosContagem.length > 0) {
+      produtosAtivosFilterContagem.id = { in: produtosAtivosContagem };
+    } else {
+      produtosAtivosFilterContagem.id = { in: [] };
+    }
+  }
+
   const [items, total] = await Promise.all([
     prisma.familia.findMany({
       where,
-      include: { categoria: { select: { id: true, nome: true } } },
+      include: { 
+        categoria: { select: { id: true, nome: true } },
+        _count: {
+          select: {
+            produtos: {
+              where: produtosAtivosFilterContagem
+            }
+          }
+        }
+      },
       take: limit,
       skip: offset,
       orderBy: { nome: "asc" }, // Ordenar por nome ao invés de createdAt

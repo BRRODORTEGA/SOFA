@@ -11,12 +11,20 @@ interface Categoria {
   _count: { produtos: number };
 }
 
+interface Familia {
+  id: string;
+  nome: string;
+  _count?: { produtos: number };
+}
+
 interface Produto {
   id: string;
   nome: string;
   imagens: string[];
   familia: { nome: string } | null;
   categoria: { nome: string } | null;
+  tipo: string | null;
+  abertura: string | null;
   preco?: number | null;
 }
 
@@ -24,13 +32,16 @@ export default function ProdutosPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [familias, setFamilias] = useState<Familia[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [produtosBestSellers, setProdutosBestSellers] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState("default");
+  const [groupBy, setGroupBy] = useState<"none" | "categoria" | "tipo" | "abertura" | "familia">("none");
   const [searchQuery, setSearchQuery] = useState("");
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<string[]>([]);
+  const [familiaSelecionada, setFamiliaSelecionada] = useState<string[]>([]);
   const [precoMin, setPrecoMin] = useState<string>("");
   const [precoMax, setPrecoMax] = useState<string>("");
   const [precoMinRange, setPrecoMinRange] = useState<number>(0);
@@ -63,6 +74,18 @@ export default function ProdutosPage() {
       .catch((err) => console.error("Erro ao carregar categorias:", err));
   }, []);
 
+  // Carregar famílias
+  useEffect(() => {
+    fetch("/api/familias?limit=100")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.ok && d.data?.items) {
+          setFamilias(d.data.items);
+        }
+      })
+      .catch((err) => console.error("Erro ao carregar famílias:", err));
+  }, []);
+
   // Carregar produtos
   const buscarProdutos = useCallback(async () => {
     setLoading(true);
@@ -72,6 +95,9 @@ export default function ProdutosPage() {
       params.set("offset", "0");
       if (categoriaSelecionada.length > 0) {
         params.set("categoriaIds", categoriaSelecionada.join(","));
+      }
+      if (familiaSelecionada.length > 0) {
+        params.set("familiaIds", familiaSelecionada.join(","));
       }
       if (searchQuery) {
         params.set("q", searchQuery);
@@ -150,7 +176,7 @@ export default function ProdutosPage() {
     } finally {
       setLoading(false);
     }
-  }, [categoriaSelecionada, searchQuery, sortBy, precoMin, precoMax, comDesconto, comDescontoUrl, filtrosOpcoes]);
+  }, [categoriaSelecionada, familiaSelecionada, searchQuery, sortBy, precoMin, precoMax, comDesconto, comDescontoUrl, filtrosOpcoes]);
 
   // Carregar best sellers
   useEffect(() => {
@@ -180,9 +206,12 @@ export default function ProdutosPage() {
         {/* Sidebar */}
         <ProductSidebar
           categorias={categorias}
+          familias={familias}
           produtosBestSellers={produtosBestSellers}
           categoriaSelecionada={categoriaSelecionada}
           onCategoriaChange={setCategoriaSelecionada}
+          familiaSelecionada={familiaSelecionada}
+          onFamiliaChange={setFamiliaSelecionada}
           precoMin={precoMin}
           precoMax={precoMax}
           onPrecoChange={(min, max) => {
@@ -204,6 +233,8 @@ export default function ProdutosPage() {
           onViewModeChange={setViewMode}
           sortBy={sortBy}
           onSortChange={setSortBy}
+          groupBy={groupBy}
+          onGroupByChange={setGroupBy}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
         />

@@ -10,12 +10,20 @@ interface Categoria {
   _count: { produtos: number };
 }
 
+interface Familia {
+  id: string;
+  nome: string;
+  _count: { produtos: number };
+}
+
 interface Produto {
   id: string;
   nome: string;
   imagens: string[];
   familia: { nome: string } | null;
   categoria: { nome: string } | null;
+  tipo: string | null;
+  abertura: string | null;
   preco?: number | null;
   precoOriginal?: number | null;
   precoComDesconto?: number | null;
@@ -24,12 +32,14 @@ interface Produto {
 
 interface ProductListingSectionProps {
   categorias: Categoria[];
+  familias?: Familia[];
   produtosIniciais: Produto[];
   produtosBestSellers: Produto[];
 }
 
 export function ProductListingSection({
   categorias,
+  familias = [],
   produtosIniciais,
   produtosBestSellers,
 }: ProductListingSectionProps) {
@@ -37,8 +47,10 @@ export function ProductListingSection({
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState("default");
+  const [groupBy, setGroupBy] = useState<"none" | "categoria" | "tipo" | "abertura" | "familia">("none");
   const [searchQuery, setSearchQuery] = useState("");
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<string[]>([]);
+  const [familiaSelecionada, setFamiliaSelecionada] = useState<string[]>([]);
   const [precoMin, setPrecoMin] = useState<string>("");
   const [precoMax, setPrecoMax] = useState<string>("");
   const [comDesconto, setComDesconto] = useState<boolean>(false);
@@ -99,6 +111,9 @@ export function ProductListingSection({
       if (categoriaSelecionada.length > 0) {
         params.set("categoriaIds", categoriaSelecionada.join(","));
       }
+      if (familiaSelecionada.length > 0) {
+        params.set("familiaIds", familiaSelecionada.join(","));
+      }
       if (searchQuery) {
         params.set("q", searchQuery);
       }
@@ -153,12 +168,18 @@ export function ProductListingSection({
     } finally {
       setLoading(false);
     }
-  }, [categoriaSelecionada, searchQuery, sortBy, precoMin, precoMax, filtrarPorPreco, filtrosOpcoes, comDesconto]);
+  }, [categoriaSelecionada, familiaSelecionada, searchQuery, sortBy, precoMin, precoMax, filtrarPorPreco, filtrosOpcoes, comDesconto]);
 
   // Aplicar filtros e ordenação
   useEffect(() => {
-    if (categoriaSelecionada) {
-      // Se há categoria selecionada, buscar da API
+    // Se não há produtos iniciais e não há filtros selecionados, buscar todos os produtos
+    if (produtosIniciais.length === 0 && categoriaSelecionada.length === 0 && familiaSelecionada.length === 0 && !searchQuery && !precoMin && !precoMax) {
+      buscarProdutos();
+      return;
+    }
+
+    if (categoriaSelecionada.length > 0 || familiaSelecionada.length > 0) {
+      // Se há categoria ou família selecionada, buscar da API
       buscarProdutos();
     } else if (searchQuery || precoMin || precoMax) {
       // Se há busca ou filtro de preço, filtrar produtos iniciais
@@ -201,16 +222,19 @@ export function ProductListingSection({
       }
       setProdutos(produtosOrdenados);
     }
-  }, [categoriaSelecionada, searchQuery, sortBy, precoMin, precoMax, buscarProdutos, produtosIniciais, filtrarPorPreco]);
+  }, [categoriaSelecionada, familiaSelecionada, searchQuery, sortBy, precoMin, precoMax, buscarProdutos, produtosIniciais, filtrarPorPreco]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-8">
       {/* Sidebar */}
       <ProductSidebar
         categorias={categorias}
+        familias={familias}
         produtosBestSellers={produtosBestSellers}
         categoriaSelecionada={categoriaSelecionada}
         onCategoriaChange={setCategoriaSelecionada}
+        familiaSelecionada={familiaSelecionada}
+        onFamiliaChange={setFamiliaSelecionada}
         precoMin={precoMin}
         precoMax={precoMax}
         onPrecoChange={(min, max) => {
@@ -232,6 +256,8 @@ export function ProductListingSection({
         onViewModeChange={setViewMode}
         sortBy={sortBy}
         onSortChange={setSortBy}
+        groupBy={groupBy}
+        onGroupByChange={setGroupBy}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />

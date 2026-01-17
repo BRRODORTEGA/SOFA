@@ -12,9 +12,9 @@ export async function POST(req: Request) {
     if (!user) return new Response("Unauthorized", { status: 401 });
 
     const body = await req.json();
-    const { produtoId, tecidoId, variacaoMedida_cm, quantidade } = body;
+    const { produtoId, tecidoId, variacaoMedida_cm, quantidade, lado } = body;
     
-    console.log("[CART ITEMS] Dados recebidos:", { produtoId, tecidoId, variacaoMedida_cm, quantidade });
+    console.log("[CART ITEMS] Dados recebidos:", { produtoId, tecidoId, variacaoMedida_cm, quantidade, lado });
     
     if (!produtoId || !tecidoId || variacaoMedida_cm === undefined || variacaoMedida_cm === null || !quantidade) {
       const missingFields = [];
@@ -86,14 +86,43 @@ export async function POST(req: Request) {
       ? precoBase * (1 - descontoPercentual / 100)
       : precoBase;
 
-    // Verificar se já existe um item igual no carrinho
+    // Verificar se o produto possui lados e validar lado se necessário
+    const produto = await prisma.produto.findUnique({
+      where: { id: produtoId },
+      select: { possuiLados: true },
+    });
+
+    if (produto?.possuiLados && !lado) {
+      return new Response(
+        JSON.stringify({ 
+          ok: false,
+          error: "O lado (esquerdo ou direito) é obrigatório para este produto.",
+        }),
+        { 
+          status: 422,
+          headers: { "Content-Type": "application/json" }
+        }
+      );
+    }
+
+    // Verificar se já existe um item igual no carrinho (incluindo lado se aplicável)
+    const whereClause: any = {
+      carrinhoId: carrinho.id,
+      produtoId,
+      tecidoId,
+      variacaoMedida_cm: Number(variacaoMedida_cm),
+    };
+
+    // Incluir lado apenas se o produto possui lados
+    if (produto?.possuiLados) {
+      whereClause.lado = lado;
+    } else {
+      // Quando não possui lados, garantir que o lado seja null
+      whereClause.lado = null;
+    }
+
     const itemExistente = await prisma.carrinhoItem.findFirst({
-      where: {
-        carrinhoId: carrinho.id,
-        produtoId,
-        tecidoId,
-        variacaoMedida_cm: Number(variacaoMedida_cm),
-      },
+      where: whereClause,
     });
 
     console.log("[CART ITEMS] Item existente encontrado:", itemExistente ? "Sim" : "Não");
@@ -124,7 +153,7 @@ export async function POST(req: Request) {
       } else {
         // Se não existe, criar novo item
         console.log("[CART ITEMS] Criando novo item no carrinho");
-        const itemData = {
+        const itemData: any = {
           carrinhoId: carrinho.id,
           produtoId,
           tecidoId,
@@ -132,6 +161,13 @@ export async function POST(req: Request) {
           quantidade: Number(quantidade),
           previewPrecoUnit: Number(previewPrecoUnit.toFixed(2)),
         };
+
+        // Incluir lado apenas se o produto possui lados
+        if (produto?.possuiLados) {
+          itemData.lado = lado;
+        } else {
+          itemData.lado = null;
+        }
         console.log("[CART ITEMS] Dados do item a criar:", itemData);
         
         item = await prisma.carrinhoItem.create({

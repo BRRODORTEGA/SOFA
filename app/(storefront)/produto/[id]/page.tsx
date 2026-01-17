@@ -22,6 +22,7 @@ type Produto = {
   abertura: string | null;
   acionamento: string | null;
   configuracao: string | null;
+  possuiLados: boolean;
   imagens: string[];
   imagensDetalhadas?: ProdutoImagem[];
   familia: { nome: string };
@@ -37,6 +38,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
   const [tecidoId, setTecidoId] = useState("");
   const [medida, setMedida] = useState<number | null>(null);
+  const [lado, setLado] = useState<"esquerdo" | "direito" | "">("");
   const [preco, setPreco] = useState<number | null>(null);
   const [precoOriginal, setPrecoOriginal] = useState<number | null>(null);
   const [descontoPercentual, setDescontoPercentual] = useState<number | null>(null);
@@ -48,7 +50,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
 
   // Função para adicionar ao carrinho após login
-  const addToCartAfterLogin = useCallback(async (item: { produtoId: string; tecidoId: string; medida: number; quantidade: number }) => {
+  const addToCartAfterLogin = useCallback(async (item: { produtoId: string; tecidoId: string; medida: number; quantidade: number; lado?: string }) => {
     setAdding(true);
     try {
       const res = await fetch("/api/cart/items", {
@@ -59,6 +61,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
           tecidoId: item.tecidoId,
           variacaoMedida_cm: item.medida,
           quantidade: item.quantidade,
+          lado: item.lado || undefined,
         }),
       });
 
@@ -131,6 +134,9 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
             setTecidoId(item.tecidoId);
             setMedida(item.medida);
             setQtd(item.quantidade);
+            if (item.lado) {
+              setLado(item.lado as "esquerdo" | "direito");
+            }
             // Limpar sessionStorage
             sessionStorage.removeItem('pendingCartItem');
             setPendingCartProcessed(true);
@@ -190,6 +196,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
           tecidoId,
           medida,
           quantidade: qtd,
+          lado: lado || undefined,
         }));
       }
       router.push("/auth/login?callbackUrl=/produto/" + params.id + "&message=login_required");
@@ -201,9 +208,15 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
       return;
     }
 
+    // Validar lado se o produto possui lados
+    if (produto?.possuiLados && !lado) {
+      setToast({ message: "Selecione o lado (esquerdo ou direito) antes de adicionar ao carrinho.", type: "info" });
+      return;
+    }
+
     setAdding(true);
     try {
-      console.log("[ADD TO CART DEBUG] Adicionando produto:", { produtoId: params.id, tecidoId, variacaoMedida_cm: medida, quantidade: qtd });
+      console.log("[ADD TO CART DEBUG] Adicionando produto:", { produtoId: params.id, tecidoId, variacaoMedida_cm: medida, quantidade: qtd, lado });
       const res = await fetch("/api/cart/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -212,6 +225,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
           tecidoId,
           variacaoMedida_cm: medida,
           quantidade: qtd,
+          lado: produto?.possuiLados ? lado : undefined,
         }),
       });
 
@@ -404,6 +418,24 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
             </select>
           </div>
 
+          {/* Seletor de Lado - apenas quando possuiLados = true */}
+          {produto.possuiLados && (
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-900">
+                Selecione o lado <span className="text-red-500">*</span>
+              </label>
+              <select
+                className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                value={lado}
+                onChange={(e) => setLado(e.target.value as "esquerdo" | "direito" | "")}
+              >
+                <option value="">Selecione o lado</option>
+                <option value="esquerdo">Esquerdo</option>
+                <option value="direito">Direito</option>
+              </select>
+            </div>
+          )}
+
           {/* Exibição do Preço */}
           <div className="mt-4">
             {precoLoading ? (
@@ -457,7 +489,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
             </div>
             <div className="flex-1">
               <button
-                disabled={!tecidoId || !medida || adding || !precoDisponivel || preco === null}
+                disabled={!tecidoId || !medida || (produto?.possuiLados && !lado) || adding || !precoDisponivel || preco === null}
                 onClick={addToCart}
                 className="w-full rounded-lg bg-primary px-6 py-3 font-semibold text-white hover:bg-domux-burgundy-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
