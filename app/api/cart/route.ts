@@ -32,7 +32,14 @@ export async function GET() {
       include: {
         itens: {
           include: {
-            produto: { select: { id: true, nome: true, imagens: true } },
+            produto: { 
+              select: { 
+                id: true, 
+                nome: true, 
+                imagens: true,
+                familia: { select: { id: true, nome: true } }
+              } 
+            },
             tecido: { select: { id: true, nome: true, grade: true } },
           },
         },

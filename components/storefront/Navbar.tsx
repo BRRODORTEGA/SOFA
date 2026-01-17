@@ -13,8 +13,10 @@ export default function Navbar() {
   const [pedidosAtualizacoes, setPedidosAtualizacoes] = useState(0);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Buscar logo do site
   useEffect(() => {
@@ -28,17 +30,35 @@ export default function Navbar() {
       .catch(() => {});
   }, []);
 
-  // Fechar dropdown ao clicar fora
+  // Fechar dropdown e busca ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as HTMLElement;
+      
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
         setDropdownOpen(null);
+      }
+      
+      if (searchOpen) {
+        const isSearchButton = target.closest('.search-button');
+        const isSearchInput = searchInputRef.current && searchInputRef.current.contains(target);
+        
+        if (!isSearchButton && !isSearchInput) {
+          setSearchOpen(false);
+        }
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [searchOpen]);
+
+  // Focar no input quando abrir
+  useEffect(() => {
+    if (searchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [searchOpen]);
 
   // Buscar quantidade de itens no carrinho
   useEffect(() => {
@@ -127,6 +147,7 @@ export default function Navbar() {
     if (searchQuery.trim()) {
       router.push(`/busca?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery("");
+      setSearchOpen(false);
     }
   };
 
@@ -153,102 +174,138 @@ export default function Navbar() {
             )}
           </Link>
 
-          {/* Menu de Navegação com Dropdown - Desktop */}
+          {/* Menu de Navegação - Desktop */}
           <div className="hidden md:flex items-center gap-6" ref={dropdownRef}>
-            {/* Móveis */}
-            <div className="relative">
-              <button
-                onClick={() => setDropdownOpen(dropdownOpen === "moveis" ? null : "moveis")}
-                className="flex items-center gap-1 text-sm font-medium text-foreground hover:text-primary transition-colors duration-300"
-              >
-                Móveis
-                <svg 
-                  className={`h-4 w-4 transition-transform ${dropdownOpen === "moveis" ? "rotate-180" : ""}`}
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {dropdownOpen === "moveis" && (
-                <div className="absolute top-full left-0 mt-2 w-48 rounded-lg border border-gray-200 bg-white shadow-lg py-2 z-50">
-                  <Link 
-                    href="/categorias" 
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    onClick={() => setDropdownOpen(null)}
-                  >
-                    Todos os Móveis
-                  </Link>
-                  <Link 
-                    href="/produtos" 
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    onClick={() => setDropdownOpen(null)}
-                  >
-                    Ver Produtos
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {/* Novidades */}
+            {/* Home */}
             <Link 
-              href="/produtos?sortBy=newest"
+              href="/"
               className="text-sm font-medium text-foreground hover:text-primary transition-colors duration-300"
             >
-              Novidades
+              Home
             </Link>
 
-            {/* Descontos */}
+            {/* Coleção */}
             <Link 
-              href="/produtos?comDesconto=true"
+              href="/produtos"
               className="text-sm font-medium text-foreground hover:text-primary transition-colors duration-300"
             >
-              Descontos
+              Coleção
+            </Link>
+
+            {/* Nossa História */}
+            <Link 
+              href="/nossa-historia"
+              className="text-sm font-medium text-foreground hover:text-primary transition-colors duration-300"
+            >
+              Nossa História
+            </Link>
+
+            {/* Contatos */}
+            <Link 
+              href="/contatos"
+              className="text-sm font-medium text-foreground hover:text-primary transition-colors duration-300"
+            >
+              Contatos
             </Link>
           </div>
 
           {/* Barra de Pesquisa - Desktop */}
-          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md mx-8">
-            <div className="relative w-full">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar produtos..."
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 pl-10 pr-10 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+          <div className="hidden md:flex items-center mx-8">
+            {!searchOpen ? (
               <button
-                type="submit"
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="search-button text-gray-400 hover:text-gray-600 transition-colors duration-300 p-2"
+                aria-label="Abrir busca"
               >
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </button>
-            </div>
-          </form>
+            ) : (
+              <form onSubmit={handleSearch} className="flex items-center">
+                <div className="relative" ref={searchInputRef}>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Buscar produtos..."
+                    className="w-64 rounded-lg border border-gray-300 bg-white px-4 py-2 pl-10 pr-10 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-300"
+                  />
+                  <button
+                    type="submit"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchOpen(false);
+                      setSearchQuery("");
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label="Fechar busca"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
 
           {/* Barra de Pesquisa - Mobile */}
-          <form onSubmit={handleSearch} className="md:hidden flex-1 mx-2">
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar..."
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 pl-10 pr-10 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+          <div className="md:hidden flex items-center mx-2">
+            {!searchOpen ? (
               <button
-                type="submit"
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="search-button text-gray-400 hover:text-gray-600 transition-colors duration-300 p-2"
+                aria-label="Abrir busca"
               >
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </button>
-            </div>
-          </form>
+            ) : (
+              <form onSubmit={handleSearch} className="flex items-center w-full">
+                <div className="relative w-full" ref={searchInputRef}>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Buscar..."
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 pl-10 pr-10 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-300"
+                  />
+                  <button
+                    type="submit"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchOpen(false);
+                      setSearchQuery("");
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label="Fechar busca"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
 
           {/* Ações do lado direito */}
           <div className="hidden items-center gap-6 md:flex">
@@ -386,25 +443,32 @@ export default function Navbar() {
           <div className="border-t border-border bg-background md:hidden">
           <div className="flex flex-col gap-1 px-4 py-4">
             <Link 
+              href="/"
+              className="px-4 py-3 text-sm font-medium text-foreground hover:bg-bg-2 rounded-lg transition-colors duration-300"
+              onClick={() => setMenuOpen(false)}
+            >
+              Home
+            </Link>
+            <Link 
               href="/produtos"
               className="px-4 py-3 text-sm font-medium text-foreground hover:bg-bg-2 rounded-lg transition-colors duration-300"
               onClick={() => setMenuOpen(false)}
             >
-              Móveis
+              Coleção
             </Link>
             <Link 
-              href="/produtos?sortBy=newest"
+              href="/nossa-historia"
               className="px-4 py-3 text-sm font-medium text-foreground hover:bg-bg-2 rounded-lg transition-colors duration-300"
               onClick={() => setMenuOpen(false)}
             >
-              Novidades
+              Nossa História
             </Link>
             <Link 
-              href="/produtos?comDesconto=true"
+              href="/contatos"
               className="px-4 py-3 text-sm font-medium text-foreground hover:bg-bg-2 rounded-lg transition-colors duration-300"
               onClick={() => setMenuOpen(false)}
             >
-              Descontos
+              Contatos
             </Link>
             {session ? (
               <>

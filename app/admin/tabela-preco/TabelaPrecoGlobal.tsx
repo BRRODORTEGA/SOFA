@@ -827,7 +827,7 @@ export default function TabelaPrecoGlobal() {
             <button
               onClick={salvarAlteracoes}
               disabled={saving}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-domux-burgundy-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? "Salvando..." : "Salvar Alterações"}
             </button>
@@ -888,7 +888,7 @@ export default function TabelaPrecoGlobal() {
           onChange={(e) => {
             setSearchInput(e.target.value);
           }}
-          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
           autoComplete="off"
         />
       </div>
@@ -897,7 +897,7 @@ export default function TabelaPrecoGlobal() {
         <div className="text-base font-medium text-gray-700">
           Total: <span className="font-semibold text-gray-900">{linhas.length}</span> linha(s) de preço
           {selectedLines.size > 0 && (
-            <span className="ml-4 text-blue-600">
+            <span className="ml-4 text-primary">
               • <span className="font-semibold">{selectedLines.size}</span> selecionada(s)
             </span>
           )}
@@ -922,12 +922,12 @@ export default function TabelaPrecoGlobal() {
                   type="checkbox"
                   checked={linhas.length > 0 && selectedLines.size === linhas.length}
                   onChange={toggleSelectAll}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
                   title="Selecionar todas"
                 />
               </th>
               {columns.map((col) => {
-                const bgColor = col.isPrice ? "bg-blue-50" : col.isDimension ? "bg-green-50" : "bg-gray-50";
+                const bgColor = col.isPrice ? "bg-secondary" : col.isDimension ? "bg-green-50" : "bg-gray-50";
                 return (
                   <th 
                     key={col.key} 
@@ -955,13 +955,13 @@ export default function TabelaPrecoGlobal() {
                 const isSelected = selectedLines.has(linhaKey);
                 
                 return (
-                  <tr key={linhaKey} className={`bg-white transition-colors hover:bg-blue-50 ${isSelected ? "bg-blue-100" : ""}`}>
+                  <tr key={linhaKey} className={`bg-white transition-colors hover:bg-secondary ${isSelected ? "bg-secondary" : ""}`}>
                     <td className="border-r border-gray-200 px-3 py-2.5 text-center sticky z-10 bg-white" style={{ left: 0 }}>
                       <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => toggleSelectLine(l.produtoId, l.medida_cm)}
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
                       />
                     </td>
                     {columns.map((col) => {
@@ -970,8 +970,8 @@ export default function TabelaPrecoGlobal() {
                       const isFieldDirty = dirtyRef.current.has(fieldKey) && !col.isText && !col.readonly;
                       const isPrice = col.isPrice;
                       const isDimension = col.isDimension;
-                      const bgColor = isPrice ? "bg-blue-50/30" : isDimension ? "bg-green-50/30" : "bg-white";
-                      const stickyBg = col.sticky ? (isPrice ? "bg-blue-50" : isDimension ? "bg-green-50" : "bg-white") : "";
+                      const bgColor = isPrice ? "bg-secondary/30" : isDimension ? "bg-green-50/30" : "bg-white";
+                      const stickyBg = col.sticky ? (isPrice ? "bg-secondary" : isDimension ? "bg-green-50" : "bg-white") : "";
                       
                       return (
                         <td 
@@ -997,10 +997,10 @@ export default function TabelaPrecoGlobal() {
                                   : col.readonly
                                   ? "border-gray-300 bg-gray-50 text-gray-900 cursor-not-allowed"
                                   : isPrice
-                                  ? "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 font-medium"
+                                  ? "border-gray-300 bg-white text-gray-900 focus:border-primary focus:ring-primary font-medium"
                                   : isDimension
                                   ? "border-gray-300 bg-white text-gray-900 focus:border-green-500 focus:ring-green-500"
-                                  : "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+                                  : "border-gray-300 bg-white text-gray-900 focus:border-primary focus:ring-primary"
                               }`}
                               value={l[col.key as keyof LinhaPreco] || 0}
                               onChange={(e) => {
@@ -1066,7 +1066,7 @@ export default function TabelaPrecoGlobal() {
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
                   {importData.map((l, idx) => (
-                    <tr key={idx} className="hover:bg-blue-50">
+                    <tr key={idx} className="hover:bg-secondary">
                       {columns.map((col) => {
                         const changed = isFieldChanged(l, col.key);
                         return (
@@ -1110,7 +1110,7 @@ export default function TabelaPrecoGlobal() {
                 </button>
                 <button
                   onClick={confirmarImport}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-domux-burgundy-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                 >
                   Confirmar Import
                 </button>

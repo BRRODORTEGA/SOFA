@@ -46,6 +46,17 @@ export default {
         'gray-1': 'var(--gray-1)',
         'gray-2': 'var(--gray-2)',
         'gray-3': 'var(--gray-3)',
+        // Cores DOMUX DESIGN
+        'domux-burgundy': 'var(--domux-burgundy)',
+        'domux-burgundy-dark': 'var(--domux-burgundy-dark)',
+        'domux-burgundy-light': 'var(--domux-burgundy-light)',
+        'domux-gold': 'var(--domux-gold)',
+        'domux-gold-dark': 'var(--domux-gold-dark)',
+        'domux-gold-light': 'var(--domux-gold-light)',
+        'domux-beige': 'var(--domux-beige)',
+        'domux-beige-dark': 'var(--domux-beige-dark)',
+        'domux-brown': 'var(--domux-brown)',
+        'domux-brown-light': 'var(--domux-brown-light)',
       },
       borderRadius: {
         lg: 'var(--radius)',

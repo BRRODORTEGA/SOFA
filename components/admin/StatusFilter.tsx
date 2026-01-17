@@ -31,7 +31,7 @@ export function StatusFilter({ currentStatus }: StatusFilterProps) {
           onClick={() => handleStatusChange("todos")}
           className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${
             !currentStatus || currentStatus === "todos"
-              ? "bg-blue-600 text-white shadow-sm"
+              ? "bg-primary text-white shadow-sm"
               : "text-gray-700 hover:bg-gray-50"
           }`}
         >

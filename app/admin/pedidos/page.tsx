@@ -106,7 +106,7 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
     function getStatusColor(status: string) {
       const colors: Record<string, string> = {
         Solicitado: "bg-yellow-100 text-yellow-800",
-        Aprovado: "bg-blue-100 text-blue-800",
+        Aprovado: "bg-secondary text-primary",
         "Aguardando Pagamento": "bg-orange-100 text-orange-800",
         "Pagamento Aprovado": "bg-green-100 text-green-800",
         "Em Produção": "bg-purple-100 text-purple-800",
@@ -128,11 +128,11 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
               name="q"
               defaultValue={q}
               placeholder="Buscar por código ou e-mail..."
-              className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
             />
             <button 
               type="submit" 
-              className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-domux-burgundy-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
             >
               Buscar
             </button>
@@ -160,10 +160,10 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
               {rowsWithFormatted.map((row) => (
                 <tr
                   key={row.id}
-                  className="bg-white transition-colors hover:bg-blue-50"
+                  className="bg-white transition-colors hover:bg-secondary"
                 >
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    <Link href={`/admin/pedidos/${row.id}`} className="flex items-center gap-2 hover:text-blue-600">
+                    <Link href={`/admin/pedidos/${row.id}`} className="flex items-center gap-2 hover:text-primary">
                       {row.temNovaMensagem && (
                         <span className="relative flex h-2 w-2">
                           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
@@ -174,7 +174,7 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    <Link href={`/admin/pedidos/${row.id}`} className="hover:text-blue-600">
+                    <Link href={`/admin/pedidos/${row.id}`} className="hover:text-primary">
                       {row.clienteNome}
                     </Link>
                   </td>
@@ -186,7 +186,7 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    <Link href={`/admin/pedidos/${row.id}`} className="hover:text-blue-600">
+                    <Link href={`/admin/pedidos/${row.id}`} className="hover:text-primary">
                       {row.createdAtFormatted}
                     </Link>
                   </td>

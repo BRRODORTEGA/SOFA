@@ -110,7 +110,14 @@ export async function POST(req: Request) {
             previewPrecoUnit: Number(previewPrecoUnit.toFixed(2)),
           },
           include: {
-            produto: { select: { id: true, nome: true, imagens: true } },
+            produto: { 
+              select: { 
+                id: true, 
+                nome: true, 
+                imagens: true,
+                familia: { select: { id: true, nome: true } }
+              } 
+            },
             tecido: { select: { id: true, nome: true, grade: true } },
           },
         });
@@ -130,7 +137,14 @@ export async function POST(req: Request) {
         item = await prisma.carrinhoItem.create({
           data: itemData,
           include: {
-            produto: { select: { id: true, nome: true, imagens: true } },
+            produto: { 
+              select: { 
+                id: true, 
+                nome: true, 
+                imagens: true,
+                familia: { select: { id: true, nome: true } }
+              } 
+            },
             tecido: { select: { id: true, nome: true, grade: true } },
           },
         });

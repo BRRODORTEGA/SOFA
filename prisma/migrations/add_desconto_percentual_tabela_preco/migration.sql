@@ -2,3 +2,4 @@
 ALTER TABLE "TabelaPrecoLinha" ADD COLUMN IF NOT EXISTS "descontoPercentual" DECIMAL(5,2);
 
 
+

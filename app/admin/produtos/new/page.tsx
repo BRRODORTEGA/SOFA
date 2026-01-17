@@ -17,11 +17,14 @@ export default function NewProdutoPage() {
   const [uploading, setUploading] = useState(false);
   const [acionamentoManual, setAcionamentoManual] = useState(false);
   const [acionamentoAutomatico, setAcionamentoAutomatico] = useState(false);
+  const [possuiLadosSim, setPossuiLadosSim] = useState(false);
+  const [possuiLadosNao, setPossuiLadosNao] = useState(true); // Default: Não
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { register, handleSubmit, control, watch, formState: { errors, isSubmitting } } = useForm({ 
+  const { register, handleSubmit, control, watch, setValue, formState: { errors, isSubmitting } } = useForm({ 
     resolver: zodResolver(produtoSchema), 
     defaultValues: { 
-      status: true, 
+      status: true,
+      possuiLados: false, // Default: Não
       imagens: [],
       imagemPrincipal: [],
       imagensComplementares: [],
@@ -83,6 +86,7 @@ export default function NewProdutoPage() {
     const data = { 
       ...values, 
       acionamento: acionamentoValue,
+      possuiLados: values.possuiLados ?? false,
       imagens: todasImagens
     };
     
@@ -252,6 +256,50 @@ export default function NewProdutoPage() {
             </label>
             {!acionamentoManual && !acionamentoAutomatico && (
               <p className="text-sm text-gray-500 italic">Nenhum acionamento selecionado. Será criada variação com acionamento "não aplicável".</p>
+            )}
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Possui Lados <span className="text-red-500">*</span>
+          </label>
+          <div className="flex flex-col gap-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={possuiLadosSim}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setPossuiLadosSim(true);
+                    setPossuiLadosNao(false);
+                    setValue("possuiLados", true);
+                  }
+                }}
+                className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
+              />
+              <span className={`text-base font-medium ${possuiLadosSim ? 'text-gray-900' : 'text-gray-500'}`}>
+                Sim
+              </span>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={possuiLadosNao}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setPossuiLadosNao(true);
+                    setPossuiLadosSim(false);
+                    setValue("possuiLados", false);
+                  }
+                }}
+                className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
+              />
+              <span className={`text-base font-medium ${possuiLadosNao ? 'text-gray-900' : 'text-gray-500'}`}>
+                Não
+              </span>
+            </label>
+            {errors.possuiLados && (
+              <p className="text-sm text-red-600">{errors.possuiLados.message as string}</p>
             )}
           </div>
         </div>

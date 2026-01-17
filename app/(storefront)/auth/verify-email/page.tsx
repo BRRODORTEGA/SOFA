@@ -49,14 +49,14 @@ export default function VerifyEmailPage() {
       <h1 className="mb-6 text-center text-3xl font-bold text-gray-900">Verificação de E-mail</h1>
 
       {status === "loading" && (
-        <div className="rounded-lg border border-blue-300 bg-blue-50 p-6 text-center">
+        <div className="rounded-lg border border-primary/30 bg-secondary p-6 text-center">
           <div className="mb-4">
-            <svg className="mx-auto h-12 w-12 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
+            <svg className="mx-auto h-12 w-12 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
           </div>
-          <p className="text-blue-800">Verificando seu e-mail...</p>
+          <p className="text-primary">Verificando seu e-mail...</p>
         </div>
       )}
 
@@ -83,14 +83,14 @@ export default function VerifyEmailPage() {
           <div className="mt-6 space-y-3">
             <Link
               href="/auth/login"
-              className="inline-block rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700"
+              className="inline-block rounded-lg bg-primary px-6 py-3 font-semibold text-white hover:bg-domux-burgundy-dark"
             >
               Ir para Login
             </Link>
             <br />
             <Link
               href="/auth/register"
-              className="inline-block text-sm text-blue-600 hover:text-blue-700 hover:underline"
+              className="inline-block text-sm text-primary hover:text-domux-burgundy-dark hover:underline"
             >
               Criar nova conta
             </Link>

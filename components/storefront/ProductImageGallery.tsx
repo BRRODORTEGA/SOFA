@@ -175,7 +175,7 @@ export function ProductImageGallery({
               }}
               className={`flex-shrink-0 rounded border-2 transition-all ${
                 imagemAtual === idx
-                  ? "border-blue-600 ring-2 ring-blue-200"
+                  ? "border-primary ring-2 ring-secondary"
                   : "border-gray-200 hover:border-gray-300"
               }`}
               aria-label={`Ver imagem ${idx + 1}`}

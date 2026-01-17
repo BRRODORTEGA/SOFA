@@ -49,7 +49,7 @@ export function ProductGrid({
               placeholder="Buscar produtos..."
               value={searchQuery}
               onChange={(e) => onSearchChange?.(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
             />
             <svg
               className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400"
@@ -118,7 +118,7 @@ export function ProductGrid({
               id="sort-select"
               value={sortBy}
               onChange={(e) => onSortChange?.(e.target.value)}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]"
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary min-w-[200px]"
             >
               <option value="default">Padrão</option>
               <option value="name-asc">Nome: A-Z</option>
@@ -235,6 +235,7 @@ function ProductListItem({ produto }: { produto: Produto }) {
     </Link>
   );
 }
+
 
 
 

@@ -214,7 +214,7 @@ export function ProdutoImagensBlocos({
           render={({ field }) => (
             <input
               {...field}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="https://... ou /uploads/..."
             />
           )}
@@ -227,7 +227,7 @@ export function ProdutoImagensBlocos({
             render={({ field }) => (
               <select
                 {...field}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">🌐 Todos os tecidos</option>
                 {tecidos.map((tecido) => (
@@ -256,7 +256,7 @@ export function ProdutoImagensBlocos({
       />
 
       {/* BLOCO 1: Foto Principal */}
-      <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-4">
+      <div className="rounded-lg border-2 border-primary/30 bg-secondary p-4">
         <div className="mb-3 flex items-center justify-between">
           <label className="block text-sm font-bold text-gray-900">
             📸 Foto Principal
@@ -288,7 +288,7 @@ export function ProdutoImagensBlocos({
               type="button"
               onClick={() => handleUploadClick("principal")}
               disabled={uploading}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-domux-burgundy-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {uploading ? "Enviando..." : "📤 Adicionar Foto Principal"}
             </button>

@@ -3,3 +3,4 @@
 
 ALTER TABLE "Pedido" ADD COLUMN IF NOT EXISTS "ultimaVisualizacaoCliente" TIMESTAMP(3);
 
+

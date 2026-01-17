@@ -7,7 +7,12 @@ import Link from "next/link";
 
 type CarrinhoItem = {
   id: string;
-  produto: { id: string; nome: string; imagens: string[] };
+  produto: { 
+    id: string; 
+    nome: string; 
+    imagens: string[];
+    familia: { id: string; nome: string } | null;
+  };
   tecido: { id: string; nome: string; grade: string };
   variacaoMedida_cm: number;
   quantidade: number;
@@ -278,12 +283,34 @@ export default function CartPage() {
   const descontoCupom = carrinho.descontoCupom || 0;
   const totalFinal = totalComDesconto - descontoCupom;
 
+  // Agrupar itens por família
+  const itensAgrupadosPorFamilia = carrinho.itens.reduce((acc, item) => {
+    const familiaNome = item.produto.familia?.nome || "Sem Família";
+    if (!acc[familiaNome]) {
+      acc[familiaNome] = [];
+    }
+    acc[familiaNome].push(item);
+    return acc;
+  }, {} as Record<string, CarrinhoItem[]>);
+
+  // Ordenar as famílias alfabeticamente
+  const familiasOrdenadas = Object.keys(itensAgrupadosPorFamilia).sort();
+
   return (
     <div className="mx-auto max-w-4xl p-8">
       <h1 className="mb-6 text-2xl font-semibold">Carrinho de Compras</h1>
 
-      <div className="space-y-4">
-        {carrinho.itens.map((item) => (
+      <div className="space-y-6">
+        {familiasOrdenadas.map((familiaNome) => (
+          <div key={familiaNome} className="space-y-4">
+            {/* Cabeçalho da Família */}
+            <div className="border-b border-gray-200 pb-2">
+              <h2 className="text-lg font-semibold text-gray-900">{familiaNome}</h2>
+            </div>
+            
+            {/* Itens da Família */}
+            <div className="space-y-4">
+              {itensAgrupadosPorFamilia[familiaNome].map((item) => (
           <div key={item.id} className="flex items-center gap-4 rounded border p-4">
             {item.produto.imagens[0] && (
               <img src={item.produto.imagens[0]} alt={item.produto.nome} className="h-20 w-20 rounded object-cover" />
@@ -342,6 +369,9 @@ export default function CartPage() {
               <button onClick={() => removeItem(item.id)} className="mt-2 text-sm text-red-600 hover:underline">
                 Remover
               </button>
+            </div>
+          </div>
+              ))}
             </div>
           </div>
         ))}
@@ -419,13 +449,21 @@ export default function CartPage() {
             </span>
           </div>
         </div>
-        <button
-          onClick={handleCheckout}
-          disabled={checkoutLoading}
-          className="mt-6 w-full rounded bg-emerald-600 px-4 py-3 font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {checkoutLoading ? "Processando..." : "Finalizar Pedido"}
-        </button>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <Link
+            href="/produtos"
+            className="flex-1 rounded border border-gray-300 bg-white px-4 py-3 text-center font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Continuar Comprando
+          </Link>
+          <button
+            onClick={handleCheckout}
+            disabled={checkoutLoading}
+            className="flex-1 rounded bg-primary px-4 py-3 font-medium text-white hover:bg-domux-burgundy-dark disabled:opacity-50"
+          >
+            {checkoutLoading ? "Processando..." : "Finalizar Pedido"}
+          </button>
+        </div>
       </div>
 
       {/* Modal de Sucesso */}
@@ -461,9 +499,9 @@ export default function CartPage() {
               <p className="text-center">
                 Seu pedido foi enviado para <strong>aprovação</strong> e em breve você receberá as informações para dar sequência no pagamento.
               </p>
-              <div className="rounded-lg bg-blue-50 p-4">
-                <p className="mb-2 font-medium text-blue-900">Como acompanhar seu pedido:</p>
-                <ul className="space-y-1 text-blue-800">
+              <div className="rounded-lg bg-secondary p-4">
+                <p className="mb-2 font-medium text-primary">Como acompanhar seu pedido:</p>
+                <ul className="space-y-1 text-primary">
                   <li className="flex items-start gap-2">
                     <span>📧</span>
                     <span>Acompanhe seu e-mail para receber atualizações</span>

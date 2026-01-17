@@ -77,7 +77,7 @@ export default function TabelasPrecoTable<T extends { id?: string }>({ columns, 
               <tr
                 key={row.id}
                 onClick={() => handleRowClick(row)}
-                className="cursor-pointer bg-white transition-colors hover:bg-blue-50"
+                className="cursor-pointer bg-white transition-colors hover:bg-secondary"
               >
                 {columns.map((col) => {
                   // Renderizar botão de toggle para a coluna de status

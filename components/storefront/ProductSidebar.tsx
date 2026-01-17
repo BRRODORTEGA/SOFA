@@ -207,7 +207,7 @@ export function ProductSidebar({
                           : categoriasSelecionadasArray.filter(id => id !== cat.id);
                         onCategoriaChange(novasCategorias);
                       }}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
                     <span className={`text-sm font-medium transition-colors ${
                       isSelected
@@ -261,7 +261,7 @@ export function ProductSidebar({
               type="checkbox"
               checked={comDesconto}
               onChange={(e) => setComDesconto(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
             />
             <span className="text-sm font-medium text-gray-700">
               Com desconto
@@ -333,7 +333,7 @@ export function ProductSidebar({
                             : prev.tipos.filter((t) => t !== tipo),
                         }));
                       }}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
                     <span className="text-sm text-gray-700">{tipo}</span>
                   </label>
@@ -366,7 +366,7 @@ export function ProductSidebar({
                             : prev.aberturas.filter((a) => a !== abertura),
                         }));
                       }}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
                     <span className="text-sm text-gray-700">{abertura}</span>
                   </label>
@@ -399,7 +399,7 @@ export function ProductSidebar({
                             : prev.acionamentos.filter((a) => a !== acionamento),
                         }));
                       }}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
                     <span className="text-sm text-gray-700">{acionamento}</span>
                   </label>
@@ -432,7 +432,7 @@ export function ProductSidebar({
                             : prev.tecidos.filter((t) => t !== tecido.id),
                         }));
                       }}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
                     <span className="text-sm text-gray-700">{tecido.nome}</span>
                   </label>

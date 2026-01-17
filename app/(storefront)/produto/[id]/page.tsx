@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProductImageGallery } from "@/components/storefront/ProductImageGallery";
+import { Toast } from "@/components/storefront/Toast";
 
 type ProdutoImagem = {
   id: string;
@@ -44,6 +45,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
   const [qtd, setQtd] = useState(1);
   const [adding, setAdding] = useState(false);
   const [pendingCartProcessed, setPendingCartProcessed] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
 
   // Função para adicionar ao carrinho após login
   const addToCartAfterLogin = useCallback(async (item: { produtoId: string; tecidoId: string; medida: number; quantidade: number }) => {
@@ -64,15 +66,17 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
       console.log("[ADD TO CART DEBUG - After Login] Resposta:", data);
       if (res.ok) {
         console.log("[ADD TO CART DEBUG - After Login] Item adicionado:", data.data);
-        alert("Produto adicionado ao carrinho!");
-        router.push("/cart");
+        setToast({ message: "Produto adicionado ao carrinho!", type: "success" });
+        setTimeout(() => {
+          router.push("/cart");
+        }, 1500);
       } else {
         console.error("[ADD TO CART DEBUG - After Login] Erro:", data);
-        alert("Erro ao adicionar ao carrinho: " + (data.error || "Erro desconhecido"));
+        setToast({ message: "Erro ao adicionar ao carrinho: " + (data.error || "Erro desconhecido"), type: "error" });
       }
     } catch (error) {
       console.error("Erro:", error);
-      alert("Erro ao adicionar ao carrinho");
+      setToast({ message: "Erro ao adicionar ao carrinho", type: "error" });
     } finally {
       setAdding(false);
     }
@@ -193,7 +197,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
     }
 
     if (!tecidoId || !medida) {
-      alert("Selecione o tecido e a medida antes de adicionar ao carrinho.");
+      setToast({ message: "Selecione o tecido e a medida antes de adicionar ao carrinho.", type: "info" });
       return;
     }
 
@@ -215,16 +219,18 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
       console.log("[ADD TO CART DEBUG] Resposta completa:", { status: res.status, ok: res.ok, data });
       if (res.ok) {
         console.log("[ADD TO CART DEBUG] Item adicionado com sucesso:", data.data);
-        alert("Produto adicionado ao carrinho!");
-        router.push("/cart");
+        setToast({ message: "Produto adicionado ao carrinho!", type: "success" });
+        setTimeout(() => {
+          router.push("/cart");
+        }, 1500);
       } else {
         console.error("[ADD TO CART DEBUG] Erro na resposta:", data);
         const errorMsg = data.error || data.message || "Erro desconhecido ao adicionar ao carrinho";
-        alert("Erro ao adicionar ao carrinho: " + errorMsg);
+        setToast({ message: "Erro ao adicionar ao carrinho: " + errorMsg, type: "error" });
       }
     } catch (error) {
       console.error("[ADD TO CART DEBUG] Erro na requisição:", error);
-      alert("Erro ao adicionar ao carrinho");
+      setToast({ message: "Erro ao adicionar ao carrinho", type: "error" });
     } finally {
       setAdding(false);
     }
@@ -242,7 +248,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-12 text-center">
         <p>Produto não encontrado.</p>
-        <Link href="/" className="mt-4 inline-block text-blue-600 hover:underline">
+        <Link href="/" className="mt-4 inline-block text-primary hover:underline">
           Voltar para a página inicial
         </Link>
       </div>
@@ -252,12 +258,20 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
   const variacaoSelecionada = produto.variacoes.find((v) => v.medida_cm === medida);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <div className="mb-4">
-        <Link href="/" className="text-blue-600 hover:underline">
-          ← Voltar
-        </Link>
-      </div>
+    <>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      <div className="mx-auto max-w-7xl px-4 py-8">
+        <div className="mb-4">
+          <Link href="/" className="text-primary hover:underline">
+            ← Voltar
+          </Link>
+        </div>
 
       <div className="grid gap-8 md:grid-cols-2">
         {/* Galeria de Imagens */}
@@ -332,7 +346,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
             <label className="block text-sm font-medium text-gray-900">Selecione o tecido</label>
             <div className="mt-2 flex gap-4 items-start">
               <select
-                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
                 value={tecidoId}
                 onChange={(e) => setTecidoId(e.target.value)}
               >
@@ -377,7 +391,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
           <div className="mt-4">
             <label className="block text-sm font-medium text-gray-900">Selecione a medida</label>
             <select
-              className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               value={medida ?? ""}
               onChange={(e) => setMedida(Number(e.target.value))}
             >
@@ -445,7 +459,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
               <button
                 disabled={!tecidoId || !medida || adding || !precoDisponivel || preco === null}
                 onClick={addToCart}
-                className="w-full rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="w-full rounded-lg bg-primary px-6 py-3 font-semibold text-white hover:bg-domux-burgundy-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {adding ? "Adicionando..." : "Adicionar ao carrinho"}
               </button>
@@ -475,6 +489,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

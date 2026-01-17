@@ -111,9 +111,20 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       });
     }
     
-    const dataToUpdate = {
-      ...parsed.data,
+    // Remover campos que não devem ser atualizados diretamente ou que não existem no modelo
+    const { categoriaId, familiaId, nome, tipo, abertura, possuiLados, configuracao, status, imagens, ...rest } = parsed.data;
+    
+    const dataToUpdate: any = {
+      categoriaId,
+      familiaId,
+      nome,
+      tipo: tipo || null,
+      abertura: abertura || null,
       acionamento: acionamentoFinal,
+      possuiLados: possuiLados ?? false,
+      configuracao: configuracao || null,
+      status: status ?? true,
+      imagens: imagens || [],
     };
     
     // Se houver imagensDetalhadas no payload, processá-las

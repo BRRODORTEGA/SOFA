@@ -3,26 +3,38 @@
 :root {
   color-scheme: light;
   
-  /* Cores base inspiradas no template Furnisy */
+  /* Paleta DOMUX DESIGN - Cores principais */
+  --domux-burgundy: #7A2E3A;        /* Cor principal - burgundy/maroon */
+  --domux-burgundy-dark: #5A1F2A;   /* Burgundy escuro para hover/active */
+  --domux-burgundy-light: #9A4A5A;  /* Burgundy claro para hover */
+  --domux-gold: #D4AF37;            /* Dourado para acentos e logo */
+  --domux-gold-dark: #B8860B;       /* Dourado escuro */
+  --domux-gold-light: #E5C158;      /* Dourado claro */
+  --domux-beige: #F5F1EB;           /* Bege claro - cor secundária */
+  --domux-beige-dark: #E8E3D8;      /* Bege escuro */
+  --domux-brown: #3D2817;           /* Marrom escuro estrutural */
+  --domux-brown-light: #4A3428;     /* Marrom médio */
+  
+  /* Cores base do sistema */
   --background: #ffffff;
   --foreground: #1a1a19;
-  --primary: #1a1a19;
+  --primary: var(--domux-burgundy);              /* Cor principal = burgundy */
   --primary-foreground: #ffffff;
-  --secondary: #f7f7f7;
-  --secondary-foreground: #1a1a19;
-  --muted: #fafafa;
+  --secondary: var(--domux-beige);               /* Cor secundária = bege */
+  --secondary-foreground: var(--domux-burgundy);
+  --muted: var(--domux-beige-dark);
   --muted-foreground: #807e7d;
-  --accent: #f7f4f3;
-  --accent-foreground: #1a1a19;
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #4d4c4b;
+  --accent: var(--domux-gold);                   /* Acento = dourado */
+  --accent-foreground: var(--domux-burgundy);
+  --border: #E5E5E5;
+  --input: #E5E5E5;
+  --ring: var(--domux-burgundy);
   
-  /* Cores de fundo suaves e confortáveis */
-  --bg-1: #fafafa;
-  --bg-2: #f7f4f3;
-  --bg-3: #faf5f0;
-  --bg-4: #f0ebe6;
+  /* Cores de fundo suaves - tons de bege */
+  --bg-1: #ffffff;
+  --bg-2: var(--domux-beige);
+  --bg-3: var(--domux-beige-dark);
+  --bg-4: #F0EBE6;
   
   /* Tons de cinza elegantes */
   --gray-1: #4d4c4b;

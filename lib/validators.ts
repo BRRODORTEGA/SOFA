@@ -48,6 +48,7 @@ export const produtoSchema = z.object({
   tipo: z.string().optional().nullable(),
   abertura: z.string().optional().nullable(),
   acionamento: z.string().optional().nullable(),
+  possuiLados: z.boolean(),
   configuracao: z.string().optional().nullable(),
   status: z.boolean().default(true),
   imagens: z.array(

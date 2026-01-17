@@ -45,7 +45,7 @@ export function AdminToolbar({
             value={searchValue || ""} 
             onChange={(e) => onSearchChange?.(e.target.value)} 
             placeholder={searchPlaceholder} 
-            className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+            className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary" 
             autoComplete="off"
           />
         </div>
@@ -69,9 +69,9 @@ export function AdminToolbar({
           value={q} 
           onChange={(e)=>setQ(e.target.value)} 
           placeholder={searchPlaceholder} 
-          className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+          className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary" 
         />
-        <button className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+        <button className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-domux-burgundy-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
           Buscar
         </button>
       </form>

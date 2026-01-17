@@ -24,7 +24,7 @@ export function AdminTable<T extends { id?: string }>({ columns, rows, onRowClic
             <tr><td colSpan={columns.length} className="px-4 py-8 text-center text-base text-gray-500">{emptyText}</td></tr>
           )}
           {rows.map((r, i) => (
-            <tr key={String((r as any).id ?? i)} className="bg-white transition-colors hover:bg-blue-50 cursor-pointer" onClick={() => onRowClick?.(r)}>
+            <tr key={String((r as any).id ?? i)} className="bg-white transition-colors hover:bg-secondary cursor-pointer" onClick={() => onRowClick?.(r)}>
               {columns.map((c) => (
                 <td key={String(c.key)} className="px-4 py-3 text-sm text-gray-900">{c.render ? c.render(r) : String((r as any)[c.key] ?? "")}</td>
               ))}

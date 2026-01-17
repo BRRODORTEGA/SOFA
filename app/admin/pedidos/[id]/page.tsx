@@ -193,7 +193,7 @@ export default function PedidoAdminDetailPage() {
   function getStatusColor(status: string) {
     const colors: Record<string, string> = {
       Solicitado: "bg-yellow-100 text-yellow-800",
-      Aprovado: "bg-blue-100 text-blue-800",
+      Aprovado: "bg-secondary text-primary",
       "Aguardando Pagamento": "bg-orange-100 text-orange-800",
       "Pagamento Aprovado": "bg-green-100 text-green-800",
       "Em Produção": "bg-purple-100 text-purple-800",
@@ -315,7 +315,7 @@ export default function PedidoAdminDetailPage() {
               key={msg.id}
               className={`rounded p-2 relative group ${
                 msg.role === "CLIENTE"
-                  ? "bg-blue-50"
+                  ? "bg-secondary"
                   : msg.role === "ADMIN" || msg.role === "OPERADOR"
                     ? "bg-gray-50"
                     : "bg-green-50"
@@ -362,7 +362,7 @@ export default function PedidoAdminDetailPage() {
                         <>
                           <button
                             onClick={() => startEditMessage(msg)}
-                            className="text-blue-600 hover:text-blue-800"
+                            className="text-primary hover:text-domux-burgundy-dark"
                             title="Editar"
                           >
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

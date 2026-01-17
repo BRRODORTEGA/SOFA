@@ -141,7 +141,7 @@ export default function RegisterPage() {
           <div className="space-y-3">
             <Link
               href="/"
-              className="inline-block w-full rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700"
+              className="inline-block w-full rounded-lg bg-primary px-6 py-3 font-semibold text-white hover:bg-domux-burgundy-dark"
             >
               Ir para Página Inicial
             </Link>
@@ -150,7 +150,7 @@ export default function RegisterPage() {
                 setSuccess(false);
                 setEmail("");
               }}
-              className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+              className="text-sm text-primary hover:text-domux-burgundy-dark hover:underline"
             >
               Criar outra conta
             </button>
@@ -175,7 +175,7 @@ export default function RegisterPage() {
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="Seu nome"
           />
         </div>
@@ -190,7 +190,7 @@ export default function RegisterPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="seu@email.com"
           />
         </div>
@@ -205,7 +205,7 @@ export default function RegisterPage() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="Mínimo 6 caracteres"
           />
         </div>
@@ -220,7 +220,7 @@ export default function RegisterPage() {
             required
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="Digite a senha novamente"
           />
         </div>
@@ -228,7 +228,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-white hover:bg-domux-burgundy-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {loading ? "Criando conta..." : "Criar Conta"}
             </button>
@@ -236,7 +236,7 @@ export default function RegisterPage() {
 
           <p className="mt-6 text-center text-sm text-gray-600">
             Já tem conta?{" "}
-            <Link href="/auth/login" className="font-medium text-blue-600 hover:text-blue-700">
+            <Link href="/auth/login" className="font-medium text-primary hover:text-domux-burgundy-dark">
               Entrar
             </Link>
           </p>

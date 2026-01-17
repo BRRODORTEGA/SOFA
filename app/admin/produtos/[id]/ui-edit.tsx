@@ -24,6 +24,11 @@ export default function EditProduto({ item }: { item: any }) {
   const [acionamentoManual, setAcionamentoManual] = useState(acionamentosIniciais.includes("Manual"));
   const [acionamentoAutomatico, setAcionamentoAutomatico] = useState(acionamentosIniciais.includes("Automático"));
   
+  // Estado para Possui Lados (obrigatório)
+  const possuiLadosInicial = item.possuiLados ?? false; // Default: false se não definido
+  const [possuiLadosSim, setPossuiLadosSim] = useState(possuiLadosInicial === true);
+  const [possuiLadosNao, setPossuiLadosNao] = useState(possuiLadosInicial === false);
+  
   // Separar imagens existentes nos 3 blocos
   // Se houver imagensDetalhadas, usar elas; senão usar imagens antigas
   const imagensDetalhadas = item.imagensDetalhadas || [];
@@ -70,6 +75,7 @@ export default function EditProduto({ item }: { item: any }) {
       tipo: item.tipo || "",
       abertura: item.abertura || "",
       acionamento: item.acionamento || "",
+      possuiLados: item.possuiLados ?? false,
       configuracao: item.configuracao || "",
       imagens: item.imagens || [],
       imagemPrincipal: imagemPrincipalInicial,
@@ -235,6 +241,7 @@ export default function EditProduto({ item }: { item: any }) {
         tipo: currentValues.tipo || item.tipo || null,
         abertura: currentValues.abertura || item.abertura || null,
         acionamento: acionamentoValue || item.acionamento || null,
+        possuiLados: currentValues.possuiLados ?? (item.possuiLados ?? false),
         configuracao: currentValues.configuracao || item.configuracao || null,
         imagens: todasImagens,
         imagensDetalhadas: imagensDetalhadas,
@@ -344,6 +351,7 @@ export default function EditProduto({ item }: { item: any }) {
         tipo: values.tipo || null,
         abertura: values.abertura || null,
         acionamento: acionamentoValue,
+        possuiLados: values.possuiLados ?? false,
         configuracao: values.configuracao || null,
         imagens: todasImagens, // Mantido para compatibilidade
         imagensDetalhadas: imagensDetalhadas, // Novo formato com tecidoId
@@ -431,7 +439,7 @@ export default function EditProduto({ item }: { item: any }) {
             render={({ field }) => (
               <select 
                 {...field}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">Selecione...</option>
                 {categorias.map((c:any)=>(<option key={c.id} value={c.id}>{c.nome}</option>))}
@@ -458,7 +466,7 @@ export default function EditProduto({ item }: { item: any }) {
             render={({ field }) => (
               <select 
                 {...field}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">Selecione...</option>
                 {familiasFiltradas.map((f:any)=>(<option key={f.id} value={f.id}>{f.nome}</option>))}
@@ -491,7 +499,7 @@ export default function EditProduto({ item }: { item: any }) {
             render={({ field }) => (
               <select 
                 {...field}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary" 
               >
                 <option value="">Selecione um nome padrão...</option>
                 {/* Mostrar o nome atual mesmo que não esteja na lista (pode estar desativado) */}
@@ -509,13 +517,13 @@ export default function EditProduto({ item }: { item: any }) {
           {errors.nome && <p className="mt-2 text-sm font-medium text-red-600">{String(errors.nome.message)}</p>}
           {nomesPadrao.length === 0 && (
             <p className="mt-2 text-sm text-yellow-600">
-              ⚠️ Nenhum nome padrão ativo encontrado. <Link href="/admin/nomes-padrao-produto/new" className="text-blue-600 underline">Cadastre nomes padrões primeiro</Link>.
+              ⚠️ Nenhum nome padrão ativo encontrado. <Link href="/admin/nomes-padrao-produto/new" className="text-primary underline">Cadastre nomes padrões primeiro</Link>.
             </p>
           )}
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo</label>
-          <select {...register("tipo")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select {...register("tipo")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary">
             <option value="">Selecione...</option>
             <option value="INTEIRO">INTEIRO</option>
             <option value="MODULAR">MODULAR</option>
@@ -525,7 +533,7 @@ export default function EditProduto({ item }: { item: any }) {
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Abertura</label>
-          <select {...register("abertura")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select {...register("abertura")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary">
             <option value="">Selecione...</option>
             <option value="FIXO">FIXO</option>
             <option value="RETRATIL">RETRATIL</option>
@@ -542,7 +550,7 @@ export default function EditProduto({ item }: { item: any }) {
                 onChange={() => {}} // Não fazer nada ao clicar
                 disabled={true}
                 readOnly={true}
-                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary disabled:opacity-70 disabled:cursor-not-allowed"
               />
               <span className={`text-base font-medium ${acionamentoManual ? 'text-gray-900' : 'text-gray-500'}`}>
                 Manual
@@ -555,7 +563,7 @@ export default function EditProduto({ item }: { item: any }) {
                 onChange={() => {}} // Não fazer nada ao clicar
                 disabled={true}
                 readOnly={true}
-                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary disabled:opacity-70 disabled:cursor-not-allowed"
               />
               <span className={`text-base font-medium ${acionamentoAutomatico ? 'text-gray-900' : 'text-gray-500'}`}>
                 Automático
@@ -567,8 +575,52 @@ export default function EditProduto({ item }: { item: any }) {
           </div>
         </div>
         <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Possui Lados <span className="text-red-500">*</span>
+          </label>
+          <div className="flex flex-col gap-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={possuiLadosSim}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setPossuiLadosSim(true);
+                    setPossuiLadosNao(false);
+                    setValue("possuiLados", true);
+                  }
+                }}
+                className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
+              />
+              <span className={`text-base font-medium ${possuiLadosSim ? 'text-gray-900' : 'text-gray-500'}`}>
+                Sim
+              </span>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={possuiLadosNao}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setPossuiLadosNao(true);
+                    setPossuiLadosSim(false);
+                    setValue("possuiLados", false);
+                  }
+                }}
+                className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
+              />
+              <span className={`text-base font-medium ${possuiLadosNao ? 'text-gray-900' : 'text-gray-500'}`}>
+                Não
+              </span>
+            </label>
+            {errors.possuiLados && (
+              <p className="text-sm text-red-600">{errors.possuiLados.message as string}</p>
+            )}
+          </div>
+        </div>
+        <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Configuração</label>
-          <input {...register("configuracao")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ex.: Módulo com braço" />
+          <input {...register("configuracao")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary" placeholder="ex.: Módulo com braço" />
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Imagens</label>
@@ -591,7 +643,7 @@ export default function EditProduto({ item }: { item: any }) {
             {...register("status", { 
               setValueAs: (value) => Boolean(value)
             })} 
-            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500" 
+            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary" 
           />
           <label htmlFor="status" className="text-sm font-medium text-gray-700">Status (Ativo)</label>
         </div>
@@ -607,7 +659,7 @@ export default function EditProduto({ item }: { item: any }) {
           <button 
             type="submit" 
             disabled={isSubmitting} 
-            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-domux-burgundy-dark disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
           >
             {isSubmitting ? "Salvando..." : "Salvar"}
           </button>

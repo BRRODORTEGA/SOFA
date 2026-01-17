@@ -85,7 +85,7 @@ export default function LoginPage() {
       <h1 className="mb-6 text-center text-3xl font-bold text-gray-900">Entrar</h1>
 
       {infoMessage && (
-        <div className="mb-4 rounded-lg border border-blue-300 bg-blue-50 p-4 text-sm text-blue-800">
+        <div className="mb-4 rounded-lg border border-primary/30 bg-secondary p-4 text-sm text-primary">
           <div className="flex items-start gap-2">
             <svg className="h-5 w-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -112,7 +112,7 @@ export default function LoginPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="seu@email.com"
           />
         </div>
@@ -127,7 +127,7 @@ export default function LoginPage() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="••••••••"
           />
         </div>
@@ -135,7 +135,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-white hover:bg-domux-burgundy-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           {loading ? "Entrando..." : "Entrar"}
         </button>
@@ -143,7 +143,7 @@ export default function LoginPage() {
 
       <p className="mt-6 text-center text-sm text-gray-600">
         Não tem conta?{" "}
-        <Link href="/auth/register" className="font-medium text-blue-600 hover:text-blue-700">
+        <Link href="/auth/register" className="font-medium text-primary hover:text-domux-burgundy-dark">
           Cadastre-se
         </Link>
       </p>

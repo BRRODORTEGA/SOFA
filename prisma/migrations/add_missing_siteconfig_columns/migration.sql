@@ -5,3 +5,4 @@ ALTER TABLE "SiteConfig" ADD COLUMN IF NOT EXISTS "configuracoesExtras" JSONB;
 ALTER TABLE "SiteConfig" ADD COLUMN IF NOT EXISTS "tabelaPrecoVigenteId" TEXT;
 
 
+

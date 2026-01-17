@@ -118,7 +118,7 @@ export default function PedidoDetailPage() {
   function getStatusColor(status: string) {
     const colors: Record<string, string> = {
       Solicitado: "bg-yellow-100 text-yellow-800",
-      Aprovado: "bg-blue-100 text-blue-800",
+      Aprovado: "bg-secondary text-primary",
       "Aguardando Pagamento": "bg-orange-100 text-orange-800",
       "Pagamento Aprovado": "bg-green-100 text-green-800",
       "Em Produção": "bg-purple-100 text-purple-800",
@@ -201,7 +201,7 @@ export default function PedidoDetailPage() {
             <div
               key={msg.id}
               className={`rounded p-2 ${
-                msg.role === "CLIENTE" ? "bg-blue-50" : msg.role === "ADMIN" || msg.role === "OPERADOR" ? "bg-gray-50" : "bg-green-50"
+                msg.role === "CLIENTE" ? "bg-secondary" : msg.role === "ADMIN" || msg.role === "OPERADOR" ? "bg-gray-50" : "bg-green-50"
               }`}
             >
               <div className="flex justify-between text-xs text-gray-600">

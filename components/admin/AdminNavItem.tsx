@@ -31,8 +31,8 @@ export function AdminNavItem({ href, label, icon, subItems }: AdminNavItemProps)
       <div>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className={`w-full flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700 ${
-            hasActiveSubItem ? "bg-blue-50 text-blue-700" : ""
+          className={`w-full flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-secondary hover:text-primary ${
+            hasActiveSubItem ? "bg-secondary text-primary" : ""
           }`}
         >
           <span>
@@ -53,7 +53,7 @@ export function AdminNavItem({ href, label, icon, subItems }: AdminNavItemProps)
                   href={subItem.href}
                   className={`block rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                     isSubActive
-                      ? "bg-blue-50 text-blue-700 font-semibold"
+                      ? "bg-secondary text-primary font-semibold"
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
                 >
@@ -71,8 +71,8 @@ export function AdminNavItem({ href, label, icon, subItems }: AdminNavItemProps)
   return (
     <Link
       href={href || "#"}
-      className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-blue-50 hover:text-blue-700 ${
-        isActive ? "bg-blue-50 text-blue-700" : "text-gray-700"
+      className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-secondary hover:text-primary ${
+        isActive ? "bg-secondary text-primary" : "text-gray-700"
       }`}
     >
       {icon && <span className="mr-2">{icon}</span>}

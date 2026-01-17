@@ -144,7 +144,7 @@ export default function PainelExecutivoPedidosPage() {
                 {formatNumber(data.kpis.totalPedidos)}
               </p>
             </div>
-            <div className="rounded-full bg-blue-100 p-4">
+            <div className="rounded-full bg-secondary p-4">
               <span className="text-3xl">🛒</span>
             </div>
           </div>

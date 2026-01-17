@@ -938,7 +938,7 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
             <button
               onClick={saveChanges}
               disabled={saving}
-              className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-domux-burgundy-dark disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
             >
               Salvar Alterações
             </button>
@@ -1035,7 +1035,7 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
                   {columns.map((col) => {
-                      const bgColor = col.isPrice ? "bg-blue-50" : col.isDimension ? "bg-green-50" : "bg-gray-50";
+                      const bgColor = col.isPrice ? "bg-secondary" : col.isDimension ? "bg-green-50" : "bg-gray-50";
                       return (
                         <th
                           key={col.key}
@@ -1067,8 +1067,8 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                       const isDimension = col.isDimension;
                       const isDiscount = col.isDiscount;
 
-                      const bgColor = isPrice ? "bg-blue-50/30" : isDimension ? "bg-green-50/30" : isDiscount ? "bg-yellow-50/30" : "bg-white";
-                      const stickyBg = col.sticky ? (isPrice ? "bg-blue-50" : isDimension ? "bg-green-50" : isDiscount ? "bg-yellow-50" : "bg-white") : "";
+                      const bgColor = isPrice ? "bg-secondary/30" : isDimension ? "bg-green-50/30" : isDiscount ? "bg-yellow-50/30" : "bg-white";
+                      const stickyBg = col.sticky ? (isPrice ? "bg-secondary" : isDimension ? "bg-green-50" : isDiscount ? "bg-yellow-50" : "bg-white") : "";
 
                       return (
                         <td 
@@ -1097,12 +1097,12 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                                   : isReadonly
                                   ? "border-gray-300 bg-gray-50 text-gray-900 cursor-not-allowed"
                                   : isPrice
-                                  ? "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500 font-medium"
+                                  ? "border-gray-300 bg-white text-gray-900 focus:border-primary focus:ring-primary font-medium"
                                   : isDimension
                                   ? "border-gray-300 bg-white text-gray-900 focus:border-green-500 focus:ring-green-500"
                                   : isDiscount
                                   ? "border-gray-300 bg-white text-gray-900 focus:border-yellow-500 focus:ring-yellow-500 font-medium"
-                                  : "border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+                                  : "border-gray-300 bg-white text-gray-900 focus:border-primary focus:ring-primary"
                               }`}
                             />
                           )}
@@ -1185,7 +1185,7 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
               <button
                 onClick={confirmImport}
                 disabled={saving}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-gray-400"
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-domux-burgundy-dark disabled:bg-gray-400"
               >
                 {saving ? "Importando..." : "Confirmar Importação"}
               </button>
@@ -1200,8 +1200,8 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
           <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg border border-gray-200 bg-white p-6 shadow-xl">
             <h2 className="mb-4 text-xl font-bold text-gray-900">Adicionar Produtos à Tabela</h2>
             
-            <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
-              <p className="text-sm font-medium text-blue-900">
+            <div className="mb-4 rounded-lg border border-primary/30 bg-secondary p-4">
+              <p className="text-sm font-medium text-primary">
                 Selecione as categorias, famílias, produtos e variações que deseja adicionar a esta tabela de preços.
                 As linhas serão geradas a partir da tabela de preços geral (Gestão Global).
               </p>
@@ -1215,7 +1215,7 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                 value={searchCategoriaAdd}
                 onChange={(e) => setSearchCategoriaAdd(e.target.value)}
                 placeholder="Buscar categoria..."
-                className="mb-3 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="mb-3 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <div className="max-h-48 space-y-2 overflow-y-auto">
                 {categorias
@@ -1231,7 +1231,7 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                         type="checkbox"
                         checked={categoriasSelecionadas.has(cat.id)}
                         onChange={() => toggleCategoria(cat.id)}
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
                       />
                       <span className="text-sm font-medium text-gray-900">{cat.nome}</span>
                     </label>
@@ -1248,7 +1248,7 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                   value={searchFamiliaAdd}
                   onChange={(e) => setSearchFamiliaAdd(e.target.value)}
                   placeholder="Buscar família..."
-                  className="mb-3 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mb-3 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <div className="max-h-48 space-y-2 overflow-y-auto">
                   {getFamiliasFiltradas().length === 0 ? (
@@ -1263,7 +1263,7 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                           type="checkbox"
                           checked={familiasSelecionadas.has(fam.id)}
                           onChange={() => toggleFamilia(fam.id)}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
                         />
                         <span className="text-sm font-medium text-gray-900">{fam.nome}</span>
                         <span className="text-xs text-gray-500">
@@ -1285,7 +1285,7 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                   value={searchProdutoAdd}
                   onChange={(e) => setSearchProdutoAdd(e.target.value)}
                   placeholder="Buscar produto..."
-                  className="mb-3 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mb-3 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <div className="max-h-96 space-y-2 overflow-y-auto">
                   {getProdutosFiltrados().length === 0 ? (
@@ -1298,7 +1298,7 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                             type="checkbox"
                             checked={produtosSelecionados.has(prod.id)}
                             onChange={() => toggleProduto(prod.id)}
-                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
                           />
                           <div className="flex-1">
                             <span className="text-sm font-medium text-gray-900">{prod.nome}</span>
@@ -1317,7 +1317,7 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                                 <button
                                   type="button"
                                   onClick={() => selecionarTodasVariacoes(prod.id)}
-                                  className="text-xs text-blue-600 hover:text-blue-800"
+                                  className="text-xs text-primary hover:text-domux-burgundy-dark"
                                 >
                                   Selecionar Todas
                                 </button>
@@ -1338,7 +1338,7 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                                     key={variacao.medida_cm}
                                     className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 cursor-pointer ${
                                       isSelected
-                                        ? "border-blue-500 bg-blue-50"
+                                        ? "border-primary bg-secondary"
                                         : "border-gray-300 bg-white hover:bg-gray-50"
                                     }`}
                                   >
@@ -1346,7 +1346,7 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                                       type="checkbox"
                                       checked={isSelected}
                                       onChange={() => toggleVariacao(prod.id, variacao.medida_cm)}
-                                      className="h-3 w-3 rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500"
+                                      className="h-3 w-3 rounded border-gray-300 text-primary focus:ring-1 focus:ring-primary"
                                     />
                                     <span className="text-xs font-medium text-gray-900">
                                       {variacao.medida_cm}cm

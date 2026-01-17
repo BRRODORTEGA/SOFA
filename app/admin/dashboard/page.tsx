@@ -72,7 +72,7 @@ export default async function DashboardPage() {
       label: "Total de Pedidos",
       value: totalPedidos,
       icon: "🛒",
-      color: "bg-blue-500",
+      color: "bg-primary",
     },
     {
       label: "Pedidos Pendentes",
@@ -121,7 +121,7 @@ export default async function DashboardPage() {
       case "APROVADO":
         return "bg-green-100 text-green-800";
       case "EM_PRODUCAO":
-        return "bg-blue-100 text-blue-800";
+        return "bg-secondary text-primary";
       case "CONCLUIDO":
         return "bg-gray-100 text-gray-800";
       case "CANCELADO":

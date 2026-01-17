@@ -32,3 +32,4 @@ ALTER TABLE "SiteConfig" ADD COLUMN IF NOT EXISTS "filtroOpcoesProdutoAtivo" BOO
 ALTER TABLE "SiteConfig" ADD COLUMN IF NOT EXISTS "filtroOpcoesProdutoNome" TEXT;
 
 
+
