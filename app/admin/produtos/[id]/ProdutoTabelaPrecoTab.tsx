@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
+import { parseNumeroABNT } from "@/lib/utils";
 
 type LinhaPreco = {
   id?: string;
@@ -564,23 +565,23 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
       complete: async (results) => {
         try {
           const data = results.data.map((row: any) => ({
-            medida_cm: Number(row.medida_cm || row["Medida (cm)"] || 0),
-            largura_cm: Number(row.largura_cm || row["Largura (cm)"] || 0),
-            profundidade_cm: Number(row.profundidade_cm || row["Profundidade (cm)"] || 0),
-            altura_cm: Number(row.altura_cm || row["Altura (cm)"] || 0),
-            largura_assento_cm: Number(row.largura_assento_cm || row["Larg. Assento (cm)"] || row["Largura Assento (cm)"] || 0),
-            altura_assento_cm: Number(row.altura_assento_cm || row["Alt. Assento (cm)"] || row["Altura Assento (cm)"] || 0),
-            largura_braco_cm: Number(row.largura_braco_cm || row["Larg. Braço (cm)"] || row["Largura Braço (cm)"] || 0),
-            metragem_tecido_m: Number(row.metragem_tecido_m || row["Metragem Tecido (m)"] || row["Met. Tecido (m)"] || 0),
-            metragem_couro_m: Number(row.metragem_couro_m || row["Metragem Couro (m)"] || row["Met. Couro (m)"] || 0),
-            preco_grade_1000: Number(row.preco_grade_1000 || row["1000"] || row["G1000"] || 0),
-            preco_grade_2000: Number(row.preco_grade_2000 || row["2000"] || row["G2000"] || 0),
-            preco_grade_3000: Number(row.preco_grade_3000 || row["3000"] || row["G3000"] || 0),
-            preco_grade_4000: Number(row.preco_grade_4000 || row["4000"] || row["G4000"] || 0),
-            preco_grade_5000: Number(row.preco_grade_5000 || row["5000"] || row["G5000"] || 0),
-            preco_grade_6000: Number(row.preco_grade_6000 || row["6000"] || row["G6000"] || 0),
-            preco_grade_7000: Number(row.preco_grade_7000 || row["7000"] || row["G7000"] || 0),
-            preco_couro: Number(row.preco_couro || row["Couro"] || 0),
+            medida_cm: parseNumeroABNT(row.medida_cm ?? row["Medida (cm)"] ?? ""),
+            largura_cm: parseNumeroABNT(row.largura_cm ?? row["Largura (cm)"] ?? ""),
+            profundidade_cm: parseNumeroABNT(row.profundidade_cm ?? row["Profundidade (cm)"] ?? ""),
+            altura_cm: parseNumeroABNT(row.altura_cm ?? row["Altura (cm)"] ?? ""),
+            largura_assento_cm: parseNumeroABNT(row.largura_assento_cm ?? row["Larg. Assento (cm)"] ?? row["Largura Assento (cm)"] ?? ""),
+            altura_assento_cm: parseNumeroABNT(row.altura_assento_cm ?? row["Alt. Assento (cm)"] ?? row["Altura Assento (cm)"] ?? ""),
+            largura_braco_cm: parseNumeroABNT(row.largura_braco_cm ?? row["Larg. Braço (cm)"] ?? row["Largura Braço (cm)"] ?? ""),
+            metragem_tecido_m: parseNumeroABNT(row.metragem_tecido_m ?? row["Metragem Tecido (m)"] ?? row["Met. Tecido (m)"] ?? ""),
+            metragem_couro_m: parseNumeroABNT(row.metragem_couro_m ?? row["Metragem Couro (m)"] ?? row["Met. Couro (m)"] ?? ""),
+            preco_grade_1000: parseNumeroABNT(row.preco_grade_1000 ?? row["1000"] ?? row["G1000"] ?? ""),
+            preco_grade_2000: parseNumeroABNT(row.preco_grade_2000 ?? row["2000"] ?? row["G2000"] ?? ""),
+            preco_grade_3000: parseNumeroABNT(row.preco_grade_3000 ?? row["3000"] ?? row["G3000"] ?? ""),
+            preco_grade_4000: parseNumeroABNT(row.preco_grade_4000 ?? row["4000"] ?? row["G4000"] ?? ""),
+            preco_grade_5000: parseNumeroABNT(row.preco_grade_5000 ?? row["5000"] ?? row["G5000"] ?? ""),
+            preco_grade_6000: parseNumeroABNT(row.preco_grade_6000 ?? row["6000"] ?? row["G6000"] ?? ""),
+            preco_grade_7000: parseNumeroABNT(row.preco_grade_7000 ?? row["7000"] ?? row["G7000"] ?? ""),
+            preco_couro: parseNumeroABNT(row.preco_couro ?? row["Couro"] ?? ""),
           }));
 
           // Mostrar preview dos dados importados
@@ -979,7 +980,8 @@ export default function ProdutoTabelaPrecoTab({ produtoId }: { produtoId: string
                               ? "border-yellow-400 bg-yellow-50 focus:border-yellow-500 focus:ring-yellow-500"
                               : "border-gray-300 bg-white focus:border-blue-500 focus:ring-blue-500"
                           }`}
-                          value={l[col.key as keyof LinhaPreco] || 0}
+                          value={l[col.key as keyof LinhaPreco] === 0 || l[col.key as keyof LinhaPreco] == null ? "" : l[col.key as keyof LinhaPreco]}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => onChange(l.medida_cm, col.key as keyof LinhaPreco, e.target.value)}
                           readOnly={col.readonly}
                           onDoubleClick={(e) => {

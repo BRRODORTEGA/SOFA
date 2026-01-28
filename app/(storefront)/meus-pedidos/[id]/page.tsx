@@ -66,15 +66,16 @@ export default function PedidoDetailPage() {
         const data = await res.json();
         setPedido(data.data.pedido);
         setMensagens(data.data.mensagens);
-        
-        // Marcar este pedido específico como visualizado quando o usuário acessa a página
-        fetch("/api/meus-pedidos/marcar-visualizado", {
+
+        // Marcar este pedido como visualizado ao abrir a página — a sinalização será removida
+        const marcarRes = await fetch("/api/meus-pedidos/marcar-visualizado", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pedidoId: params.id }),
-        }).catch(() => {
-          // Ignorar erros silenciosamente
         });
+        if (marcarRes.ok) {
+          window.dispatchEvent(new CustomEvent("pedidos-visualizados"));
+        }
       }
     } catch (error) {
       console.error("Erro ao carregar pedido:", error);

@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       return new Response(
         JSON.stringify({ 
           ok: false,
-          error: "Preço não disponível para esta combinação de produto, medida e tecido. Por favor, verifique se a combinação está cadastrada na tabela de preços.",
+          error: "Preço não encontrado para esta combinação (produto + medida " + variacaoMedida_cm + " cm + tecido). Cadastre uma linha na tabela de preço vigente para este produto com a medida " + variacaoMedida_cm + " cm e valores nas grades (1000–7000/Couro).",
           produtoId,
           variacaoMedida_cm: Number(variacaoMedida_cm),
           tecidoId

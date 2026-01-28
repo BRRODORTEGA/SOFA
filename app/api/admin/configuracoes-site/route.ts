@@ -79,7 +79,11 @@ export async function PUT(request: NextRequest) {
       filtroPrecoAtivo,
       filtroPrecoNome,
       filtroOpcoesProdutoAtivo,
-      filtroOpcoesProdutoNome
+      filtroOpcoesProdutoNome,
+      rodapeTitulo,
+      rodapeDescricao,
+      rodapeContato,
+      rodapeCopyright
     } = body;
 
     // Validar dados
@@ -171,6 +175,10 @@ export async function PUT(request: NextRequest) {
           filtroPrecoNome: filtroPrecoNome || null,
           filtroOpcoesProdutoAtivo: filtroOpcoesProdutoAtivo !== undefined ? filtroOpcoesProdutoAtivo : true,
           filtroOpcoesProdutoNome: filtroOpcoesProdutoNome || null,
+          rodapeTitulo: rodapeTitulo ?? null,
+          rodapeDescricao: rodapeDescricao ?? null,
+          rodapeContato: rodapeContato ?? null,
+          rodapeCopyright: rodapeCopyright ?? null,
         } as any, // Type assertion temporária até regenerar Prisma Client
         create: {
           id: "site-config",
@@ -200,6 +208,10 @@ export async function PUT(request: NextRequest) {
           filtroPrecoNome: filtroPrecoNome || null,
           filtroOpcoesProdutoAtivo: filtroOpcoesProdutoAtivo !== undefined ? filtroOpcoesProdutoAtivo : true,
           filtroOpcoesProdutoNome: filtroOpcoesProdutoNome || null,
+          rodapeTitulo: rodapeTitulo ?? null,
+          rodapeDescricao: rodapeDescricao ?? null,
+          rodapeContato: rodapeContato ?? null,
+          rodapeCopyright: rodapeCopyright ?? null,
         } as any, // Type assertion temporária até regenerar Prisma Client
         include: {
           tabelaPrecoVigente: true,

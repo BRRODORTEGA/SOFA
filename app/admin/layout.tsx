@@ -5,10 +5,31 @@ import { requireAdminSession } from "@/lib/auth-guard";
 import Link from "next/link";
 import { LogoutButton } from "@/components/logout-button";
 import { AdminNavItem } from "@/components/admin/AdminNavItem";
+import { prisma } from "@/lib/prisma";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireAdminSession(); // protege TUDO abaixo de /admin
   const role = session.user?.role || "CLIENTE";
+
+  // Pedidos que exigem atenção: Solicitado, nunca visualizados, nova msg do cliente ou atualização
+  let pedidosComSinal = 0;
+  try {
+    const r = await prisma.$queryRawUnsafe<[{ count: number }]>(
+      `SELECT COUNT(*)::int AS count FROM "Pedido" p
+       WHERE p.status = 'Solicitado'
+          OR p."ultimaVisualizacaoAdmin" IS NULL
+          OR EXISTS (
+            SELECT 1 FROM "MensagemPedido" m
+            WHERE m."pedidoId" = p.id AND m.role = 'CLIENTE'
+            AND m."createdAt" > COALESCE(p."ultimaVisualizacaoAdmin", '1970-01-01')
+          )
+          OR (p."ultimaVisualizacaoAdmin" IS NOT NULL AND p."updatedAt" > p."ultimaVisualizacaoAdmin")`
+    );
+    pedidosComSinal = Number(r[0]?.count ?? 0);
+  } catch {
+    // Fallback: só contar Solicitado se a coluna não existir
+    pedidosComSinal = await prisma.pedido.count({ where: { status: "Solicitado" } });
+  }
 
   return (
     <html lang="pt-BR">
@@ -46,6 +67,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/dashboard/pedidos">
                   📈 Painel Executivo de Pedidos
                 </Link>
+                <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/dashboard-vendas">
+                  📊 Dashboard de Vendas
+                </Link>
                 <div className="mt-6 mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">Cadastros</div>
                 <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/categorias">
                   📁 Categorias
@@ -72,11 +96,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 </Link>
 
                 <div className="mt-6 mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">Operação</div>
-                <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/pedidos">
-                  🛒 Pedidos
+                <Link className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/pedidos">
+                  <span className="flex items-center gap-2">🛒 Pedidos</span>
+                  {pedidosComSinal > 0 && (
+                    <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white" title={`${pedidosComSinal} pedido(s) com novidade ou pendente`}>
+                      {pedidosComSinal > 99 ? "99+" : pedidosComSinal}
+                    </span>
+                  )}
                 </Link>
                 <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/clientes">
                   👥 Clientes
+                </Link>
+                <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/alterar-senha">
+                  🔐 Alterar senha do admin
                 </Link>
               </nav>
               <div className="mt-8 border-t border-gray-200 pt-4">

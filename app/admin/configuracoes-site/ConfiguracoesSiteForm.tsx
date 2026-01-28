@@ -57,6 +57,10 @@ interface SiteConfig {
   filtroPrecoNome?: string | null;
   filtroOpcoesProdutoAtivo?: boolean;
   filtroOpcoesProdutoNome?: string | null;
+  rodapeTitulo?: string | null;
+  rodapeDescricao?: string | null;
+  rodapeContato?: string | null;
+  rodapeCopyright?: string | null;
 }
 
 interface Props {
@@ -132,6 +136,10 @@ export default function ConfiguracoesSiteForm({
   const [filtroOpcoesProdutoAtivo, setFiltroOpcoesProdutoAtivo] = useState<boolean>((siteConfig as any).filtroOpcoesProdutoAtivo !== undefined ? (siteConfig as any).filtroOpcoesProdutoAtivo : true);
   const [filtroOpcoesProdutoNome, setFiltroOpcoesProdutoNome] = useState<string>((siteConfig as any).filtroOpcoesProdutoNome || "Opções de Produto");
   const [editingFiltroCategoria, setEditingFiltroCategoria] = useState(false);
+  const [rodapeTitulo, setRodapeTitulo] = useState<string>((siteConfig as any).rodapeTitulo ?? "AI Sofá");
+  const [rodapeDescricao, setRodapeDescricao] = useState<string>((siteConfig as any).rodapeDescricao ?? "Sofás sob medida com o conforto que você merece. Qualidade, estilo e personalização em cada detalhe.");
+  const [rodapeContato, setRodapeContato] = useState<string>((siteConfig as any).rodapeContato ?? "Entre em contato conosco através do canal de mensagens do seu pedido. Estamos sempre prontos para ajudar.");
+  const [rodapeCopyright, setRodapeCopyright] = useState<string>((siteConfig as any).rodapeCopyright ?? "© {ano} AI Sofá. Todos os direitos reservados.");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,6 +178,10 @@ export default function ConfiguracoesSiteForm({
           filtroPrecoNome: filtroPrecoNome || null,
           filtroOpcoesProdutoAtivo,
           filtroOpcoesProdutoNome: filtroOpcoesProdutoNome || null,
+          rodapeTitulo: rodapeTitulo || null,
+          rodapeDescricao: rodapeDescricao || null,
+          rodapeContato: rodapeContato || null,
+          rodapeCopyright: rodapeCopyright || null,
         }),
       });
 
@@ -1170,6 +1182,73 @@ export default function ConfiguracoesSiteForm({
           <p className="text-xs text-gray-500">
             Observação: você não pode selecionar quais opções de produto exibir. Você pode exibir todas ou ocultá-las todas.
           </p>
+        </div>
+      </div>
+
+      {/* Seção: Customização do Rodapé */}
+      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <h2 className="mb-4 text-xl font-semibold text-gray-900">
+          Rodapé da Página
+        </h2>
+        <p className="mb-6 text-sm text-gray-600">
+          Personalize os textos exibidos no rodapé do site (nome da marca, descrição, contato e copyright).
+        </p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Título / Nome da marca
+            </label>
+            <input
+              type="text"
+              value={rodapeTitulo}
+              onChange={(e) => setRodapeTitulo(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="AI Sofá"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Descrição (coluna Sobre)
+            </label>
+            <textarea
+              value={rodapeDescricao}
+              onChange={(e) => setRodapeDescricao(e.target.value)}
+              rows={3}
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Sofás sob medida com o conforto que você merece..."
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Texto da coluna Contato
+            </label>
+            <textarea
+              value={rodapeContato}
+              onChange={(e) => setRodapeContato(e.target.value)}
+              rows={2}
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Entre em contato conosco..."
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Copyright
+            </label>
+            <input
+              type="text"
+              value={rodapeCopyright}
+              onChange={(e) => setRodapeCopyright(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="© {ano} AI Sofá. Todos os direitos reservados."
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Use {"{ano}"} no texto para exibir o ano atual automaticamente.
+            </p>
+          </div>
         </div>
       </div>
 

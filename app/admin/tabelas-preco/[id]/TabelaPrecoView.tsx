@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Papa from "papaparse";
 import { AdminToolbar } from "@/components/admin/toolbar";
 import { useRouter } from "next/navigation";
+import { parseNumeroABNT } from "@/lib/utils";
 
 type LinhaPreco = {
   id?: string;
@@ -465,23 +466,23 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                 categoriaNome: categoria,
                 familiaNome: familia,
                 produtoNome: produtoNome,
-                medida_cm: Number(row["Medida (cm)"] || row["medida_cm"] || 0),
-                largura_cm: Number(row["Largura (cm)"] || row["largura_cm"] || 0),
-                profundidade_cm: Number(row["Profundidade (cm)"] || row["profundidade_cm"] || 0),
-                altura_cm: Number(row["Altura (cm)"] || row["altura_cm"] || 0),
-                largura_assento_cm: Number(row["Larg. Assento (cm)"] || row["largura_assento_cm"] || 0),
-                altura_assento_cm: Number(row["Alt. Assento (cm)"] || row["altura_assento_cm"] || 0),
-                largura_braco_cm: Number(row["Larg. Braço (cm)"] || row["largura_braco_cm"] || 0),
-                metragem_tecido_m: Number(row["Met. Tecido (m)"] || row["metragem_tecido_m"] || 0),
-                metragem_couro_m: Number(row["Met. Couro (m)"] || row["metragem_couro_m"] || 0),
-                preco_grade_1000: Number(row["1000"] || 0),
-                preco_grade_2000: Number(row["2000"] || 0),
-                preco_grade_3000: Number(row["3000"] || 0),
-                preco_grade_4000: Number(row["4000"] || 0),
-                preco_grade_5000: Number(row["5000"] || 0),
-                preco_grade_6000: Number(row["6000"] || 0),
-                preco_grade_7000: Number(row["7000"] || 0),
-                preco_couro: Number(row["Couro"] || 0),
+                medida_cm: parseNumeroABNT(row["Medida (cm)"] ?? row["medida_cm"] ?? ""),
+                largura_cm: parseNumeroABNT(row["Largura (cm)"] ?? row["largura_cm"] ?? ""),
+                profundidade_cm: parseNumeroABNT(row["Profundidade (cm)"] ?? row["profundidade_cm"] ?? ""),
+                altura_cm: parseNumeroABNT(row["Altura (cm)"] ?? row["altura_cm"] ?? ""),
+                largura_assento_cm: parseNumeroABNT(row["Larg. Assento (cm)"] ?? row["largura_assento_cm"] ?? ""),
+                altura_assento_cm: parseNumeroABNT(row["Alt. Assento (cm)"] ?? row["altura_assento_cm"] ?? ""),
+                largura_braco_cm: parseNumeroABNT(row["Larg. Braço (cm)"] ?? row["largura_braco_cm"] ?? ""),
+                metragem_tecido_m: parseNumeroABNT(row["Met. Tecido (m)"] ?? row["metragem_tecido_m"] ?? ""),
+                metragem_couro_m: parseNumeroABNT(row["Met. Couro (m)"] ?? row["metragem_couro_m"] ?? ""),
+                preco_grade_1000: parseNumeroABNT(row["1000"] ?? ""),
+                preco_grade_2000: parseNumeroABNT(row["2000"] ?? ""),
+                preco_grade_3000: parseNumeroABNT(row["3000"] ?? ""),
+                preco_grade_4000: parseNumeroABNT(row["4000"] ?? ""),
+                preco_grade_5000: parseNumeroABNT(row["5000"] ?? ""),
+                preco_grade_6000: parseNumeroABNT(row["6000"] ?? ""),
+                preco_grade_7000: parseNumeroABNT(row["7000"] ?? ""),
+                preco_couro: parseNumeroABNT(row["Couro"] ?? ""),
               };
             })
             .filter((item: any) => item !== null);
@@ -1084,7 +1085,8 @@ export default function TabelaPrecoView({ tabelaPrecoId, tabelaNome }: { tabelaP
                               step={isPrice ? "0.01" : isDimension ? "0.1" : isDiscount ? "0.01" : "1"}
                               min={isDiscount ? "0" : undefined}
                               max={isDiscount ? "100" : undefined}
-                              value={value || ""}
+                              value={value === 0 || value == null ? "" : value}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) =>
                                 handleFieldChange(linha.produtoId, linha.medida_cm, col.key as keyof LinhaPreco, e.target.value)
                               }

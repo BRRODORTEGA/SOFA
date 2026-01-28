@@ -1,14 +1,36 @@
 import Link from "next/link";
 
-export default function Footer() {
+const DEFAULT_TITULO = "AI Sofá";
+const DEFAULT_DESCRICAO = "Sofás sob medida com o conforto que você merece. Qualidade, estilo e personalização em cada detalhe.";
+const DEFAULT_CONTATO = "Entre em contato conosco através do canal de mensagens do seu pedido. Estamos sempre prontos para ajudar.";
+const DEFAULT_COPYRIGHT = "© {ano} AI Sofá. Todos os direitos reservados.";
+
+interface FooterConfig {
+  titulo: string;
+  descricao: string;
+  contato: string;
+  copyright: string;
+}
+
+interface FooterProps {
+  config?: FooterConfig | null;
+}
+
+export default function Footer({ config }: FooterProps) {
+  const titulo = config?.titulo ?? DEFAULT_TITULO;
+  const descricao = config?.descricao ?? DEFAULT_DESCRICAO;
+  const contato = config?.contato ?? DEFAULT_CONTATO;
+  const copyrightRaw = config?.copyright ?? DEFAULT_COPYRIGHT;
+  const copyright = copyrightRaw.replace("{ano}", String(new Date().getFullYear()));
+
   return (
     <footer className="border-t border-border bg-bg-1">
       <div className="mx-auto w-full px-4 md:px-6 lg:px-8 py-12 md:py-16">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           <div>
-            <h3 className="mb-4 text-xl font-light text-foreground">AI Sofá</h3>
+            <h3 className="mb-4 text-xl font-light text-foreground">{titulo}</h3>
             <p className="text-sm text-muted-foreground font-light leading-relaxed max-w-xs">
-              Sofás sob medida com o conforto que você merece. Qualidade, estilo e personalização em cada detalhe.
+              {descricao}
             </p>
           </div>
           <div>
@@ -44,13 +66,13 @@ export default function Footer() {
           <div>
             <h3 className="mb-4 text-base font-medium text-foreground">Contato</h3>
             <p className="text-sm text-muted-foreground font-light leading-relaxed">
-              Entre em contato conosco através do canal de mensagens do seu pedido. Estamos sempre prontos para ajudar.
+              {contato}
             </p>
           </div>
         </div>
         <div className="mt-12 pt-8 border-t border-border text-center">
           <p className="text-sm text-muted-foreground font-light">
-            © {new Date().getFullYear()} AI Sofá. Todos os direitos reservados.
+            {copyright}
           </p>
         </div>
       </div>

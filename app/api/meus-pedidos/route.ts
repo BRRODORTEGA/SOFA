@@ -149,10 +149,9 @@ export async function GET() {
       (ultimaMensagem.role === "ADMIN" || ultimaMensagem.role === "OPERADOR") &&
       new Date(ultimaMensagem.createdAt) > dataReferenciaVisualizacao;
     
-    // Verificar se houve atualização de status não visualizada
-    const temAtualizacaoStatus = ultimoStatus && 
+    // Verificar se houve atualização de status não visualizada (qualquer mudança além de "Solicitado" inicial)
+    const temAtualizacaoStatus = ultimoStatus &&
       ultimoStatus.status !== "Solicitado" &&
-      ultimoStatus.status !== "Aguardando Pagamento" && // Status intermediário não conta como atualização
       new Date(ultimoStatus.createdAt) > dataReferenciaVisualizacao;
 
     const temAtualizacao = temNovaMensagemAdmin || temAtualizacaoStatus;

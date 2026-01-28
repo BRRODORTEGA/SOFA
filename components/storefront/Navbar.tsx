@@ -143,6 +143,25 @@ export default function Navbar() {
     return () => window.removeEventListener("focus", handleFocus);
   }, [session]);
 
+  // Ao abrir um pedido (marcar como visualizado), atualizar o badge do menu "Meus Pedidos"
+  useEffect(() => {
+    const onPedidosVisualizados = () => {
+      if (session && (session.user as any)?.role !== "ADMIN" && (session.user as any)?.role !== "OPERADOR") {
+        fetch("/api/meus-pedidos")
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.ok && data.data?.items) {
+              const totalAtualizacoes = data.data.items.filter((p: any) => p.temAtualizacao).length;
+              setPedidosAtualizacoes(totalAtualizacoes);
+            }
+          })
+          .catch(() => {});
+      }
+    };
+    window.addEventListener("pedidos-visualizados", onPedidosVisualizados);
+    return () => window.removeEventListener("pedidos-visualizados", onPedidosVisualizados);
+  }, [session]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import { AdminToolbar } from "@/components/admin/toolbar";
+import { parseNumeroABNT } from "@/lib/utils";
 
 type LinhaPreco = {
   id?: string;
@@ -670,23 +671,23 @@ export default function TabelaPrecoGlobal() {
 
             return {
               produtoId,
-              medida_cm: Number(row["Medida (cm)"] || row.medida_cm || 0),
-              largura_cm: Number(row["Largura (cm)"] || row.largura_cm || 0),
-              profundidade_cm: Number(row["Profundidade (cm)"] || row.profundidade_cm || 0),
-              altura_cm: Number(row["Altura (cm)"] || row.altura_cm || 0),
-              largura_assento_cm: Number(row["Larg. Assento (cm)"] || row.largura_assento_cm || row["Largura Assento (cm)"] || 0),
-              altura_assento_cm: Number(row["Alt. Assento (cm)"] || row.altura_assento_cm || row["Altura Assento (cm)"] || 0),
-              largura_braco_cm: Number(row["Larg. Braço (cm)"] || row.largura_braco_cm || row["Largura Braço (cm)"] || 0),
-              metragem_tecido_m: Number(row["Met. Tecido (m)"] || row.metragem_tecido_m || row["Metragem Tecido (m)"] || 0),
-              metragem_couro_m: Number(row["Met. Couro (m)"] || row.metragem_couro_m || row["Metragem Couro (m)"] || 0),
-              preco_grade_1000: Number(row["1000"] || row.preco_grade_1000 || row["G1000"] || 0),
-              preco_grade_2000: Number(row["2000"] || row.preco_grade_2000 || row["G2000"] || 0),
-              preco_grade_3000: Number(row["3000"] || row.preco_grade_3000 || row["G3000"] || 0),
-              preco_grade_4000: Number(row["4000"] || row.preco_grade_4000 || row["G4000"] || 0),
-              preco_grade_5000: Number(row["5000"] || row.preco_grade_5000 || row["G5000"] || 0),
-              preco_grade_6000: Number(row["6000"] || row.preco_grade_6000 || row["G6000"] || 0),
-              preco_grade_7000: Number(row["7000"] || row.preco_grade_7000 || row["G7000"] || 0),
-              preco_couro: Number(row["Couro"] || row.preco_couro || 0),
+              medida_cm: parseNumeroABNT(row["Medida (cm)"] ?? row.medida_cm ?? ""),
+              largura_cm: parseNumeroABNT(row["Largura (cm)"] ?? row.largura_cm ?? ""),
+              profundidade_cm: parseNumeroABNT(row["Profundidade (cm)"] ?? row.profundidade_cm ?? ""),
+              altura_cm: parseNumeroABNT(row["Altura (cm)"] ?? row.altura_cm ?? ""),
+              largura_assento_cm: parseNumeroABNT(row["Larg. Assento (cm)"] ?? row.largura_assento_cm ?? row["Largura Assento (cm)"] ?? ""),
+              altura_assento_cm: parseNumeroABNT(row["Alt. Assento (cm)"] ?? row.altura_assento_cm ?? row["Altura Assento (cm)"] ?? ""),
+              largura_braco_cm: parseNumeroABNT(row["Larg. Braço (cm)"] ?? row.largura_braco_cm ?? row["Largura Braço (cm)"] ?? ""),
+              metragem_tecido_m: parseNumeroABNT(row["Met. Tecido (m)"] ?? row.metragem_tecido_m ?? row["Metragem Tecido (m)"] ?? ""),
+              metragem_couro_m: parseNumeroABNT(row["Met. Couro (m)"] ?? row.metragem_couro_m ?? row["Metragem Couro (m)"] ?? ""),
+              preco_grade_1000: parseNumeroABNT(row["1000"] ?? row.preco_grade_1000 ?? row["G1000"] ?? ""),
+              preco_grade_2000: parseNumeroABNT(row["2000"] ?? row.preco_grade_2000 ?? row["G2000"] ?? ""),
+              preco_grade_3000: parseNumeroABNT(row["3000"] ?? row.preco_grade_3000 ?? row["G3000"] ?? ""),
+              preco_grade_4000: parseNumeroABNT(row["4000"] ?? row.preco_grade_4000 ?? row["G4000"] ?? ""),
+              preco_grade_5000: parseNumeroABNT(row["5000"] ?? row.preco_grade_5000 ?? row["G5000"] ?? ""),
+              preco_grade_6000: parseNumeroABNT(row["6000"] ?? row.preco_grade_6000 ?? row["G6000"] ?? ""),
+              preco_grade_7000: parseNumeroABNT(row["7000"] ?? row.preco_grade_7000 ?? row["G7000"] ?? ""),
+              preco_couro: parseNumeroABNT(row["Couro"] ?? row.preco_couro ?? ""),
             };
           });
 
@@ -1002,7 +1003,8 @@ export default function TabelaPrecoGlobal() {
                                   ? "border-gray-300 bg-white text-gray-900 focus:border-green-500 focus:ring-green-500"
                                   : "border-gray-300 bg-white text-gray-900 focus:border-primary focus:ring-primary"
                               }`}
-                              value={l[col.key as keyof LinhaPreco] || 0}
+                              value={l[col.key as keyof LinhaPreco] === 0 || l[col.key as keyof LinhaPreco] == null ? "" : l[col.key as keyof LinhaPreco]}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) => {
                                 onChange(l.produtoId, l.medida_cm, col.key as keyof LinhaPreco, e.target.value);
                                 // Remover erro ao editar

@@ -82,6 +82,52 @@ export async function getPrecoUnitario(
     });
   }
 
+  // Fallback: tentar com acionamentoTxt null (linhas cadastradas sem acionamento)
+  if (!linha && acionamentoTxt != null) {
+    if (tabelaPrecoId) {
+      linha = await prisma.tabelaPrecoLinha.findFirst({
+        where: {
+          produtoId,
+          medida_cm,
+          tabelaPrecoId,
+          acionamentoTxt: null,
+        },
+        select: {
+          preco_grade_1000: true,
+          preco_grade_2000: true,
+          preco_grade_3000: true,
+          preco_grade_4000: true,
+          preco_grade_5000: true,
+          preco_grade_6000: true,
+          preco_grade_7000: true,
+          preco_couro: true,
+          descontoPercentual: true,
+        },
+      });
+    }
+    if (!linha) {
+      linha = await prisma.tabelaPrecoLinha.findFirst({
+        where: {
+          produtoId,
+          medida_cm,
+          tabelaPrecoId: null,
+          acionamentoTxt: null,
+        },
+        select: {
+          preco_grade_1000: true,
+          preco_grade_2000: true,
+          preco_grade_3000: true,
+          preco_grade_4000: true,
+          preco_grade_5000: true,
+          preco_grade_6000: true,
+          preco_grade_7000: true,
+          preco_couro: true,
+          descontoPercentual: true,
+        },
+      });
+    }
+  }
+
   if (!linha) return null;
 
   // Obter o preço baseado na grade do tecido

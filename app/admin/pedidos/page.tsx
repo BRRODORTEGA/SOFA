@@ -63,36 +63,42 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
             role: true,
             createdAt: true,
           },
-          // Buscar todas as mensagens para verificar se há alguma nova do cliente
         },
       },
     });
 
     const total = await prisma.pedido.count({ where });
 
-    // Mapear os resultados incluindo ultimaVisualizacaoAdmin se disponível
+    // Mapear os resultados incluindo ultimaVisualizacaoAdmin e updatedAt
     const items = pedidosRaw.map((item: any) => ({
       id: item.id,
       codigo: item.codigo,
       status: item.status,
       createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
       ultimaVisualizacaoAdmin: item.ultimaVisualizacaoAdmin || null,
       cliente: item.cliente,
       mensagens: item.mensagens,
     }));
 
+    const agora = new Date();
+    const tresDiasAtras = new Date(agora.getTime() - 3 * 24 * 60 * 60 * 1000);
+
     const rowsWithFormatted = items.map((item) => {
-      // Verificar se há nova mensagem do cliente não visualizada pelo admin
-      // Buscar todas as mensagens do cliente e verificar se alguma é mais recente que a última visualização
       const mensagensCliente = item.mensagens.filter((m: any) => m.role === "CLIENTE");
-      const dataReferencia = item.ultimaVisualizacaoAdmin 
-        ? new Date(item.ultimaVisualizacaoAdmin)
-        : new Date(0); // Se nunca visualizou, qualquer mensagem é nova
-      
-      // Verificar se há alguma mensagem do cliente mais recente que a última visualização
-      const temNovaMensagemCliente = mensagensCliente.some((msg: any) => 
-        new Date(msg.createdAt) > dataReferencia
+      const dataRefAdmin = item.ultimaVisualizacaoAdmin ? new Date(item.ultimaVisualizacaoAdmin) : new Date(0);
+
+      const temNovaMensagemCliente = mensagensCliente.some((msg: any) =>
+        new Date(msg.createdAt) > dataRefAdmin
       );
+
+      const criadoRecentemente = new Date(item.createdAt) >= tresDiasAtras;
+      const isNovo = item.status === "Solicitado" || criadoRecentemente;
+
+      const temAtualizacao =
+        temNovaMensagemCliente ||
+        !item.ultimaVisualizacaoAdmin ||
+        (item.updatedAt && new Date(item.updatedAt) > dataRefAdmin);
 
       return {
         ...item,
@@ -100,6 +106,8 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
         createdAtFormatted: new Date(item.createdAt).toLocaleDateString("pt-BR"),
         statusFormatted: item.status,
         temNovaMensagem: temNovaMensagemCliente,
+        isNovo,
+        temAtualizacao,
       };
     });
 
@@ -146,7 +154,7 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
                 <th className="px-4 py-3 text-sm font-semibold text-gray-700">Cliente</th>
                 <th className="px-4 py-3 text-sm font-semibold text-gray-700 w-32">Status</th>
                 <th className="px-4 py-3 text-sm font-semibold text-gray-700">Data</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-700 w-20"></th>
+                <th className="px-4 py-3 text-sm font-semibold text-gray-700 w-28 text-center">Sinal</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -157,54 +165,67 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
                   </td>
                 </tr>
               )}
-              {rowsWithFormatted.map((row) => (
-                <tr
-                  key={row.id}
-                  className="bg-white transition-colors hover:bg-secondary"
-                >
-                  <td className="px-4 py-3 text-sm text-gray-900">
-                    <Link href={`/admin/pedidos/${row.id}`} className="flex items-center gap-2 hover:text-primary">
-                      {row.temNovaMensagem && (
-                        <span className="relative flex h-2 w-2">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
-                          <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
-                        </span>
-                      )}
-                      <span className="font-medium">{row.codigo}</span>
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-900">
-                    <Link href={`/admin/pedidos/${row.id}`} className="hover:text-primary">
-                      {row.clienteNome}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <Link href={`/admin/pedidos/${row.id}`} className="hover:opacity-80">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${getStatusColor(row.statusFormatted)}`}>
-                        {row.statusFormatted}
-                      </span>
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-900">
-                    <Link href={`/admin/pedidos/${row.id}`} className="hover:text-primary">
-                      {row.createdAtFormatted}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    {row.temNovaMensagem && (
-                      <Link href={`/admin/pedidos/${row.id}`} className="flex items-center justify-center">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">
-                          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                          </svg>
-                          Nova
+              {rowsWithFormatted.map((row) => {
+                const destaque = row.isNovo || row.temAtualizacao;
+                return (
+                  <tr
+                    key={row.id}
+                    className={`transition-colors hover:bg-secondary ${destaque ? "bg-amber-50/50" : "bg-white"}`}
+                  >
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      <Link href={`/admin/pedidos/${row.id}`} className="flex items-center gap-2 hover:text-primary">
+                        {row.temNovaMensagem && (
+                          <span className="relative flex h-2 w-2 shrink-0" title="Nova mensagem do cliente">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+                          </span>
+                        )}
+                        <span className="font-medium">{row.codigo}</span>
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      <Link href={`/admin/pedidos/${row.id}`} className="hover:text-primary">
+                        {row.clienteNome}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <Link href={`/admin/pedidos/${row.id}`} className="hover:opacity-80">
+                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${getStatusColor(row.statusFormatted)}`}>
+                          {row.statusFormatted}
                         </span>
                       </Link>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      <Link href={`/admin/pedidos/${row.id}`} className="hover:text-primary">
+                        {row.createdAtFormatted}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <Link href={`/admin/pedidos/${row.id}`} className="flex flex-wrap items-center justify-center gap-1">
+                        {row.temNovaMensagem && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800" title="Nova mensagem do cliente">
+                            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                              <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                            </svg>
+                            Nova msg
+                          </span>
+                        )}
+                        {row.isNovo && (
+                          <span className="inline-flex rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800" title="Pedido novo ou aguardando aprovação">
+                            Novo
+                          </span>
+                        )}
+                        {row.temAtualizacao && !row.temNovaMensagem && (
+                          <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800" title="Pedido com atualização desde sua última visualização">
+                            Atualizado
+                          </span>
+                        )}
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

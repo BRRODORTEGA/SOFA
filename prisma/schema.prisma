@@ -485,6 +485,12 @@ model SiteConfig {
   filtroOpcoesProdutoAtivo Boolean @default(true)
   filtroOpcoesProdutoNome String? // Nome personalizado (padrão: "Opções de Produto")
 
+  // Customização do Rodapé
+  rodapeTitulo String? // Título/nome da marca no rodapé (ex: "AI Sofá")
+  rodapeDescricao String? // Texto da coluna "Sobre" no rodapé
+  rodapeContato String? // Texto da coluna "Contato" no rodapé
+  rodapeCopyright String? // Texto do copyright; use {ano} para o ano atual (ex: "© {ano} AI Sofá. Todos os direitos reservados.")
+
   // Configurações adicionais em JSON (para futuras expansões)
   configuracoesExtras Json?
 

@@ -105,20 +105,34 @@ export default function PedidoAdminDetailPage() {
   }
 
   async function onSendMessage(data: { texto: string }) {
+    const texto = (data?.texto ?? "").trim();
+    if (!texto) {
+      alert("Digite uma mensagem antes de enviar.");
+      return;
+    }
+
+    const pedidoId = typeof params.id === "string" ? params.id : (Array.isArray(params.id) ? params.id[0] : "");
+    if (!pedidoId) return;
+
     setSending(true);
     try {
-      const res = await fetch(`/api/admin/pedidos/${params.id}/mensagens`, {
+      const res = await fetch(`/api/admin/pedidos/${pedidoId}/mensagens`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ texto }),
       });
 
-      if (res.ok) {
+      const json = await res.json().catch(() => ({}));
+
+      if (res.ok && json?.ok !== false) {
         reset();
         loadPedido();
+      } else {
+        alert(json?.error || json?.message || "Erro ao enviar mensagem. Tente novamente.");
       }
     } catch (error) {
       console.error("Erro ao enviar mensagem:", error);
+      alert("Erro ao enviar mensagem. Verifique a conexão e tente novamente.");
     } finally {
       setSending(false);
     }
@@ -325,7 +339,7 @@ export default function PedidoAdminDetailPage() {
                 <div className="flex items-center gap-2">
                   <span>{msg.role || "Sistema"}</span>
                   {msg.editada && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-1.5 py-0.5 text-xs font-medium text-yellow-800" title={`Editada em ${msg.editadaEm ? new Date(msg.editadaEm).toLocaleString("pt-BR") : ''}`}>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-1.5 py-0.5 text-xs font-medium text-yellow-800" title={msg.editadaEm ? `Editada em ${new Date(msg.editadaEm).toLocaleString("pt-BR")}` : "Editada"}>
                       <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
@@ -334,9 +348,13 @@ export default function PedidoAdminDetailPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span>{new Date(msg.createdAt).toLocaleString("pt-BR")}</span>
+                  <span title={msg.editada && msg.editadaEm ? `Enviada em ${new Date(msg.createdAt).toLocaleString("pt-BR")}` : undefined}>
+                    {msg.editada && msg.editadaEm
+                      ? `Editada em ${new Date(msg.editadaEm).toLocaleString("pt-BR")}`
+                      : new Date(msg.createdAt).toLocaleString("pt-BR")}
+                  </span>
                   {(msg.role === "ADMIN" || msg.role === "OPERADOR") && (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-1">
                       {editingMsgId === msg.id ? (
                         <>
                           <button

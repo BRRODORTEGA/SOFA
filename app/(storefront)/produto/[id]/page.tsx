@@ -229,7 +229,13 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
         }),
       });
 
-      const data = await res.json();
+      let data: { ok?: boolean; error?: string; message?: string; data?: unknown } = {};
+      try {
+        const text = await res.text();
+        if (text) data = JSON.parse(text);
+      } catch {
+        data = { error: res.status === 401 ? "Faça login para adicionar ao carrinho." : "Resposta inválida do servidor." };
+      }
       console.log("[ADD TO CART DEBUG] Resposta completa:", { status: res.status, ok: res.ok, data });
       if (res.ok) {
         console.log("[ADD TO CART DEBUG] Item adicionado com sucesso:", data.data);
@@ -239,12 +245,12 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
         }, 1500);
       } else {
         console.error("[ADD TO CART DEBUG] Erro na resposta:", data);
-        const errorMsg = data.error || data.message || "Erro desconhecido ao adicionar ao carrinho";
+        const errorMsg = data.error || data.message || (res.status === 422 ? "Verifique se este produto tem preço cadastrado para a medida e tecido escolhidos na tabela de preços." : "Erro desconhecido ao adicionar ao carrinho.");
         setToast({ message: "Erro ao adicionar ao carrinho: " + errorMsg, type: "error" });
       }
     } catch (error) {
       console.error("[ADD TO CART DEBUG] Erro na requisição:", error);
-      setToast({ message: "Erro ao adicionar ao carrinho", type: "error" });
+      setToast({ message: "Erro ao adicionar ao carrinho. Verifique sua conexão e tente novamente.", type: "error" });
     } finally {
       setAdding(false);
     }

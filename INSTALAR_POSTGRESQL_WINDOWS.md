@@ -66,10 +66,25 @@ Após instalar, execute os comandos abaixo:
 
 O instalador geralmente adiciona automaticamente, mas se `psql` não funcionar:
 
-1. Abra **Variáveis de Ambiente**
-2. Edite **Path** do usuário
-3. Adicione: `C:\Program Files\PostgreSQL\16\bin`
-4. Reinicie o PowerShell
+1. **Abra Variáveis de Ambiente**
+   - Pressione `Win + R`, digite `sysdm.cpl` e Enter **ou**
+   - Painel de Controle → Sistema e Segurança → Sistema → **Configurações avançadas do sistema**
+   - Clique em **Variáveis de Ambiente**
+2. Em **Variáveis do usuário**, selecione **Path** e clique em **Editar**
+3. Clique em **Novo** e adicione o caminho da pasta `bin`:
+   - PostgreSQL 18: `C:\Program Files\PostgreSQL\18\bin`
+   - PostgreSQL 16: `C:\Program Files\PostgreSQL\16\bin`
+   - PostgreSQL 15: `C:\Program Files\PostgreSQL\15\bin`
+   - (Use a versão que você instalou — a pasta tem o número da versão)
+4. **OK** em todas as janelas e **reinicie o PowerShell** (ou o terminal)
+
+**Se "psql não é reconhecido"** e você quer conectar **sem** editar o PATH, use o caminho completo:
+
+```powershell
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres
+```
+
+(Ajuste `18` para a sua versão: 15, 16, 17 ou 18.)
 
 ### 2. Criar Banco de Dados
 
@@ -134,9 +149,18 @@ Se abrir o Prisma Studio, está tudo funcionando!
 
 ### Serviço não está rodando
 ```powershell
-# Iniciar serviço
-Start-Service postgresql-x64-16
+# Iniciar serviço (ajuste 18 para sua versão)
+Start-Service postgresql-x64-18
 ```
+
+### Aviso: "Console code page (850) differs from Windows code page (1252)"
+Esse aviso aparece ao conectar com `psql` no Windows e **não impede o uso**. Se quiser evitar o aviso e garantir acentos corretos, antes de abrir o psql execute:
+
+```powershell
+chcp 1252
+```
+
+Depois rode o comando do psql. Ou defina na sessão: `$env:PGCLIENTENCODING = "UTF8"`
 
 
 

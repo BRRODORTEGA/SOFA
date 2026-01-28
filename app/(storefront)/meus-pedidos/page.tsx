@@ -34,6 +34,13 @@ export default function MeusPedidosPage() {
     }
   }, [status, router]);
 
+  // Ao visualizar um pedido (na página do pedido), a listagem recarrega para sumir a sinalização
+  useEffect(() => {
+    const onPedidosVisualizados = () => loadPedidos();
+    window.addEventListener("pedidos-visualizados", onPedidosVisualizados);
+    return () => window.removeEventListener("pedidos-visualizados", onPedidosVisualizados);
+  }, []);
+
   async function loadPedidos() {
     try {
       const res = await fetch("/api/meus-pedidos");
@@ -106,45 +113,49 @@ export default function MeusPedidosPage() {
             const total = pedido.itens.reduce((acc: number, item: any) => {
               return acc + Number(item.precoUnit) * item.quantidade;
             }, 0);
+            const temAtualizacao = !!pedido.temAtualizacao;
 
             return (
               <Link
                 key={pedido.id}
                 href={`/meus-pedidos/${pedido.id}`}
-                className={`block rounded border p-4 hover:bg-gray-50 relative transition-all ${
-                  pedido.temAtualizacao 
-                    ? 'border-red-300 bg-red-50/30 shadow-sm' 
-                    : 'border-gray-200'
+                className={`block rounded-lg border p-4 hover:bg-gray-50 relative transition-all overflow-hidden ${
+                  temAtualizacao
+                    ? "border-l-4 border-l-red-500 border-red-200 bg-red-50/50 shadow-sm"
+                    : "border-gray-200"
                 }`}
               >
-                {pedido.temAtualizacao && (
-                  <div className="absolute top-2 right-2">
-                    <span className="relative flex h-3 w-3">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
-                      <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500"></span>
-                    </span>
+                {/* Ponto pulsante e badge quando há atualização */}
+                {temAtualizacao && (
+                  <div className="absolute top-3 right-3 flex items-center gap-2">
+                      <span className="relative flex h-3 w-3" title="Este pedido tem novidades">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                        <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+                      </span>
+                      <span className="rounded-md bg-red-600 px-2 py-1 text-xs font-semibold text-white shadow-sm">
+                        {pedido.temNovaMensagem && pedido.temAtualizacaoStatus
+                          ? "Nova mensagem e status"
+                          : pedido.temNovaMensagem
+                          ? "Nova mensagem"
+                          : pedido.temAtualizacaoStatus
+                          ? "Status atualizado"
+                          : "Atualização"}
+                      </span>
                   </div>
                 )}
                 <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className={`font-semibold ${pedido.temAtualizacao ? 'text-red-700' : ''}`}>
+                  <div className="flex-1 min-w-0 pr-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className={`font-semibold ${temAtualizacao ? "text-red-800" : "text-gray-900"}`}>
                         {pedido.codigo}
                       </h3>
-                      {pedido.temAtualizacao && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800 border border-red-200">
-                          {pedido.temNovaMensagem && pedido.temAtualizacaoStatus ? 'Nova mensagem e status' :
-                           pedido.temNovaMensagem ? 'Nova mensagem' :
-                           pedido.temAtualizacaoStatus ? 'Status atualizado' : 'Atualização'}
-                        </span>
-                      )}
                     </div>
                     <p className="text-sm text-gray-600">
                       {new Date(pedido.createdAt).toLocaleDateString("pt-BR")}
                     </p>
                     <p className="mt-1 text-sm font-medium">R$ {total.toFixed(2)}</p>
                   </div>
-                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusColor(pedido.status)}`}>
+                  <span className={`flex-shrink-0 rounded-full px-3 py-1 text-xs font-medium ${getStatusColor(pedido.status)}`}>
                     {pedido.status}
                   </span>
                 </div>
