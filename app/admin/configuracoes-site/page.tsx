@@ -58,7 +58,7 @@ export default async function ConfiguracoesSitePage() {
       </div>
 
       <ConfiguracoesSiteForm
-        siteConfig={siteConfig}
+        siteConfig={siteConfig as any}
         categorias={categorias}
         produtos={produtos}
         tabelasPreco={tabelasPreco}

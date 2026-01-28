@@ -147,18 +147,6 @@ export default function LoginPage() {
           Cadastre-se
         </Link>
       </p>
-
-      <div className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-4">
-        <p className="text-xs text-gray-600">
-          <strong>Logins de teste:</strong>
-          <br />
-          ADMIN: admin@gmail.com / admin
-          <br />
-          OPERADOR: op@local / op
-          <br />
-          CLIENTE: cli@local / cli
-        </p>
-      </div>
     </div>
   );
 }

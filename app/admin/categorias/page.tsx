@@ -11,7 +11,8 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
   const q = searchParams.q?.trim() ?? "";
 
   try {
-    const where = q ? { nome: { contains: q, mode: "insensitive" } } : {};
+// Add 'as const' to the mode string, or type the variable explicitly 
+    const where = q ? { nome: { contains: q, mode: "insensitive" as const } } : {};
     const [items, total] = await Promise.all([
       prisma.categoria.findMany({ where, take: limit, skip: offset, orderBy: { createdAt: "desc" } }),
       prisma.categoria.count({ where }),

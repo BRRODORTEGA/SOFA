@@ -14,11 +14,10 @@ const nomePadraoSchema = z.object({
 
 export default function NewNomePadraoPage() {
   const router = useRouter();
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({ 
-    resolver: zodResolver(nomePadraoSchema), 
-    defaultValues: { ativo: true, ordem: null } 
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+    resolver: zodResolver(nomePadraoSchema),
+    defaultValues: { nome: "", ativo: true, ordem: null }
   });
-
   async function onSubmit(values: any) {
     try {
       const res = await fetch("/api/nomes-padrao-produto", { 

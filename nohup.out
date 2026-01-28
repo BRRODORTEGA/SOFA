@@ -1,0 +1,79 @@
+
+> room2go@0.1.0 dev
+> next dev
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
+  - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 1806ms
+
+> room2go@0.1.0 dev
+> next dev
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
+  - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 1697ms
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/auth/[...nextauth] in 1089ms (271 modules)
+[next-auth][warn][NEXTAUTH_URL] 
+https://next-auth.js.org/warnings#nextauth_url
+ GET /api/auth/session 200 in 1470ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.8s (895 modules)
+ GET / 200 in 2987ms
+ ✓ Compiled /api/filtros-config in 267ms (578 modules)
+ ✓ Compiled (595 modules)
+[next-auth][warn][NEXTAUTH_URL] 
+https://next-auth.js.org/warnings#nextauth_url
+ GET /api/site-config 200 in 611ms
+ GET /api/filtros-config 200 in 610ms
+ GET /api/auth/session 200 in 604ms
+ GET /api/produtos?limit=100&offset=0 200 in 627ms
+ ⚠ Cross origin request detected from 72.61.27.134 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ GET /api/auth/session 200 in 34ms
+ GET /api/filtros-config 200 in 43ms
+ GET /api/site-config 200 in 46ms
+ ✓ Compiled /api/produtos/opcoes in 123ms (597 modules)
+ GET /api/produtos?limit=100&offset=0 200 in 296ms
+ GET /api/produtos/opcoes 200 in 304ms
+ GET /api/produtos?limit=100&offset=0 200 in 10ms
+ ○ Compiling /produtos ...
+ ✓ Compiled /produtos in 635ms (933 modules)
+ GET /api/filtros-config 200 in 23ms
+ ✓ Compiled /api/categorias in 127ms (603 modules)
+ ✓ Compiled (605 modules)
+ GET /api/produtos?limit=100&offset=0 200 in 291ms
+ GET /api/categorias?limit=100 200 in 297ms
+ GET /api/familias?limit=100 200 in 318ms
+ GET /api/produtos?limit=3 200 in 316ms
+ GET /api/filtros-config 200 in 17ms
+ GET /api/produtos/opcoes 200 in 20ms
+ GET /api/produtos?limit=100&offset=0 200 in 11ms
+ GET /api/categorias?limit=100 200 in 14ms
+ GET /api/familias?limit=100 200 in 9ms
+ GET /api/produtos?limit=3 200 in 12ms
+ GET /api/produtos?limit=100&offset=0 200 in 9ms
+ ✓ Compiled /_not-found in 147ms (927 modules)
+ GET /nossa-historia 404 in 50ms
+ GET /produtos 200 in 40ms
+ GET /contatos 404 in 16ms
+ GET /produtos 200 in 17ms
+ GET / 200 in 34ms
+ GET /api/site-config 200 in 16ms
+[next-auth][warn][NEXTAUTH_URL] 
+https://next-auth.js.org/warnings#nextauth_url
+ GET /api/auth/session 200 in 50ms
+ GET /api/produtos?limit=100&offset=0 200 in 52ms
+ GET /api/filtros-config 200 in 54ms
+ GET /api/site-config 200 in 7ms
+ GET /api/auth/session 200 in 16ms
+ GET /api/filtros-config 200 in 16ms
+ GET /api/produtos?limit=100&offset=0 200 in 17ms
+ GET /api/produtos/opcoes 200 in 11ms
+ GET /api/produtos?limit=100&offset=0 200 in 9ms

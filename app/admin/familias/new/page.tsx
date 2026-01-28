@@ -8,8 +8,15 @@ import { useRouter } from "next/navigation";
 
 export default function NewFamiliaPage() {
   const router = useRouter();
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(familiaSchema), defaultValues: { ativo: true } });
-
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+      resolver: zodResolver(familiaSchema),
+      defaultValues: {
+        nome: "",
+        descricao: "",
+        perfilMedidas: "",
+        ativo: true
+      }
+  });
   async function onSubmit(values:any) {
     let perfilMedidas = null;
     if (values.perfilMedidas && values.perfilMedidas.trim()) {

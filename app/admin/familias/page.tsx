@@ -11,7 +11,8 @@ export default async function Page({ searchParams }: { searchParams: { q?: strin
   const q = searchParams.q?.trim() ?? "";
 
   try {
-    const where = q ? { nome: { contains: q, mode: "insensitive" } } : {};
+    // Add 'as const' 
+    const where = q ? { nome: { contains: q, mode: "insensitive" as const } } : {};
     const [items, total] = await Promise.all([
       prisma.familia.findMany({ where, take: limit, skip: offset, orderBy: { createdAt: "desc" }, include: { categoria: { select: { nome: true } } } }),
       prisma.familia.count({ where }),

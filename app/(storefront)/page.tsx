@@ -320,6 +320,8 @@ export default async function HomePage() {
               precoOriginal: p.precoOriginal || null,
               precoComDesconto: p.precoComDesconto || null,
               descontoPercentual: p.descontoPercentual,
+              tipo: p.tipo,
+              abertura: p.abertura
             }))}
             produtosBestSellers={produtosBestSellers.map(p => ({
               id: p.id,
@@ -331,6 +333,8 @@ export default async function HomePage() {
               precoOriginal: p.precoOriginal || null,
               precoComDesconto: p.precoComDesconto || null,
               descontoPercentual: p.descontoPercentual,
+              tipo: p.tipo,
+              abertura: p.abertura
             }))}
           />
         </div>

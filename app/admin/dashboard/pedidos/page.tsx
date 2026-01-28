@@ -240,7 +240,7 @@ export default function PainelExecutivoPedidosPage() {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ status, porcentagem }) =>
+                label={({ status, porcentagem }: any) =>
                   `${getStatusLabel(status)}: ${porcentagem.toFixed(1)}%`
                 }
                 outerRadius={100}
