@@ -6,7 +6,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   const item = await prisma.produto.findUnique({
     where: { id: params.id },
     include: {
-      familia: { select: { nome: true } },
+      familia: { select: { nome: true, descricao: true } },
       categoria: { select: { nome: true } },
       tecidos: {
         include: {

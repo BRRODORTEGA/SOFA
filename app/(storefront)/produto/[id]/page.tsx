@@ -25,7 +25,7 @@ type Produto = {
   possuiLados: boolean;
   imagens: string[];
   imagensDetalhadas?: ProdutoImagem[];
-  familia: { nome: string };
+  familia: { nome: string; descricao?: string | null };
   categoria: { nome: string };
   tecidos: Array<{ id: string; nome: string; grade: string; imagemUrl: string | null }>;
   variacoes: Array<{ medida_cm: number; largura_cm: number; profundidade_cm: number; altura_cm: number }>;
@@ -526,6 +526,14 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
           )}
         </div>
       </div>
+
+      {/* Descrição da família - abaixo das imagens e do botão de adicionar ao carrinho */}
+      {produto.familia.descricao && (
+        <div className="mt-10 text-sm leading-relaxed text-gray-700">
+          <h2 className="mb-2 text-base font-semibold text-gray-900">Descrição</h2>
+          <p>{produto.familia.descricao}</p>
+        </div>
+      )}
     </div>
     </>
   );
