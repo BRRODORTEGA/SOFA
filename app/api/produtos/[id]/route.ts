@@ -37,6 +37,15 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 
   if (!item) return notFound();
 
+  // Garantir informacoesAdicionais mesmo com Prisma Client gerado antes do campo existir
+  const itemWithInfo = item as { informacoesAdicionais?: string | null };
+  if (itemWithInfo.informacoesAdicionais === undefined) {
+    const row = await prisma.$queryRaw<[{ informacoesAdicionais: string | null }]>`
+      SELECT "informacoesAdicionais" FROM "Produto" WHERE id = ${params.id}
+    `.then((rows) => rows[0]);
+    if (row) (item as Record<string, unknown>).informacoesAdicionais = row.informacoesAdicionais;
+  }
+
   // Transformar tecidos para formato mais simples
   const produto = {
     ...item,
@@ -112,11 +121,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
     
     // Remover campos que não devem ser atualizados diretamente ou que não existem no modelo
-    const { categoriaId, familiaId, nome, tipo, abertura, possuiLados, configuracao, status, imagens, ...rest } = parsed.data;
+    const { categoriaId, familiaId, nome, tipo, abertura, possuiLados, configuracao, informacoesAdicionais, status, imagens, ...rest } = parsed.data;
     
-    const dataToUpdate: any = {
-      categoriaId,
-      familiaId,
+    // Usar connect para relações (compatível com o Prisma Client gerado).
+    // informacoesAdicionais é atualizado em query raw abaixo (compatível quando o Client foi gerado antes do campo existir).
+    const dataToUpdate = {
+      categoria: { connect: { id: categoriaId } },
+      familia: { connect: { id: familiaId } },
       nome,
       tipo: tipo || null,
       abertura: abertura || null,
@@ -131,11 +142,17 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const imagensDetalhadas = (json as any).imagensDetalhadas;
     
     const updated = await prisma.$transaction(async (tx) => {
-      // Atualizar produto
+      // Atualizar produto (campos conhecidos pelo Client)
       const produtoAtualizado = await tx.produto.update({ 
         where: { id: params.id }, 
         data: dataToUpdate 
       });
+      
+      // Atualizar informacoesAdicionais em raw (funciona mesmo com Prisma Client gerado antes do campo existir)
+      const infoAdic = informacoesAdicionais ?? null;
+      await tx.$executeRaw`
+        UPDATE "Produto" SET "informacoesAdicionais" = ${infoAdic} WHERE id = ${params.id}
+      `;
       
       // Se houver imagensDetalhadas, atualizar
       if (imagensDetalhadas && Array.isArray(imagensDetalhadas) && imagensDetalhadas.length > 0) {

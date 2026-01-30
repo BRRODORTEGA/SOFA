@@ -106,6 +106,7 @@ model Produto {
   acionamento  String? // ex.: Manual
   possuiLados  Boolean  @default(false) // Possui lados: Sim ou Não
   configuracao String? // ex.: Módulo com braço
+  informacoesAdicionais String? // Texto específico do produto exibido abaixo da Descrição na página do produto
   status       Boolean  @default(true)
   imagens      String[] // URLs (mantido para compatibilidade)
   createdAt    DateTime @default(now())

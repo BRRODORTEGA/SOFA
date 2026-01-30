@@ -25,6 +25,7 @@ export default function NewProdutoPage() {
     defaultValues: { 
       status: true,
       possuiLados: false, // Default: Não
+      informacoesAdicionais: "",
       imagens: [],
       imagemPrincipal: [],
       imagensComplementares: [],
@@ -306,6 +307,15 @@ export default function NewProdutoPage() {
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Configuração</label>
           <input {...register("configuracao")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ex.: Módulo com braço" />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Configuração para Informações Adicionais</label>
+          <textarea
+            {...register("informacoesAdicionais")}
+            rows={5}
+            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Informações específicas do produto (estrutura, espumas, garantia, etc.). Exibidas na página do produto abaixo da Descrição."
+          />
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Imagens</label>

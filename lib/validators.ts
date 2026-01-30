@@ -50,6 +50,7 @@ export const produtoSchema = z.object({
   acionamento: z.string().optional().nullable(),
   possuiLados: z.boolean(),
   configuracao: z.string().optional().nullable(),
+  informacoesAdicionais: z.string().optional().nullable(),
   status: z.boolean().default(true),
   imagens: z.array(
     z.string().refine(

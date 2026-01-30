@@ -77,6 +77,7 @@ export default function EditProduto({ item }: { item: any }) {
       acionamento: item.acionamento || "",
       possuiLados: item.possuiLados ?? false,
       configuracao: item.configuracao || "",
+      informacoesAdicionais: item.informacoesAdicionais || "",
       imagens: item.imagens || [],
       imagemPrincipal: imagemPrincipalInicial,
       imagensComplementares: imagensComplementaresInicial,
@@ -353,6 +354,7 @@ export default function EditProduto({ item }: { item: any }) {
         acionamento: acionamentoValue,
         possuiLados: values.possuiLados ?? false,
         configuracao: values.configuracao || null,
+        informacoesAdicionais: values.informacoesAdicionais?.trim() || null,
         imagens: todasImagens, // Mantido para compatibilidade
         imagensDetalhadas: imagensDetalhadas, // Novo formato com tecidoId
         status: Boolean(values.status),
@@ -621,6 +623,15 @@ export default function EditProduto({ item }: { item: any }) {
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Configuração</label>
           <input {...register("configuracao")} className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary" placeholder="ex.: Módulo com braço" />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Configuração para Informações Adicionais</label>
+          <textarea
+            {...register("informacoesAdicionais")}
+            rows={5}
+            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 placeholder-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder="Informações específicas do produto (estrutura, espumas, garantia, etc.). Exibidas na página do produto abaixo da Descrição."
+          />
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Imagens</label>

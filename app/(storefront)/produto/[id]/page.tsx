@@ -22,6 +22,7 @@ type Produto = {
   abertura: string | null;
   acionamento: string | null;
   configuracao: string | null;
+  informacoesAdicionais: string | null;
   possuiLados: boolean;
   imagens: string[];
   imagensDetalhadas?: ProdutoImagem[];
@@ -532,6 +533,14 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
         <div className="mt-10 text-sm leading-relaxed text-gray-700">
           <h2 className="mb-2 text-base font-semibold text-gray-900">Descrição</h2>
           <p>{produto.familia.descricao}</p>
+        </div>
+      )}
+
+      {/* Informações adicionais do produto - abaixo da Descrição */}
+      {produto.informacoesAdicionais && produto.informacoesAdicionais.trim() !== "" && (
+        <div className="mt-6 text-sm leading-relaxed text-gray-700">
+          <h2 className="mb-2 text-base font-semibold text-gray-900">Informações Adicionais</h2>
+          <p className="whitespace-pre-line">{produto.informacoesAdicionais.trim()}</p>
         </div>
       )}
     </div>
