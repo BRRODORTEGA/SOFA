@@ -173,6 +173,7 @@ model Tecido {
   pedidoItems    PedidoItem[]
   carrinhoItems  CarrinhoItem[]
   produtoImagens ProdutoImagem[]
+  estoqueProntaEntrega EstoqueProntaEntrega[]
 
   @@index([grade])
 }
@@ -226,9 +227,25 @@ model Variacao {
   metragem_couro_m   Float
 
   produto Produto @relation(fields: [produtoId], references: [id])
+  estoqueProntaEntrega EstoqueProntaEntrega[]
 
   // Cada produto só pode ter uma variação por medida
   @@unique([produtoId, medida_cm])
+}
+
+/** Estoque pronta entrega por variação (medida) e tecido */
+model EstoqueProntaEntrega {
+  id         String @id @default(cuid())
+  variacaoId String
+  tecidoId   String
+  quantidade Int    @default(0)
+
+  variacao Variacao @relation(fields: [variacaoId], references: [id], onDelete: Cascade)
+  tecido   Tecido   @relation(fields: [tecidoId], references: [id], onDelete: Cascade)
+
+  @@unique([variacaoId, tecidoId])
+  @@index([variacaoId])
+  @@index([tecidoId])
 }
 
 /**

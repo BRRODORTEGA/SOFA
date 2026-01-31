@@ -21,6 +21,7 @@ type CarrinhoItem = {
   precoOriginal?: number; // Preço original sem desconto
   descontoPercentual?: number | null; // Percentual de desconto
   descontoValor?: number; // Valor do desconto em reais
+  prontaEntrega?: boolean; // Há estoque pronta entrega suficiente para a quantidade
 };
 
 type Cupom = {
@@ -321,6 +322,11 @@ export default function CartPage() {
               <p className="text-sm text-gray-600">
                 Medida: {item.variacaoMedida_cm}cm{item.lado && ` | Lado: ${item.lado.charAt(0).toUpperCase() + item.lado.slice(1)}`} | Tecido: {item.tecido.nome} ({item.tecido.grade})
               </p>
+              {item.prontaEntrega && (
+                <span className="mt-1 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                  Pronta entrega
+                </span>
+              )}
               <div className="mt-1">
                 {item.descontoPercentual && item.descontoPercentual > 0 && item.precoOriginal ? (
                   <div className="flex items-baseline gap-2">

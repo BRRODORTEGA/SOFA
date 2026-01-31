@@ -12,7 +12,6 @@ interface OrderStatusTrackerProps {
 
 const STATUS_ORDER = [
   "Solicitado",
-  "Aprovado",
   "Aguardando Pagamento",
   "Pagamento Aprovado",
   "Em Produção",
@@ -28,7 +27,6 @@ const STATUS_MAP: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   "Solicitado": "Pedido Solicitado",
-  "Aprovado": "Aprovado",
   "Aguardando Pagamento": "Aguardando Pagamento",
   "Pagamento Aprovado": "Pagamento Aprovado",
   "Em Produção": "Em Produção",
@@ -41,11 +39,6 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
   "Solicitado": (
     <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-    </svg>
-  ),
-  "Aprovado": (
-    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
   "Aguardando Pagamento": (

@@ -256,7 +256,6 @@ export default function PedidoAdminDetailPage() {
               className="mt-1 w-full rounded border px-3 py-2"
             >
               <option value="Solicitado">Pedido Solicitado</option>
-              <option value="Aprovado">Aprovado</option>
               <option value="Aguardando Pagamento">Aguardando Pagamento</option>
               <option value="Pagamento Aprovado">Pagamento Aprovado</option>
               <option value="Em Produção">Em Produção</option>

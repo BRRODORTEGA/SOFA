@@ -88,6 +88,21 @@ export async function GET(req: Request) {
       }))
     ];
   }
+
+  // Filtro pronta entrega: apenas produtos que têm ao menos uma célula de estoque com quantidade > 0
+  const prontaEntrega = searchParams.get("prontaEntrega") === "true";
+  if (prontaEntrega) {
+    const estoqueComQuantidade = await prisma.estoqueProntaEntrega.findMany({
+      where: { quantidade: { gt: 0 } },
+      select: { variacao: { select: { produtoId: true } } },
+    });
+    const produtoIdsPE = [...new Set(estoqueComQuantidade.map((e: { variacao: { produtoId: string } }) => e.variacao.produtoId))];
+    const idsAtuais = where.id?.in as string[] | undefined;
+    const idsFinais = Array.isArray(idsAtuais) && idsAtuais.length > 0
+      ? produtoIdsPE.filter((id: string) => idsAtuais.includes(id))
+      : produtoIdsPE;
+    where.id = { in: idsFinais };
+  }
   
   const [items, total] = await Promise.all([
     prisma.produto.findMany({

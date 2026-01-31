@@ -6,6 +6,7 @@ import { gerarCodigoPedido } from "@/lib/orders";
 import { enviarEmailLog } from "@/lib/email-orders";
 import { OrderPlacedEmail } from "@/emails/order_placed";
 import { FactoryNewOrderEmail } from "@/emails/factory_new_order";
+import { abaterEstoqueProntaEntrega } from "@/lib/estoque-pronta-entrega";
 
 export async function POST() {
   try {
@@ -176,6 +177,21 @@ export async function POST() {
       data: pedidoData,
       include: { itens: true },
     });
+
+    // Abater estoque pronta entrega para cada item do pedido
+    for (const it of pedido.itens) {
+      try {
+        await abaterEstoqueProntaEntrega(
+          it.produtoId,
+          it.variacaoMedida_cm,
+          it.tecidoId,
+          it.quantidade
+        );
+      } catch (estoqueErr: any) {
+        console.error("[CHECKOUT WARNING] Erro ao abater estoque pronta entrega:", estoqueErr);
+        // Não bloqueia o checkout; o pedido já foi criado
+      }
+    }
 
     // Calcular total final antes de usar
     const totalFinal = total - descontoCupom;

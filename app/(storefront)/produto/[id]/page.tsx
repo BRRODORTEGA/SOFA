@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ProductImageGallery } from "@/components/storefront/ProductImageGallery";
 import { Toast } from "@/components/storefront/Toast";
@@ -32,11 +32,17 @@ type Produto = {
   variacoes: Array<{ medida_cm: number; largura_cm: number; profundidade_cm: number; altura_cm: number }>;
 };
 
+type CombinacaoProntaEntrega = { tecidoId: string; medida_cm: number };
+
 export default function ProdutoPage({ params }: { params: { id: string } }) {
   const { data: session } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const vemProntaEntrega = searchParams.get("ref") === "pronta-entrega";
+
   const [produto, setProduto] = useState<Produto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [combinacoesProntaEntrega, setCombinacoesProntaEntrega] = useState<CombinacaoProntaEntrega[] | null>(null);
   const [tecidoId, setTecidoId] = useState("");
   const [medida, setMedida] = useState<number | null>(null);
   const [lado, setLado] = useState<"esquerdo" | "direito" | "">("");
@@ -44,6 +50,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
   const [precoOriginal, setPrecoOriginal] = useState<number | null>(null);
   const [descontoPercentual, setDescontoPercentual] = useState<number | null>(null);
   const [precoDisponivel, setPrecoDisponivel] = useState(true);
+  const [prontaEntrega, setProntaEntrega] = useState(false);
   const [precoLoading, setPrecoLoading] = useState(false);
   const [qtd, setQtd] = useState(1);
   const [adding, setAdding] = useState(false);
@@ -86,21 +93,73 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
     }
   }, [router]);
 
+  // Carregar produto
   useEffect(() => {
     fetch(`/api/produtos/${params.id}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.ok) {
           setProduto(d.data);
-          if (d.data.variacoes.length > 0) {
+          if (!vemProntaEntrega && d.data.variacoes.length > 0) {
             setMedida(d.data.variacoes[0].medida_cm);
           }
         }
       })
       .catch((err) => console.error("Erro ao carregar produto:", err))
       .finally(() => setLoading(false));
-  }, [params.id]);
+  }, [params.id, vemProntaEntrega]);
+
+  // Quando veio da seção Pronta Entrega: carregar combinações com estoque e definir tecido/medida iniciais
+  useEffect(() => {
+    if (!vemProntaEntrega || !params.id) {
+      setCombinacoesProntaEntrega(null);
+      return;
+    }
+    fetch(`/api/produtos/${params.id}/pronta-entrega-opcoes`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.ok && d.data?.combinacoes?.length > 0) {
+          const comb = d.data.combinacoes as CombinacaoProntaEntrega[];
+          setCombinacoesProntaEntrega(comb);
+          // Definir primeira combinação como seleção inicial (será aplicado junto com produto abaixo)
+          setTecidoId(comb[0].tecidoId);
+          setMedida(comb[0].medida_cm);
+        } else {
+          setCombinacoesProntaEntrega([]);
+        }
+      })
+      .catch(() => setCombinacoesProntaEntrega([]));
+  }, [vemProntaEntrega, params.id]);
+
+  // Quando produto carrega e veio da Pronta Entrega: garantir tecido/medida dentro das combinações
+  useEffect(() => {
+    if (!produto || !combinacoesProntaEntrega || combinacoesProntaEntrega.length === 0) return;
+    const comboValida = combinacoesProntaEntrega.some((c) => c.tecidoId === tecidoId && c.medida_cm === medida);
+    if (!comboValida) {
+      setTecidoId(combinacoesProntaEntrega[0].tecidoId);
+      setMedida(combinacoesProntaEntrega[0].medida_cm);
+    }
+  }, [produto, combinacoesProntaEntrega]);
   
+  // Quando veio da Pronta Entrega: listas de tecidos e medidas restritas às combinações com estoque
+  const tecidosParaSelect = useMemo(() => {
+    if (!produto) return [];
+    if (!combinacoesProntaEntrega || combinacoesProntaEntrega.length === 0) return produto.tecidos;
+    const idsTecidos = medida != null
+      ? [...new Set(combinacoesProntaEntrega.filter((c) => c.medida_cm === medida).map((c) => c.tecidoId))]
+      : [...new Set(combinacoesProntaEntrega.map((c) => c.tecidoId))];
+    return produto.tecidos.filter((t) => idsTecidos.includes(t.id));
+  }, [produto, combinacoesProntaEntrega, medida]);
+
+  const variacoesParaSelect = useMemo(() => {
+    if (!produto) return [];
+    if (!combinacoesProntaEntrega || combinacoesProntaEntrega.length === 0) return produto.variacoes;
+    const medidasOk = tecidoId
+      ? [...new Set(combinacoesProntaEntrega.filter((c) => c.tecidoId === tecidoId).map((c) => c.medida_cm))]
+      : [...new Set(combinacoesProntaEntrega.map((c) => c.medida_cm))];
+    return produto.variacoes.filter((v) => medidasOk.includes(v.medida_cm));
+  }, [produto, combinacoesProntaEntrega, tecidoId]);
+
   // Filtrar imagens baseado no tecido selecionado
   const imagensFiltradas = produto ? (() => {
     // Se houver imagensDetalhadas, usar elas
@@ -166,11 +225,13 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
             setPrecoOriginal(d.data.precoOriginal || null);
             setDescontoPercentual(d.data.descontoPercentual || null);
             setPrecoDisponivel(d.data.disponivel !== false);
+            setProntaEntrega(d.data.prontaEntrega === true);
           } else {
             setPreco(null);
             setPrecoOriginal(null);
             setDescontoPercentual(null);
             setPrecoDisponivel(false);
+            setProntaEntrega(false);
           }
         })
         .catch(() => {
@@ -178,6 +239,7 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
           setPrecoOriginal(null);
           setDescontoPercentual(null);
           setPrecoDisponivel(false);
+          setProntaEntrega(false);
         })
         .finally(() => setPrecoLoading(false));
     } else {
@@ -319,8 +381,16 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
         {/* Informações do Produto */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900">{produto.nome}</h1>
-          <p className="mt-2 text-gray-600">{produto.familia.nome}</p>
-          <p className="text-sm text-gray-500">{produto.categoria.nome}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <p className="text-gray-600">{produto.familia.nome}</p>
+            <span className="text-gray-400">·</span>
+            <p className="text-sm text-gray-500">{produto.categoria.nome}</p>
+            {prontaEntrega && (
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
+                Pronta entrega
+              </span>
+            )}
+          </div>
 
           {produto.tipo && (
             <div className="mt-4">
@@ -363,16 +433,39 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
             </div>
           )}
 
+          {vemProntaEntrega && Array.isArray(combinacoesProntaEntrega) && combinacoesProntaEntrega.length === 0 && (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm text-amber-800">
+                Nenhuma combinação com estoque pronta entrega no momento.
+              </p>
+              <Link
+                href={`/produto/${params.id}`}
+                className="mt-2 inline-block text-sm font-medium text-primary hover:underline"
+              >
+                Ver todas as opções de tecido e medida
+              </Link>
+            </div>
+          )}
+
           <div className="mt-6">
             <label className="block text-sm font-medium text-gray-900">Selecione o tecido</label>
             <div className="mt-2 flex gap-4 items-start">
               <select
                 className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
                 value={tecidoId}
-                onChange={(e) => setTecidoId(e.target.value)}
+                onChange={(e) => {
+                  const novoTecidoId = e.target.value;
+                  setTecidoId(novoTecidoId);
+                  if (combinacoesProntaEntrega?.length && novoTecidoId) {
+                    const medidasParaTecido = [...new Set(combinacoesProntaEntrega.filter((c) => c.tecidoId === novoTecidoId).map((c) => c.medida_cm))];
+                    if (medida != null && !medidasParaTecido.includes(medida)) {
+                      setMedida(medidasParaTecido[0] ?? null);
+                    }
+                  }
+                }}
               >
                 <option value="">Selecione um tecido</option>
-                {produto.tecidos.map((t) => (
+                {tecidosParaSelect.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.nome} ({t.grade})
                   </option>
@@ -414,10 +507,19 @@ export default function ProdutoPage({ params }: { params: { id: string } }) {
             <select
               className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               value={medida ?? ""}
-              onChange={(e) => setMedida(Number(e.target.value))}
+              onChange={(e) => {
+                const novaMedida = Number(e.target.value);
+                setMedida(novaMedida);
+                if (combinacoesProntaEntrega?.length && !isNaN(novaMedida)) {
+                  const tecidosParaMedida = [...new Set(combinacoesProntaEntrega.filter((c) => c.medida_cm === novaMedida).map((c) => c.tecidoId))];
+                  if (tecidoId && !tecidosParaMedida.includes(tecidoId)) {
+                    setTecidoId(tecidosParaMedida[0] ?? "");
+                  }
+                }
+              }}
             >
               <option value="">Selecione uma medida</option>
-              {produto.variacoes.map((v) => (
+              {variacoesParaSelect.map((v) => (
                 <option key={v.medida_cm} value={v.medida_cm}>
                   {v.medida_cm} cm
                 </option>

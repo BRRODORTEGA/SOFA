@@ -68,6 +68,8 @@ interface ProductSidebarProps {
   comDesconto?: boolean;
   onComDescontoChange?: (comDesconto: boolean) => void;
   onOpcoesChange?: (opcoes: FiltrosOpcoes) => void;
+  /** Quando true, exibe apenas AMBIENTE, CATEGORIA, FAMÍLIA e PREÇO (sem desconto/opções) */
+  showOnlyBasicFilters?: boolean;
 }
 
 // Helper para converter PriceRange para strings (compatibilidade com código existente)
@@ -97,6 +99,7 @@ export function ProductSidebar({
   comDesconto: comDescontoProp = false,
   onComDescontoChange,
   onOpcoesChange,
+  showOnlyBasicFilters = false,
 }: ProductSidebarProps) {
   // Estado para o filtro de preço usando PriceRange
   const [priceRange, setPriceRange] = useState<{ min: number; max: number }>(() => {
@@ -292,7 +295,7 @@ export function ProductSidebar({
           className="flex items-center justify-between w-full mb-4 group"
         >
           <h3 className="text-sm font-semibold text-gray-900 uppercase">
-            {filtrosConfig.filtroCategoriaNome}
+            {showOnlyBasicFilters ? "CATEGORIA" : (filtrosConfig?.filtroCategoriaNome ?? "CATEGORIA")}
           </h3>
           <svg
             className={`w-5 h-5 text-gray-600 transition-transform duration-200 ${
@@ -442,14 +445,14 @@ export function ProductSidebar({
       )}
 
       {/* FILTER BY PRICE */}
-      {filtrosConfig?.filtroPrecoAtivo && (
+      {(showOnlyBasicFilters || filtrosConfig?.filtroPrecoAtivo) && (
       <div>
         <button
           onClick={() => setPrecoExpandido(!precoExpandido)}
           className="flex items-center justify-between w-full mb-4 group"
         >
           <h3 className="text-sm font-semibold text-gray-900 uppercase">
-            {filtrosConfig.filtroPrecoNome}
+            {showOnlyBasicFilters ? "PREÇO" : (filtrosConfig?.filtroPrecoNome ?? "PREÇO")}
           </h3>
           <svg
             className={`w-5 h-5 text-gray-600 transition-transform duration-200 ${
@@ -484,7 +487,8 @@ export function ProductSidebar({
             }}
           />
 
-          {/* Checkbox Com Desconto */}
+          {/* Checkbox Com Desconto - oculto quando apenas filtros básicos */}
+          {!showOnlyBasicFilters && (
           <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
             <label className="flex cursor-pointer items-center gap-2 rounded p-2 hover:bg-gray-100 transition-colors">
               <input
@@ -498,13 +502,14 @@ export function ProductSidebar({
               </span>
             </label>
           </div>
+          )}
         </div>
         )}
       </div>
       )}
 
-      {/* FILTER BY PRODUCT OPTIONS */}
-      {filtrosConfig?.filtroOpcoesProdutoAtivo && opcoesProduto && (
+      {/* FILTER BY PRODUCT OPTIONS - oculto quando apenas filtros básicos */}
+      {!showOnlyBasicFilters && filtrosConfig?.filtroOpcoesProdutoAtivo && opcoesProduto && (
       <div className="space-y-6">
         <button
           onClick={() => setOpcoesProdutoExpandida(!opcoesProdutoExpandida)}

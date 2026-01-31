@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ok, serverError } from "@/lib/http";
 import { getPrecoUnitario, getDescontoPercentualLinha } from "@/lib/pricing";
+import { getEstoqueProntaEntrega } from "@/lib/estoque-pronta-entrega";
 
 export async function GET() {
   try {
@@ -121,12 +122,21 @@ export async function GET() {
           ? precoOriginalValido - precoUnit
           : 0;
 
+        // Verificar se há estoque pronta entrega suficiente para este item
+        const estoquePE = await getEstoqueProntaEntrega(
+          item.produtoId,
+          item.variacaoMedida_cm,
+          item.tecidoId
+        );
+        const prontaEntrega = estoquePE !== null && estoquePE >= item.quantidade;
+
         return {
           ...item,
           previewPrecoUnit: precoUnit,
           precoOriginal: precoOriginalValido,
           descontoPercentual: descontoPercentual > 0 ? descontoPercentual : null,
           descontoValor: descontoValor,
+          prontaEntrega,
         };
       })
     );

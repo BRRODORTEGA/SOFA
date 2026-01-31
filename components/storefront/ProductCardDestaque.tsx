@@ -15,17 +15,20 @@ interface ProdutoDestaque {
 
 interface ProductCardDestaqueProps {
   produto: ProdutoDestaque;
+  /** URL completa do link (ex: /produto/xxx ou /produto/xxx?ref=pronta-entrega) */
+  productHref?: string;
 }
 
-export function ProductCardDestaque({ produto }: ProductCardDestaqueProps) {
+export function ProductCardDestaque({ produto, productHref }: ProductCardDestaqueProps) {
   const temDesconto = produto.descontoPercentual && produto.descontoPercentual > 0;
   const precoExibir = temDesconto && produto.precoComDesconto 
     ? produto.precoComDesconto 
     : produto.precoOriginal;
+  const href = productHref ?? `/produto/${produto.id}`;
 
   return (
     <Link
-      href={`/produto/${produto.id}`}
+      href={href}
       className="group flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:shadow-lg"
     >
       {/* Área da imagem - quadrado proporcional (como no exemplo) */}

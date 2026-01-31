@@ -29,6 +29,8 @@ interface ProductGridProps {
   onGroupByChange?: (group: "none" | "categoria" | "tipo" | "abertura" | "familia") => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
+  /** Query string para links do produto (ex: "ref=pronta-entrega") */
+  productLinkQuery?: string;
 }
 
 export function ProductGrid({
@@ -42,7 +44,9 @@ export function ProductGrid({
   onGroupByChange,
   searchQuery = "",
   onSearchChange,
+  productLinkQuery,
 }: ProductGridProps) {
+  const productHref = (id: string) => `/produto/${id}${productLinkQuery ? `?${productLinkQuery}` : ""}`;
   return (
     <div className="flex-1">
       {/* Barra de busca e controles */}
@@ -173,15 +177,15 @@ export function ProductGrid({
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {produtos.map((produto) => {
                 if (produto.descontoPercentual && produto.descontoPercentual > 0) {
-                  return <ProductCardDestaque key={produto.id} produto={produto} />;
+                  return <ProductCardDestaque key={produto.id} produto={produto} productHref={productHref(produto.id)} />;
                 }
-                return <ProductCard key={produto.id} produto={produto} />;
+                return <ProductCard key={produto.id} produto={produto} productHref={productHref(produto.id)} />;
               })}
             </div>
           ) : (
             <div className="space-y-4">
               {produtos.map((produto) => (
-                <ProductListItem key={produto.id} produto={produto} />
+                <ProductListItem key={produto.id} produto={produto} productHref={productHref(produto.id)} />
               ))}
             </div>
           );
@@ -227,15 +231,15 @@ export function ProductGrid({
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {grupos[nomeGrupo].map((produto) => {
                       if (produto.descontoPercentual && produto.descontoPercentual > 0) {
-                        return <ProductCardDestaque key={produto.id} produto={produto} />;
+                        return <ProductCardDestaque key={produto.id} produto={produto} productHref={productHref(produto.id)} />;
                       }
-                      return <ProductCard key={produto.id} produto={produto} />;
+                      return <ProductCard key={produto.id} produto={produto} productHref={productHref(produto.id)} />;
                     })}
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {grupos[nomeGrupo].map((produto) => (
-                      <ProductListItem key={produto.id} produto={produto} />
+                      <ProductListItem key={produto.id} produto={produto} productHref={productHref(produto.id)} />
                     ))}
                   </div>
                 )}
@@ -248,10 +252,10 @@ export function ProductGrid({
   );
 }
 
-function ProductCard({ produto }: { produto: Produto }) {
+function ProductCard({ produto, productHref }: { produto: Produto; productHref: string }) {
   return (
     <Link
-      href={`/produto/${produto.id}`}
+      href={productHref}
       className="group flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:shadow-lg"
     >
       {produto.imagens?.[0] ? (
@@ -284,10 +288,10 @@ function ProductCard({ produto }: { produto: Produto }) {
   );
 }
 
-function ProductListItem({ produto }: { produto: Produto }) {
+function ProductListItem({ produto, productHref }: { produto: Produto; productHref: string }) {
   return (
     <Link
-      href={`/produto/${produto.id}`}
+      href={productHref}
       className="group flex gap-4 rounded-lg border bg-white p-4 transition-all hover:shadow-lg"
     >
       {produto.imagens?.[0] ? (

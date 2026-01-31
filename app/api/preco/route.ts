@@ -1,4 +1,5 @@
 import { getPrecoUnitario, getDescontoPercentualLinha } from "@/lib/pricing";
+import { getEstoqueProntaEntrega } from "@/lib/estoque-pronta-entrega";
 import { ok, unprocessable, serverError } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 
@@ -46,11 +47,16 @@ export async function GET(req: Request) {
       ? preco * (1 - descontoPercentual / 100)
       : preco;
 
+    // Verificar estoque pronta entrega para a combinação (produto + medida + tecido)
+    const estoquePE = await getEstoqueProntaEntrega(produtoId, medida, tecidoId);
+    const prontaEntrega = estoquePE !== null && estoquePE >= 1;
+
     return ok({ 
       preco: precoComDesconto,
       precoOriginal: descontoPercentual > 0 ? precoOriginal : null,
       descontoPercentual: descontoPercentual > 0 ? descontoPercentual : null,
-      disponivel: true 
+      disponivel: true,
+      prontaEntrega,
     });
   } catch (e: any) {
     if (e.message) {

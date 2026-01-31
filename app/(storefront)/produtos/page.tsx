@@ -150,7 +150,7 @@ export default function ProdutosPage() {
 
   // Carregar ambientes (para o filtro na sidebar)
   useEffect(() => {
-    fetch("/api/ambientes?limit=200&ativo=true")
+    fetch("/api/ambientes?limit=200&ativo=true&comProdutosTabelaVigente=true")
       .then((r) => r.json())
       .then((d) => {
         if (d?.ok && d?.data?.items) {

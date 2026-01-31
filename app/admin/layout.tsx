@@ -112,6 +112,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                     </span>
                   )}
                 </Link>
+                <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/estoque-pronta-entrega">
+                  📦 Estoque Pronta Entrega
+                </Link>
                 <Link className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-blue-700" href="/admin/clientes">
                   👥 Clientes
                 </Link>

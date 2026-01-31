@@ -23,7 +23,7 @@ export default function Navbar() {
 
   // Buscar ambientes ativos para o menu AMBIENTES
   useEffect(() => {
-    fetch("/api/ambientes?ativo=true&limit=100")
+    fetch("/api/ambientes?ativo=true&limit=100&comProdutosTabelaVigente=true")
       .then((res) => res.json())
       .then((data) => {
         if (data?.ok && data?.data?.items) {
@@ -271,6 +271,14 @@ export default function Navbar() {
               Coleção
             </Link>
 
+            {/* Pronta Entrega */}
+            <Link 
+              href="/pronta-entrega"
+              className="text-sm font-medium text-foreground hover:text-primary transition-colors duration-300"
+            >
+              Pronta Entrega
+            </Link>
+
             {/* Nossa História */}
             <Link 
               href="/nossa-historia"
@@ -504,7 +512,7 @@ export default function Navbar() {
                             type="button"
                             onClick={() => {
                               setDropdownOpen(null);
-                              signOut({ callbackUrl: "/" });
+                              signOut({ callbackUrl: "https://domuxdesign.com.br" });
                             }}
                             className="block w-full px-4 py-2.5 text-left text-sm text-foreground hover:bg-bg-2"
                           >
@@ -519,7 +527,7 @@ export default function Navbar() {
                   <div className="flex items-center gap-4 pl-4 border-l border-border">
                     <span className="text-sm text-muted-foreground font-light">{session.user?.email}</span>
                     <button
-                      onClick={() => signOut({ callbackUrl: "/" })}
+                      onClick={() => signOut({ callbackUrl: "https://domuxdesign.com.br" })}
                       className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-bg-2 hover:border-gray-1 transition-all duration-300"
                     >
                       Sair
@@ -584,6 +592,13 @@ export default function Navbar() {
               onClick={() => setMenuOpen(false)}
             >
               Coleção
+            </Link>
+            <Link 
+              href="/pronta-entrega"
+              className="px-4 py-3 text-sm font-medium text-foreground hover:bg-bg-2 rounded-lg transition-colors duration-300"
+              onClick={() => setMenuOpen(false)}
+            >
+              Pronta Entrega
             </Link>
             <Link 
               href="/nossa-historia"
@@ -706,7 +721,7 @@ export default function Navbar() {
                   <span className="text-sm text-muted-foreground font-light block mb-3">{session.user?.email}</span>
                   <button
                     onClick={() => {
-                      signOut({ callbackUrl: "/" });
+                      signOut({ callbackUrl: "https://domuxdesign.com.br" });
                       setMenuOpen(false);
                     }}
                     className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-bg-2 transition-all duration-300"

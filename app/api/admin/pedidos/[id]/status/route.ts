@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ok, unprocessable, notFound } from "@/lib/http";
 import { enviarEmailLog } from "@/lib/email-orders";
-import { OrderConfirmedEmail } from "@/emails/order_confirmed";
 import { OrderRejectedEmail } from "@/emails/order_rejected";
 import { OrderStatusUpdatedEmail } from "@/emails/order_status_updated";
 
@@ -32,16 +31,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }),
   ]);
 
-  // E-mails básicos de exemplo
-  if (novoStatus === "Aprovado") {
-    await enviarEmailLog({
-      to: pedido.cliente.email,
-      subject: `Seu pedido ${pedido.codigo} foi aprovado`,
-      template: "order_confirmed",
-      react: OrderConfirmedEmail({ codigo: pedido.codigo }),
-    });
-  }
-
   if (novoStatus === "Reprovado") {
     await enviarEmailLog({
       to: pedido.cliente.email,
@@ -52,7 +41,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   // E-mail genérico para outras mudanças de status
-  if (novoStatus !== "Aprovado" && novoStatus !== "Reprovado" && novoStatus !== "Solicitado") {
+  if (novoStatus !== "Reprovado" && novoStatus !== "Solicitado") {
     await enviarEmailLog({
       to: pedido.cliente.email,
       subject: `Atualização do pedido ${pedido.codigo}`,
