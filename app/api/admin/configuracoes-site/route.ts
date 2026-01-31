@@ -55,6 +55,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { 
       categoriasDestaque, 
+      categoriasDestaqueImagens,
       produtosDestaque, 
       tabelaPrecoVigenteId, 
       produtosAtivosTabelaVigente, 
@@ -83,7 +84,9 @@ export async function PUT(request: NextRequest) {
       rodapeTitulo,
       rodapeDescricao,
       rodapeContato,
-      rodapeCopyright
+      rodapeCopyright,
+      rodapePoliticaPrivacidadeUrl,
+      rodapeTrocasDevolucaoUrl
     } = body;
 
     // Validar dados
@@ -150,6 +153,7 @@ export async function PUT(request: NextRequest) {
         where: { id: "site-config" },
         update: {
           categoriasDestaque,
+          categoriasDestaqueImagens: categoriasDestaqueImagens ?? null,
           produtosDestaque,
           tabelaPrecoVigenteId: tabelaPrecoVigenteId || null,
           produtosAtivosTabelaVigente: produtosAtivos,
@@ -179,10 +183,13 @@ export async function PUT(request: NextRequest) {
           rodapeDescricao: rodapeDescricao ?? null,
           rodapeContato: rodapeContato ?? null,
           rodapeCopyright: rodapeCopyright ?? null,
+          rodapePoliticaPrivacidadeUrl: rodapePoliticaPrivacidadeUrl ?? null,
+          rodapeTrocasDevolucaoUrl: rodapeTrocasDevolucaoUrl ?? null,
         } as any, // Type assertion temporária até regenerar Prisma Client
         create: {
           id: "site-config",
           categoriasDestaque,
+          categoriasDestaqueImagens: categoriasDestaqueImagens ?? null,
           produtosDestaque,
           tabelaPrecoVigenteId: tabelaPrecoVigenteId || null,
           produtosAtivosTabelaVigente: produtosAtivos,
@@ -212,6 +219,8 @@ export async function PUT(request: NextRequest) {
           rodapeDescricao: rodapeDescricao ?? null,
           rodapeContato: rodapeContato ?? null,
           rodapeCopyright: rodapeCopyright ?? null,
+          rodapePoliticaPrivacidadeUrl: rodapePoliticaPrivacidadeUrl ?? null,
+          rodapeTrocasDevolucaoUrl: rodapeTrocasDevolucaoUrl ?? null,
         } as any, // Type assertion temporária até regenerar Prisma Client
         include: {
           tabelaPrecoVigente: true,

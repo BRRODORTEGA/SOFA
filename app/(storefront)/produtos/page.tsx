@@ -31,6 +31,14 @@ interface Produto {
 export default function ProdutosPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const categoriaIdUrl = searchParams.get("categoriaId");
+  const categoriaIdsUrl = searchParams.get("categoriaIds");
+  const initialCategoriaSelecionada = categoriaIdUrl
+    ? [categoriaIdUrl]
+    : categoriaIdsUrl
+      ? categoriaIdsUrl.split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
+
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [familias, setFamilias] = useState<Familia[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -40,14 +48,19 @@ export default function ProdutosPage() {
   const [sortBy, setSortBy] = useState("default");
   const [groupBy, setGroupBy] = useState<"none" | "categoria" | "tipo" | "abertura" | "familia">("none");
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoriaSelecionada, setCategoriaSelecionada] = useState<string[]>([]);
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState<string[]>(initialCategoriaSelecionada);
   const [familiaSelecionada, setFamiliaSelecionada] = useState<string[]>([]);
   const [precoMin, setPrecoMin] = useState<string>("");
   const [precoMax, setPrecoMax] = useState<string>("");
   const [precoMinRange, setPrecoMinRange] = useState<number>(0);
   const [precoMaxRange, setPrecoMaxRange] = useState<number>(50000);
   const comDescontoUrl = searchParams.get("comDesconto") === "true";
+  const ambienteIdUrl = searchParams.get("ambienteId");
+  const initialAmbienteSelecionada = ambienteIdUrl ? [ambienteIdUrl] : [];
   const [comDesconto, setComDesconto] = useState<boolean>(comDescontoUrl);
+  const [ambientes, setAmbientes] = useState<{ id: string; nome: string }[]>([]);
+  const [ambienteSelecionada, setAmbienteSelecionada] = useState<string[]>(initialAmbienteSelecionada);
+  const [ambienteNome, setAmbienteNome] = useState<string>("");
   const [filtrosOpcoes, setFiltrosOpcoes] = useState<{
     medidas: number[];
     tecidos: string[];
@@ -61,6 +74,55 @@ export default function ProdutosPage() {
     aberturas: [],
     acionamentos: [],
   });
+
+  // Sincronizar ambiente da URL com o estado (ex.: ao abrir link do menu Ambientes)
+  useEffect(() => {
+    const ambIds = searchParams.get("ambienteIds")?.split(",").map((s) => s.trim()).filter(Boolean) ||
+      (searchParams.get("ambienteId") ? [searchParams.get("ambienteId")!] : []);
+    setAmbienteSelecionada(ambIds);
+  }, [searchParams]);
+
+  // Atualizar URL quando o usuário seleciona/deseleciona ambiente na sidebar (mantém filtro visível e consistente)
+  const handleAmbienteChange = useCallback((ids: string[]) => {
+    setAmbienteSelecionada(ids);
+    const params = new URLSearchParams(searchParams.toString());
+    if (ids.length > 0) {
+      params.set("ambienteIds", ids.join(","));
+    } else {
+      params.delete("ambienteIds");
+    }
+    params.delete("ambienteId"); // manter apenas ambienteIds para múltiplos
+    const query = params.toString();
+    router.replace(query ? `/produtos?${query}` : "/produtos", { scroll: false });
+  }, [searchParams, router]);
+
+  // Sincronizar categoria da URL (ex.: ao clicar em Categorias em Destaque na home)
+  useEffect(() => {
+    const catId = searchParams.get("categoriaId");
+    const catIds = searchParams.get("categoriaIds");
+    if (catId) {
+      setCategoriaSelecionada([catId]);
+    } else if (catIds) {
+      setCategoriaSelecionada(catIds.split(",").map((s) => s.trim()).filter(Boolean));
+    } else {
+      setCategoriaSelecionada([]);
+    }
+  }, [searchParams]);
+
+  // Carregar nome do ambiente quando um único ambiente está selecionado (para o banner)
+  useEffect(() => {
+    if (ambienteSelecionada.length !== 1) {
+      setAmbienteNome("");
+      return;
+    }
+    fetch(`/api/ambientes/${ambienteSelecionada[0]}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.ok && d?.data?.nome) setAmbienteNome(d.data.nome);
+        else setAmbienteNome("");
+      })
+      .catch(() => setAmbienteNome(""));
+  }, [ambienteSelecionada]);
 
   // Carregar categorias
   useEffect(() => {
@@ -86,6 +148,18 @@ export default function ProdutosPage() {
       .catch((err) => console.error("Erro ao carregar famílias:", err));
   }, []);
 
+  // Carregar ambientes (para o filtro na sidebar)
+  useEffect(() => {
+    fetch("/api/ambientes?limit=200&ativo=true")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.ok && d?.data?.items) {
+          setAmbientes(d.data.items);
+        }
+      })
+      .catch((err) => console.error("Erro ao carregar ambientes:", err));
+  }, []);
+
   // Carregar produtos
   const buscarProdutos = useCallback(async () => {
     setLoading(true);
@@ -98,6 +172,9 @@ export default function ProdutosPage() {
       }
       if (familiaSelecionada.length > 0) {
         params.set("familiaIds", familiaSelecionada.join(","));
+      }
+      if (ambienteSelecionada.length > 0) {
+        params.set("ambienteIds", ambienteSelecionada.join(","));
       }
       if (searchQuery) {
         params.set("q", searchQuery);
@@ -176,7 +253,7 @@ export default function ProdutosPage() {
     } finally {
       setLoading(false);
     }
-  }, [categoriaSelecionada, familiaSelecionada, searchQuery, sortBy, precoMin, precoMax, comDesconto, comDescontoUrl, filtrosOpcoes]);
+  }, [categoriaSelecionada, familiaSelecionada, ambienteSelecionada, searchQuery, sortBy, precoMin, precoMax, comDesconto, comDescontoUrl, filtrosOpcoes]);
 
   // Carregar best sellers
   useEffect(() => {
@@ -202,16 +279,32 @@ export default function ProdutosPage() {
           <p className="text-gray-600">Aproveite nossas ofertas especiais!</p>
         </div>
       )}
+      {ambienteSelecionada.length === 1 && (
+        <div className="mb-6 flex flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+          <span className="text-sm font-medium text-gray-700">
+            Ambiente: <span className="font-semibold text-gray-900">{ambienteNome || "…"}</span>
+          </span>
+          <a
+            href="/produtos"
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            Ver todos os produtos
+          </a>
+        </div>
+      )}
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Sidebar */}
         <ProductSidebar
           categorias={categorias}
           familias={familias}
+          ambientes={ambientes}
           produtosBestSellers={produtosBestSellers}
           categoriaSelecionada={categoriaSelecionada}
           onCategoriaChange={setCategoriaSelecionada}
           familiaSelecionada={familiaSelecionada}
           onFamiliaChange={setFamiliaSelecionada}
+          ambienteSelecionada={ambienteSelecionada}
+          onAmbienteChange={handleAmbienteChange}
           precoMin={precoMin}
           precoMax={precoMax}
           onPrecoChange={(min, max) => {

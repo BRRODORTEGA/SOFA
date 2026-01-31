@@ -16,6 +16,11 @@ interface Familia {
   _count?: { produtos: number };
 }
 
+interface Ambiente {
+  id: string;
+  nome: string;
+}
+
 interface ProdutoBestSeller {
   id: string;
   nome: string;
@@ -52,6 +57,9 @@ interface ProductSidebarProps {
   onCategoriaChange?: (categoriaIds: string[]) => void; // Sempre passa array
   familiaSelecionada?: string | string[]; // Aceita string única ou array para múltipla seleção
   onFamiliaChange?: (familiaIds: string[]) => void; // Sempre passa array
+  ambientes?: Ambiente[];
+  ambienteSelecionada?: string | string[]; // Aceita string única ou array para múltipla seleção
+  onAmbienteChange?: (ambienteIds: string[]) => void; // Sempre passa array
   precoMin?: string;
   precoMax?: string;
   onPrecoChange?: (min: string, max: string) => void;
@@ -78,6 +86,9 @@ export function ProductSidebar({
   onCategoriaChange,
   familiaSelecionada,
   onFamiliaChange,
+  ambientes = [],
+  ambienteSelecionada,
+  onAmbienteChange,
   precoMin: precoMinProp,
   precoMax: precoMaxProp,
   onPrecoChange,
@@ -137,6 +148,7 @@ export function ProductSidebar({
   // Estados para controlar o colapso das seções - todas começam colapsadas
   const [categoriaExpandida, setCategoriaExpandida] = useState(false);
   const [familiaExpandida, setFamiliaExpandida] = useState(false);
+  const [ambienteExpandida, setAmbienteExpandida] = useState(false);
   const [precoExpandido, setPrecoExpandido] = useState(false);
   const [opcoesProdutoExpandida, setOpcoesProdutoExpandida] = useState(false);
   const [tamanhoExpandido, setTamanhoExpandido] = useState(false);
@@ -201,6 +213,77 @@ export function ProductSidebar({
 
   return (
     <aside className="w-full lg:w-80 space-y-8 pr-4">
+      {/* AMBIENTE - primeira opção */}
+      {ambientes.length > 0 && (
+      <div>
+        <button
+          onClick={() => setAmbienteExpandida(!ambienteExpandida)}
+          className="flex items-center justify-between w-full mb-4 group"
+        >
+          <h3 className="text-sm font-semibold text-gray-900 uppercase">
+            AMBIENTE
+          </h3>
+          <svg
+            className={`w-5 h-5 text-gray-600 transition-transform duration-200 ${
+              ambienteExpandida ? "rotate-180" : ""
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
+        {ambienteExpandida && (
+        <div className="space-y-2">
+          {ambientes.map((amb) => {
+            const ambientesSelecionadosArray = Array.isArray(ambienteSelecionada)
+              ? ambienteSelecionada
+              : ambienteSelecionada
+                ? [ambienteSelecionada]
+                : [];
+            const isSelected = ambientesSelecionadosArray.includes(amb.id);
+            return (
+              <div key={amb.id}>
+                {onAmbienteChange ? (
+                  <label className="flex cursor-pointer items-center gap-2 rounded p-2 hover:bg-gray-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        const novosAmbientes = e.target.checked
+                          ? [...ambientesSelecionadosArray, amb.id]
+                          : ambientesSelecionadosArray.filter((id) => id !== amb.id);
+                        onAmbienteChange(novosAmbientes);
+                      }}
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <span className={`text-sm font-medium transition-colors ${
+                      isSelected
+                        ? "text-primary font-semibold"
+                        : "text-gray-700"
+                    }`}>
+                      {amb.nome}
+                    </span>
+                  </label>
+                ) : (
+                  <span className="block text-sm font-medium text-gray-700 p-2 rounded">
+                    {amb.nome}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        )}
+      </div>
+      )}
+
       {/* CATEGORIES */}
       {filtrosConfig?.filtroCategoriaAtivo && (
       <div>
@@ -208,7 +291,7 @@ export function ProductSidebar({
           onClick={() => setCategoriaExpandida(!categoriaExpandida)}
           className="flex items-center justify-between w-full mb-4 group"
         >
-          <h3 className="text-lg font-semibold text-gray-900 uppercase">
+          <h3 className="text-sm font-semibold text-gray-900 uppercase">
             {filtrosConfig.filtroCategoriaNome}
           </h3>
           <svg
@@ -288,7 +371,7 @@ export function ProductSidebar({
           onClick={() => setFamiliaExpandida(!familiaExpandida)}
           className="flex items-center justify-between w-full mb-4 group"
         >
-          <h3 className="text-lg font-semibold text-gray-900 uppercase">
+          <h3 className="text-sm font-semibold text-gray-900 uppercase">
             FAMÍLIA
           </h3>
           <svg
@@ -365,7 +448,7 @@ export function ProductSidebar({
           onClick={() => setPrecoExpandido(!precoExpandido)}
           className="flex items-center justify-between w-full mb-4 group"
         >
-          <h3 className="text-lg font-semibold text-gray-900 uppercase">
+          <h3 className="text-sm font-semibold text-gray-900 uppercase">
             {filtrosConfig.filtroPrecoNome}
           </h3>
           <svg
@@ -427,7 +510,7 @@ export function ProductSidebar({
           onClick={() => setOpcoesProdutoExpandida(!opcoesProdutoExpandida)}
           className="flex items-center justify-between w-full mb-4 group"
         >
-          <h3 className="text-lg font-semibold text-gray-900 uppercase">
+          <h3 className="text-sm font-semibold text-gray-900 uppercase">
             {filtrosConfig.filtroOpcoesProdutoNome}
           </h3>
           <svg
@@ -730,7 +813,7 @@ export function ProductSidebar({
       {/* BEST SELLERS */}
       {produtosBestSellers.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 uppercase">Mais Vendidos</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-4 uppercase">Mais Vendidos</h3>
           <div className="space-y-4">
             {produtosBestSellers.map((produto) => (
               <Link
@@ -769,7 +852,7 @@ export function ProductSidebar({
 
       {/* TAGS */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 uppercase">Tags</h3>
+        <h3 className="text-sm font-semibold text-gray-900 mb-4 uppercase">Tags</h3>
         <div className="flex flex-wrap gap-2">
           {/* Tags podem ser adicionadas aqui no futuro */}
           <span className="text-sm text-gray-500">Nenhuma tag disponível</span>

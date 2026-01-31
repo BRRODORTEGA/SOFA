@@ -246,9 +246,10 @@ export default function EditProduto({ item }: { item: any }) {
         configuracao: currentValues.configuracao || item.configuracao || null,
         imagens: todasImagens,
         imagensDetalhadas: imagensDetalhadas,
+        clearImages: imagensDetalhadas.length === 0,
         status: Boolean(currentValues.status ?? item.status ?? true),
       };
-      
+
       const res = await fetch(`/api/produtos/${item.id}`, { 
         method: "PUT", 
         headers: { "Content-Type": "application/json" }, 
@@ -357,9 +358,10 @@ export default function EditProduto({ item }: { item: any }) {
         informacoesAdicionais: values.informacoesAdicionais?.trim() || null,
         imagens: todasImagens, // Mantido para compatibilidade
         imagensDetalhadas: imagensDetalhadas, // Novo formato com tecidoId
+        clearImages: imagensDetalhadas.length === 0, // Permite limpar imagens quando o usuário remove todas
         status: Boolean(values.status),
       };
-      
+
       console.log("Enviando dados:", payload); // Debug
       
       const res = await fetch(`/api/produtos/${item.id}`, { 

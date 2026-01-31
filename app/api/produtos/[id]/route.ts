@@ -140,29 +140,28 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     
     // Se houver imagensDetalhadas no payload, processá-las
     const imagensDetalhadas = (json as any).imagensDetalhadas;
-    
+    const clearImages = (json as any).clearImages === true; // Flag explícita para limpar imagens
+
     const updated = await prisma.$transaction(async (tx) => {
       // Atualizar produto (campos conhecidos pelo Client)
-      const produtoAtualizado = await tx.produto.update({ 
-        where: { id: params.id }, 
-        data: dataToUpdate 
+      const produtoAtualizado = await tx.produto.update({
+        where: { id: params.id },
+        data: dataToUpdate,
       });
-      
+
       // Atualizar informacoesAdicionais em raw (funciona mesmo com Prisma Client gerado antes do campo existir)
       const infoAdic = informacoesAdicionais ?? null;
       await tx.$executeRaw`
         UPDATE "Produto" SET "informacoesAdicionais" = ${infoAdic} WHERE id = ${params.id}
       `;
-      
-      // Se houver imagensDetalhadas, atualizar
+
+      // Só alterar imagens detalhadas quando houver lista nova com itens, ou quando clearImages for true com array vazio
+      // Evita apagar imagens por engano quando o front envia imagensDetalhadas: [] (ex.: submit acidental de outro formulário)
       if (imagensDetalhadas && Array.isArray(imagensDetalhadas) && imagensDetalhadas.length > 0) {
-        // Remover todas as imagens detalhadas existentes
         await tx.produtoImagem.deleteMany({ where: { produtoId: params.id } });
-        
-        // Criar novas imagens detalhadas
         await tx.produtoImagem.createMany({
           data: imagensDetalhadas
-            .filter((img: any) => img && img.url && typeof img.url === 'string' && img.url.trim() !== "")
+            .filter((img: any) => img && img.url && typeof img.url === "string" && img.url.trim() !== "")
             .map((img: any, index: number) => ({
               produtoId: params.id,
               url: img.url.trim(),
@@ -171,11 +170,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
               ordem: img.ordem ?? index,
             })),
         });
-      } else if (imagensDetalhadas && Array.isArray(imagensDetalhadas) && imagensDetalhadas.length === 0) {
-        // Se o array estiver vazio, remover todas as imagens existentes
+      } else if (imagensDetalhadas && Array.isArray(imagensDetalhadas) && imagensDetalhadas.length === 0 && clearImages) {
         await tx.produtoImagem.deleteMany({ where: { produtoId: params.id } });
       }
-      
+      // Se imagensDetalhadas for [] e clearImages não for true: não altera imagens (proteção)
+
       return produtoAtualizado;
     });
     

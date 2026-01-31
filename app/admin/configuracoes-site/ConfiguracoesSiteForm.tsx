@@ -31,6 +31,7 @@ interface TabelaPreco {
 interface SiteConfig {
   id: string;
   categoriasDestaque: string[];
+  categoriasDestaqueImagens?: Record<string, string> | null;
   produtosDestaque: string[];
   tabelaPrecoVigenteId: string | null;
   produtosAtivosTabelaVigente: string[];
@@ -61,6 +62,8 @@ interface SiteConfig {
   rodapeDescricao?: string | null;
   rodapeContato?: string | null;
   rodapeCopyright?: string | null;
+  rodapePoliticaPrivacidadeUrl?: string | null;
+  rodapeTrocasDevolucaoUrl?: string | null;
 }
 
 interface Props {
@@ -81,6 +84,10 @@ export default function ConfiguracoesSiteForm({
   const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<string[]>(
     siteConfig.categoriasDestaque || []
   );
+  const [categoriasDestaqueImagens, setCategoriasDestaqueImagens] = useState<Record<string, string>>(
+    (siteConfig.categoriasDestaqueImagens as Record<string, string>) || {}
+  );
+  const [uploadingCategoriaImagem, setUploadingCategoriaImagem] = useState<string | null>(null);
   const [produtosSelecionados, setProdutosSelecionados] = useState<string[]>(
     siteConfig.produtosDestaque || []
   );
@@ -140,6 +147,10 @@ export default function ConfiguracoesSiteForm({
   const [rodapeDescricao, setRodapeDescricao] = useState<string>((siteConfig as any).rodapeDescricao ?? "Sofás sob medida com o conforto que você merece. Qualidade, estilo e personalização em cada detalhe.");
   const [rodapeContato, setRodapeContato] = useState<string>((siteConfig as any).rodapeContato ?? "Entre em contato conosco através do canal de mensagens do seu pedido. Estamos sempre prontos para ajudar.");
   const [rodapeCopyright, setRodapeCopyright] = useState<string>((siteConfig as any).rodapeCopyright ?? "© {ano} AI Sofá. Todos os direitos reservados.");
+  const [rodapePoliticaPrivacidadeUrl, setRodapePoliticaPrivacidadeUrl] = useState<string>((siteConfig as any).rodapePoliticaPrivacidadeUrl ?? "");
+  const [rodapeTrocasDevolucaoUrl, setRodapeTrocasDevolucaoUrl] = useState<string>((siteConfig as any).rodapeTrocasDevolucaoUrl ?? "");
+  const [uploadingPolitica, setUploadingPolitica] = useState(false);
+  const [uploadingTrocas, setUploadingTrocas] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,6 +162,7 @@ export default function ConfiguracoesSiteForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           categoriasDestaque: categoriasSelecionadas,
+          categoriasDestaqueImagens: Object.keys(categoriasDestaqueImagens).length > 0 ? categoriasDestaqueImagens : null,
           produtosDestaque: produtosSelecionados,
           tabelaPrecoVigenteId: tabelaPrecoSelecionada || null,
           produtosAtivosTabelaVigente: produtosAtivosTabelaVigente,
@@ -182,6 +194,8 @@ export default function ConfiguracoesSiteForm({
           rodapeDescricao: rodapeDescricao || null,
           rodapeContato: rodapeContato || null,
           rodapeCopyright: rodapeCopyright || null,
+          rodapePoliticaPrivacidadeUrl: rodapePoliticaPrivacidadeUrl || null,
+          rodapeTrocasDevolucaoUrl: rodapeTrocasDevolucaoUrl || null,
         }),
       });
 
@@ -202,11 +216,55 @@ export default function ConfiguracoesSiteForm({
   };
 
   const toggleCategoria = (categoriaId: string) => {
-    setCategoriasSelecionadas((prev) =>
-      prev.includes(categoriaId)
+    setCategoriasSelecionadas((prev) => {
+      const next = prev.includes(categoriaId)
         ? prev.filter((id) => id !== categoriaId)
-        : [...prev, categoriaId]
-    );
+        : [...prev, categoriaId];
+      if (!next.includes(categoriaId)) {
+        setCategoriasDestaqueImagens((img) => {
+          const copy = { ...img };
+          delete copy[categoriaId];
+          return copy;
+        });
+      }
+      return next;
+    });
+  };
+
+  const handleCategoriaDestaqueImageUpload = async (categoriaId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      alert("Tipo de arquivo não permitido. Use JPEG, PNG ou WebP.");
+      e.target.value = "";
+      return;
+    }
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert("Arquivo muito grande. Tamanho máximo: 5MB.");
+      e.target.value = "";
+      return;
+    }
+    setUploadingCategoriaImagem(categoriaId);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch("/api/upload/imagem", { method: "POST", body: formData });
+      const data = await res.json();
+      if (res.ok && data.ok && data.data?.url) {
+        setCategoriasDestaqueImagens((prev) => ({ ...prev, [categoriaId]: data.data.url }));
+        alert("Imagem da categoria enviada com sucesso!");
+      } else {
+        alert(data.error || data.details || "Erro ao fazer upload.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao fazer upload. Tente novamente.");
+    } finally {
+      setUploadingCategoriaImagem(null);
+      e.target.value = "";
+    }
   };
 
   const toggleProduto = (produtoId: string) => {
@@ -366,6 +424,47 @@ export default function ConfiguracoesSiteForm({
 
   const heroImageInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const politicaInputRef = useRef<HTMLInputElement>(null);
+  const trocasInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePdfUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setUrl: (url: string) => void,
+    setUploading: (v: boolean) => void
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      alert("Apenas arquivos PDF são permitidos.");
+      e.target.value = "";
+      return;
+    }
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      alert("Arquivo muito grande. Tamanho máximo: 10MB.");
+      e.target.value = "";
+      return;
+    }
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch("/api/upload/pdf", { method: "POST", body: formData });
+      const data = await res.json();
+      if (res.ok && data.ok && data.data?.url) {
+        setUrl(data.data.url);
+        alert("PDF enviado com sucesso!");
+      } else {
+        alert(data.error || data.details?.message || "Erro ao fazer upload.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao fazer upload. Tente novamente.");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -974,6 +1073,47 @@ export default function ConfiguracoesSiteForm({
             {categoriasSelecionadas.length} categoria(s) selecionada(s)
           </p>
         )}
+        {categoriasSelecionadas.length > 0 && (
+          <div className="mt-6 border-t border-gray-200 pt-6">
+            <h3 className="mb-3 text-sm font-medium text-gray-700">Foto de cada categoria (exibida na página inicial)</h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+              {categoriasSelecionadas.map((catId) => {
+                const categoria = categorias.find((c) => c.id === catId);
+                const imagemUrl = categoriasDestaqueImagens[catId];
+                const uploading = uploadingCategoriaImagem === catId;
+                return (
+                  <div key={catId} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    <p className="mb-2 text-sm font-medium text-gray-900">{categoria?.nome ?? catId}</p>
+                    <div className="flex items-start gap-3">
+                      <div className="h-20 w-20 shrink-0 overflow-hidden rounded border border-gray-200 bg-white">
+                        {imagemUrl ? (
+                          <img src={imagemUrl} alt={categoria?.nome} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">Sem foto</div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          className="hidden"
+                          id={`categoria-img-${catId}`}
+                          onChange={(e) => handleCategoriaDestaqueImageUpload(catId, e)}
+                        />
+                        <label
+                          htmlFor={`categoria-img-${catId}`}
+                          className={`inline-block cursor-pointer rounded border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 ${uploading ? "pointer-events-none opacity-60" : ""}`}
+                        >
+                          {uploading ? "Enviando…" : imagemUrl ? "Trocar foto" : "Enviar foto"}
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Seção: Configuração de Filtros */}
@@ -1248,6 +1388,52 @@ export default function ConfiguracoesSiteForm({
             <p className="mt-1 text-xs text-gray-500">
               Use {"{ano}"} no texto para exibir o ano atual automaticamente.
             </p>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              PDF Política de Privacidade
+            </label>
+            <p className="mb-2 text-xs text-gray-500">
+              Arquivo exibido como link &quot;Política de privacidade&quot; no rodapé do site. Ao clicar, o usuário faz o download do PDF.
+            </p>
+            <input type="file" accept="application/pdf" className="hidden" ref={politicaInputRef} onChange={(e) => handlePdfUpload(e, setRodapePoliticaPrivacidadeUrl, setUploadingPolitica, politicaInputRef)} />
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => politicaInputRef.current?.click()}
+                disabled={uploadingPolitica}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {uploadingPolitica ? "Enviando..." : rodapePoliticaPrivacidadeUrl ? "Trocar PDF" : "Selecionar PDF"}
+              </button>
+              {rodapePoliticaPrivacidadeUrl && (
+                <span className="text-sm text-gray-600 truncate max-w-xs">{rodapePoliticaPrivacidadeUrl}</span>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              PDF Trocas e Devolução
+            </label>
+            <p className="mb-2 text-xs text-gray-500">
+              Arquivo exibido como link &quot;Trocas e devolução&quot; no rodapé do site. Ao clicar, o usuário faz o download do PDF.
+            </p>
+            <input type="file" accept="application/pdf" className="hidden" ref={trocasInputRef} onChange={(e) => handlePdfUpload(e, setRodapeTrocasDevolucaoUrl, setUploadingTrocas)} />
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => trocasInputRef.current?.click()}
+                disabled={uploadingTrocas}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {uploadingTrocas ? "Enviando..." : rodapeTrocasDevolucaoUrl ? "Trocar PDF" : "Selecionar PDF"}
+              </button>
+              {rodapeTrocasDevolucaoUrl && (
+                <span className="text-sm text-gray-600 truncate max-w-xs">{rodapeTrocasDevolucaoUrl}</span>
+              )}
+            </div>
           </div>
         </div>
       </div>

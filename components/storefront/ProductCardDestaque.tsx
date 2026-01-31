@@ -26,19 +26,20 @@ export function ProductCardDestaque({ produto }: ProductCardDestaqueProps) {
   return (
     <Link
       href={`/produto/${produto.id}`}
-      className="group relative overflow-hidden rounded-lg border bg-white transition-all hover:shadow-lg"
+      className="group flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:shadow-lg"
     >
+      {/* Área da imagem - quadrado proporcional (como no exemplo) */}
       {produto.imagens?.[0] ? (
-        <div className="aspect-square relative overflow-hidden bg-gray-100">
+        <div className="relative aspect-square w-full overflow-hidden bg-white">
           <img
             src={produto.imagens[0]}
             alt={produto.nome}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
           />
-          {/* Badge de desconto - estilo vermelho oval */}
+          {/* Badge de desconto - retangular vermelho com cantos arredondados */}
           {temDesconto && (
             <div className="absolute top-2 right-2 z-10">
-              <div className="bg-red-500 rounded-full px-3 py-1 shadow-lg">
+              <div className="rounded-md bg-red-500 px-2.5 py-1 shadow-md">
                 <span className="text-xs font-bold text-white">
                   -{produto.descontoPercentual}%
                 </span>
@@ -47,11 +48,11 @@ export function ProductCardDestaque({ produto }: ProductCardDestaqueProps) {
           )}
         </div>
       ) : (
-        <div className="aspect-square bg-gray-200 flex items-center justify-center relative">
+        <div className="relative aspect-square w-full flex items-center justify-center bg-gray-100">
           <span className="text-gray-400 text-sm">Sem imagem</span>
           {temDesconto && (
             <div className="absolute top-2 right-2 z-10">
-              <div className="bg-red-500 rounded-full px-3 py-1 shadow-lg">
+              <div className="rounded-md bg-red-500 px-2.5 py-1 shadow-md">
                 <span className="text-xs font-bold text-white">
                   -{produto.descontoPercentual}%
                 </span>
@@ -60,22 +61,23 @@ export function ProductCardDestaque({ produto }: ProductCardDestaqueProps) {
           )}
         </div>
       )}
-      <div className="p-4">
-        <h3 className="font-semibold text-gray-900 group-hover:text-primary transition-colors">
+      {/* Área de texto - nome, marca/família, preços */}
+      <div className="flex flex-1 flex-col justify-end p-3">
+        <h3 className="font-bold text-gray-900 group-hover:text-primary transition-colors text-sm">
           {produto.nome}
         </h3>
         {produto.familia && (
-          <p className="mt-1 text-sm text-gray-600">{produto.familia.nome}</p>
+          <p className="mt-0.5 text-xs text-gray-500">{produto.familia.nome}</p>
         )}
         {precoExibir !== null && precoExibir !== undefined && (
-          <div className="mt-2 flex items-baseline gap-2">
+          <div className="mt-1.5 flex flex-wrap items-baseline gap-2">
             {temDesconto && produto.precoOriginal && (
-              <span className="text-sm text-gray-500 line-through">
-                R$ {produto.precoOriginal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <span className="text-sm text-gray-400 line-through">
+                R$ {produto.precoOriginal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             )}
-            <span className={`font-bold text-lg ${temDesconto ? 'text-red-600' : 'text-gray-900'}`}>
-              R$ {precoExibir.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <span className={`text-sm font-bold ${temDesconto ? "text-red-600" : "text-gray-900"}`}>
+              R$ {precoExibir.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
         )}

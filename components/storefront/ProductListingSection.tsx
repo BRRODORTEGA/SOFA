@@ -51,6 +51,8 @@ export function ProductListingSection({
   const [searchQuery, setSearchQuery] = useState("");
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<string[]>([]);
   const [familiaSelecionada, setFamiliaSelecionada] = useState<string[]>([]);
+  const [ambientes, setAmbientes] = useState<{ id: string; nome: string }[]>([]);
+  const [ambienteSelecionada, setAmbienteSelecionada] = useState<string[]>([]);
   const [precoMin, setPrecoMin] = useState<string>("");
   const [precoMax, setPrecoMax] = useState<string>("");
   const [comDesconto, setComDesconto] = useState<boolean>(false);
@@ -114,6 +116,9 @@ export function ProductListingSection({
       if (familiaSelecionada.length > 0) {
         params.set("familiaIds", familiaSelecionada.join(","));
       }
+      if (ambienteSelecionada.length > 0) {
+        params.set("ambienteIds", ambienteSelecionada.join(","));
+      }
       if (searchQuery) {
         params.set("q", searchQuery);
       }
@@ -168,18 +173,28 @@ export function ProductListingSection({
     } finally {
       setLoading(false);
     }
-  }, [categoriaSelecionada, familiaSelecionada, searchQuery, sortBy, precoMin, precoMax, filtrarPorPreco, filtrosOpcoes, comDesconto]);
+  }, [categoriaSelecionada, familiaSelecionada, ambienteSelecionada, searchQuery, sortBy, precoMin, precoMax, filtrarPorPreco, filtrosOpcoes, comDesconto]);
+
+  // Carregar ambientes (para o filtro na sidebar)
+  useEffect(() => {
+    fetch("/api/ambientes?limit=200&ativo=true")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.ok && d?.data?.items) setAmbientes(d.data.items);
+      })
+      .catch(() => {});
+  }, []);
 
   // Aplicar filtros e ordenação
   useEffect(() => {
     // Se não há produtos iniciais e não há filtros selecionados, buscar todos os produtos
-    if (produtosIniciais.length === 0 && categoriaSelecionada.length === 0 && familiaSelecionada.length === 0 && !searchQuery && !precoMin && !precoMax) {
+    if (produtosIniciais.length === 0 && categoriaSelecionada.length === 0 && familiaSelecionada.length === 0 && ambienteSelecionada.length === 0 && !searchQuery && !precoMin && !precoMax) {
       buscarProdutos();
       return;
     }
 
-    if (categoriaSelecionada.length > 0 || familiaSelecionada.length > 0) {
-      // Se há categoria ou família selecionada, buscar da API
+    if (categoriaSelecionada.length > 0 || familiaSelecionada.length > 0 || ambienteSelecionada.length > 0) {
+      // Se há categoria, família ou ambiente selecionado, buscar da API
       buscarProdutos();
     } else if (searchQuery || precoMin || precoMax) {
       // Se há busca ou filtro de preço, filtrar produtos iniciais
@@ -230,11 +245,14 @@ export function ProductListingSection({
       <ProductSidebar
         categorias={categorias}
         familias={familias}
+        ambientes={ambientes}
         produtosBestSellers={produtosBestSellers}
         categoriaSelecionada={categoriaSelecionada}
         onCategoriaChange={setCategoriaSelecionada}
         familiaSelecionada={familiaSelecionada}
         onFamiliaChange={setFamiliaSelecionada}
+        ambienteSelecionada={ambienteSelecionada}
+        onAmbienteChange={setAmbienteSelecionada}
         precoMin={precoMin}
         precoMax={precoMax}
         onPrecoChange={(min, max) => {

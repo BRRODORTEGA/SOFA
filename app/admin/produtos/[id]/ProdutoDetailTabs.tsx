@@ -6,12 +6,14 @@ import EditProduto from "./ui-edit";
 import ProdutoTecidosTab from "./ProdutoTecidosTab";
 import ProdutoVariacoesTab from "./ProdutoVariacoesTab";
 import ProdutoTabelaPrecoTab from "./ProdutoTabelaPrecoTab";
+import ProdutoAmbientesTab from "./ProdutoAmbientesTab";
 
 const tabs = [
   { key: "dados", label: "Dados" },
   { key: "tecidos", label: "Tecidos" },
   { key: "variacoes", label: "Variações" },
   { key: "precos", label: "Preços" },
+  { key: "ambientes", label: "Ambientes" },
 ];
 
 export default function ProdutoDetailTabs({ produto, activeTab }: { produto: any; activeTab: string }) {
@@ -108,6 +110,12 @@ export default function ProdutoDetailTabs({ produto, activeTab }: { produto: any
       {currentTab === "tecidos" && <ProdutoTecidosTab produtoId={produto.id} />}
       {currentTab === "variacoes" && <ProdutoVariacoesTab produtoId={produto.id} />}
       {currentTab === "precos" && <ProdutoTabelaPrecoTab produtoId={produto.id} />}
+      {currentTab === "ambientes" && (
+        <ProdutoAmbientesTab
+          produtoId={produto.id}
+          ambientesIniciais={(produto as any).ambientes ?? []}
+        />
+      )}
     </div>
   );
 }

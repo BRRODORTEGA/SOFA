@@ -13,6 +13,9 @@ export default async function Page({
   const resolvedSearchParams = await searchParams;
   const item = await prisma.produto.findUnique({ 
     where: { id: params.id },
+    include: {
+      ambientes: { select: { id: true, nome: true } },
+    },
   });
   
   if (!item) return <div className="text-red-600">Produto não encontrado.</div>;

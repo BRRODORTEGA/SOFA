@@ -18,10 +18,12 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   
   // Mensagem de informação baseada no parâmetro
-  const infoMessage = messageParam === "login_required" 
+  const infoMessage = messageParam === "login_required"
     ? "Realize o login para continuar suas compras"
     : messageParam === "email_verified"
     ? "E-mail verificado com sucesso! Faça login para continuar."
+    : messageParam === "password_reset"
+    ? "Senha alterada com sucesso! Faça login com sua nova senha."
     : null;
 
   // Redirecionar automaticamente se já estiver logado
@@ -118,9 +120,17 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-            Senha
-          </label>
+          <div className="flex items-center justify-between">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              Senha
+            </label>
+            <Link
+              href="/auth/forgot-password"
+              className="text-sm font-medium text-primary hover:text-domux-burgundy-dark"
+            >
+              Esqueci minha senha
+            </Link>
+          </div>
           <input
             id="password"
             type="password"

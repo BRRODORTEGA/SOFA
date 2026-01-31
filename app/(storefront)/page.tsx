@@ -1,228 +1,98 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { getSiteConfig } from "@/lib/site-config-cache";
+import { getPrecosMinimosEmLote } from "@/lib/preco-batch";
 import { ProductListingSection } from "@/components/storefront/ProductListingSection";
 
 export default async function HomePage() {
-  // Buscar configurações do site
-  let siteConfig = await prisma.siteConfig.findUnique({
-    where: { id: "site-config" },
-  }) as any; // Type assertion temporária até regenerar Prisma Client
+  const siteConfig = (await getSiteConfig()) as any;
 
-  // Se não existir, criar configuração padrão
-  if (!siteConfig) {
-    siteConfig = await prisma.siteConfig.create({
-      data: {
-        id: "site-config",
-        categoriasDestaque: [],
-        produtosDestaque: [],
-        produtosAtivosTabelaVigente: [],
-        ordemCategorias: [],
-      },
-    }) as any; // Type assertion temporária até regenerar Prisma Client
+  // Filtros de produtos ativos (tabela vigente)
+  const produtosAtivosFilterContagem: any = { status: true };
+  const produtosAtivosFilter: any = { status: true };
+  if (siteConfig?.tabelaPrecoVigenteId) {
+    const ids = siteConfig.produtosAtivosTabelaVigente || [];
+    produtosAtivosFilterContagem.id = ids.length > 0 ? { in: ids } : { in: [] };
+    produtosAtivosFilter.id = ids.length > 0 ? { in: ids } : { in: [] };
   }
 
-  // Função auxiliar para obter o preço mínimo e desconto máximo de um produto
-  const getPrecoMinimoProduto = async (produtoId: string, tabelaPrecoId: string | null) => {
-    const where: any = { produtoId };
-    if (tabelaPrecoId) {
-      where.tabelaPrecoId = tabelaPrecoId;
-    } else {
-      where.tabelaPrecoId = null;
-    }
-
-    const linhas = await prisma.tabelaPrecoLinha.findMany({
-      where,
-      select: {
-        preco_grade_1000: true,
-        preco_grade_2000: true,
-        preco_grade_3000: true,
-        preco_grade_4000: true,
-        preco_grade_5000: true,
-        preco_grade_6000: true,
-        preco_grade_7000: true,
-        preco_couro: true,
-        descontoPercentual: true,
+  // Paralelizar: categorias, famílias, produtos em destaque e best sellers em uma única rodada
+  const [categorias, familias, produtosRaw, produtosBestSellersRaw] = await Promise.all([
+    prisma.categoria.findMany({
+      where: { ativo: true },
+      include: {
+        _count: {
+          select: {
+            produtos: { where: produtosAtivosFilterContagem },
+          },
+        },
       },
-      take: 10, // Limitar para performance
-    });
+      orderBy: { nome: "asc" },
+    }),
+    prisma.familia.findMany({
+      where: { ativo: true },
+      include: {
+        _count: {
+          select: {
+            produtos: { where: produtosAtivosFilterContagem },
+          },
+        },
+      },
+      orderBy: { nome: "asc" },
+    }),
+    (siteConfig.produtosDestaque?.length ?? 0) > 0
+      ? prisma.produto.findMany({
+          where: {
+            id: { in: siteConfig.produtosDestaque },
+            status: true,
+          },
+          include: {
+            familia: { select: { nome: true } },
+            categoria: { select: { nome: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        })
+      : prisma.produto.findMany({
+          where: produtosAtivosFilter,
+          include: {
+            familia: { select: { nome: true } },
+            categoria: { select: { nome: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 100,
+        }),
+    prisma.produto.findMany({
+      where: produtosAtivosFilter,
+      include: {
+        familia: { select: { nome: true } },
+        categoria: { select: { nome: true } },
+      },
+      take: 3,
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
 
-    if (linhas.length === 0) return { preco: null, desconto: null };
+  // Uma única consulta em lote para preços de todos os produtos (evita N+1)
+  const todosIds = [...new Set([...produtosRaw.map((p) => p.id), ...produtosBestSellersRaw.map((p) => p.id)])];
+  const precoMap = await getPrecosMinimosEmLote(todosIds, siteConfig?.tabelaPrecoVigenteId ?? null);
+  const descontos = (siteConfig?.descontosProdutosDestaque as Record<string, number>) || {};
 
-    // Encontrar o menor preço entre todas as linhas e todas as grades
-    // E também o maior desconto aplicado
-    let precoMinimo = Infinity;
-    let descontoMaximo = 0;
-    
-    for (const linha of linhas) {
-      const precos = [
-        Number(linha.preco_grade_1000),
-        Number(linha.preco_grade_2000),
-        Number(linha.preco_grade_3000),
-        Number(linha.preco_grade_4000),
-        Number(linha.preco_grade_5000),
-        Number(linha.preco_grade_6000),
-        Number(linha.preco_grade_7000),
-        Number(linha.preco_couro),
-      ];
-      const menorPrecoLinha = Math.min(...precos.filter(p => p > 0));
-      if (menorPrecoLinha < precoMinimo) {
-        precoMinimo = menorPrecoLinha;
-      }
-      
-      // Buscar o maior desconto entre as linhas
-      if (linha.descontoPercentual) {
-        const descontoLinha = Number(linha.descontoPercentual);
-        if (descontoLinha > descontoMaximo) {
-          descontoMaximo = descontoLinha;
-        }
-      }
-    }
-
+  const enriquecer = (produto: (typeof produtosRaw)[0]) => {
+    const { preco: precoOriginal, desconto: descontoLinha } = precoMap.get(produto.id) ?? { preco: null, desconto: null };
+    const descontoProdutoDestaque = descontos[produto.id] || 0;
+    const descontoPercentual = Math.max(descontoProdutoDestaque, descontoLinha || 0);
+    const precoComDesconto =
+      precoOriginal && descontoPercentual > 0 ? precoOriginal * (1 - descontoPercentual / 100) : precoOriginal;
     return {
-      preco: precoMinimo === Infinity ? null : precoMinimo,
-      desconto: descontoMaximo > 0 ? descontoMaximo : null
+      ...produto,
+      precoOriginal,
+      precoComDesconto,
+      descontoPercentual: descontoPercentual > 0 ? descontoPercentual : undefined,
     };
   };
 
-  // Preparar filtro de produtos ativos para contagem
-  const produtosAtivosFilterContagem: any = { status: true };
-  const siteConfigTypedContagem = siteConfig as any; // Type assertion temporária até regenerar Prisma Client
-  if (siteConfigTypedContagem?.tabelaPrecoVigenteId) {
-    const produtosAtivosContagem = siteConfigTypedContagem.produtosAtivosTabelaVigente || [];
-    if (produtosAtivosContagem.length > 0) {
-      produtosAtivosFilterContagem.id = { in: produtosAtivosContagem };
-    } else {
-      produtosAtivosFilterContagem.id = { in: [] };
-    }
-  }
-
-  // Buscar todas as categorias ativas com contagem de produtos ativos da tabela vigente
-  const categorias = await prisma.categoria.findMany({
-    where: { ativo: true },
-    include: {
-      _count: {
-        select: {
-          produtos: {
-            where: produtosAtivosFilterContagem
-          }
-        }
-      }
-    },
-    orderBy: { nome: "asc" },
-  });
-
-  // Buscar todas as famílias ativas com contagem de produtos ativos da tabela vigente
-  const familias = await prisma.familia.findMany({
-    where: { ativo: true },
-    include: {
-      _count: {
-        select: {
-          produtos: {
-            where: produtosAtivosFilterContagem
-          }
-        }
-      }
-    },
-    orderBy: { nome: "asc" },
-  });
-
-  // Preparar filtro para produtos ativos (considerando tabela vigente)
-  const produtosAtivosFilter: any = { status: true };
-  if (siteConfigTypedContagem?.tabelaPrecoVigenteId) {
-    const produtosAtivos = siteConfigTypedContagem.produtosAtivosTabelaVigente || [];
-    if (produtosAtivos.length > 0) {
-      produtosAtivosFilter.id = { in: produtosAtivos };
-    } else {
-      produtosAtivosFilter.id = { in: [] };
-    }
-  }
-
-  // Buscar produtos em destaque configurados no admin
-  const produtosDestaqueIds = siteConfig.produtosDestaque || [];
-  
-  // Se houver produtos em destaque, usar eles. Caso contrário, buscar todos os produtos ativos
-  const produtosRaw = produtosDestaqueIds.length > 0
-    ? await prisma.produto.findMany({
-        where: {
-          id: { in: produtosDestaqueIds },
-          status: true,
-        },
-        include: {
-          familia: { select: { nome: true } },
-          categoria: { select: { nome: true } },
-        },
-        orderBy: { createdAt: "desc" },
-      })
-    : await prisma.produto.findMany({
-        where: produtosAtivosFilter,
-        include: {
-          familia: { select: { nome: true } },
-          categoria: { select: { nome: true } },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 100, // Limitar a 100 produtos para performance
-      });
-
-  // Buscar descontos e calcular preços com desconto
-  const siteConfigTypedDescontos = siteConfig as any;
-  const descontos = (siteConfigTypedDescontos?.descontosProdutosDestaque as Record<string, number>) || {};
-  const tabelaPrecoVigenteId = siteConfigTypedDescontos?.tabelaPrecoVigenteId || null;
-
-  // Enriquecer produtos com preços e descontos
-  const produtos = await Promise.all(
-    produtosRaw.map(async (produto) => {
-      const descontoProdutoDestaque = descontos[produto.id] || 0;
-      const { preco: precoOriginal, desconto: descontoLinha } = await getPrecoMinimoProduto(produto.id, tabelaPrecoVigenteId);
-      
-      // Usar o maior desconto entre linha da tabela e produto em destaque
-      const descontoPercentual = Math.max(descontoProdutoDestaque, descontoLinha || 0);
-      
-      const precoComDesconto = precoOriginal && descontoPercentual > 0
-        ? precoOriginal * (1 - descontoPercentual / 100)
-        : precoOriginal;
-
-      return {
-        ...produto,
-        precoOriginal,
-        precoComDesconto,
-        descontoPercentual: descontoPercentual > 0 ? descontoPercentual : undefined,
-      };
-    })
-  );
-
-  // Buscar produtos best sellers (top 3 mais recentes por enquanto)
-  // Filtrar apenas produtos ativos da tabela vigente
-  const produtosBestSellersRaw = await prisma.produto.findMany({
-    where: produtosAtivosFilter,
-    include: {
-      familia: { select: { nome: true } },
-      categoria: { select: { nome: true } },
-    },
-    take: 3,
-    orderBy: { createdAt: "desc" },
-  });
-
-  // Enriquecer best sellers com preços e descontos
-  const produtosBestSellers = await Promise.all(
-    produtosBestSellersRaw.map(async (produto) => {
-      const descontoProdutoDestaque = descontos[produto.id] || 0;
-      const { preco: precoOriginal, desconto: descontoLinha } = await getPrecoMinimoProduto(produto.id, tabelaPrecoVigenteId);
-      
-      // Usar o maior desconto entre linha da tabela e produto em destaque
-      const descontoPercentual = Math.max(descontoProdutoDestaque, descontoLinha || 0);
-      
-      const precoComDesconto = precoOriginal && descontoPercentual > 0
-        ? precoOriginal * (1 - descontoPercentual / 100)
-        : precoOriginal;
-
-      return {
-        ...produto,
-        precoOriginal,
-        precoComDesconto,
-        descontoPercentual: descontoPercentual > 0 ? descontoPercentual : undefined,
-      };
-    })
-  );
+  const produtos = produtosRaw.map(enriquecer);
+  const produtosBestSellers = produtosBestSellersRaw.map(enriquecer);
 
   // Obter configurações do hero com valores padrão
   const siteConfigTypedHero = siteConfig as any;
@@ -235,6 +105,13 @@ export default async function HomePage() {
   const heroImagemLink = siteConfigTypedHero?.heroImagemLink || null;
   const heroImagemObjectFit = siteConfigTypedHero?.heroImagemObjectFit || "cover";
   const heroImagemObjectPosition = siteConfigTypedHero?.heroImagemObjectPosition || "center";
+
+  // Categorias em destaque (ordem e imagens customizadas pelo admin)
+  const categoriasDestaqueIds = (siteConfigTypedHero?.categoriasDestaque as string[] | undefined) ?? [];
+  const categoriasDestaqueImagens = (siteConfigTypedHero?.categoriasDestaqueImagens as Record<string, string> | undefined) ?? {};
+  const categoriasEmDestaque = categoriasDestaqueIds
+    .map((id) => categorias.find((c) => c.id === id))
+    .filter((c): c is (typeof categorias)[number] => c != null);
 
   return (
     <div className="overflow-hidden">
@@ -295,6 +172,48 @@ export default async function HomePage() {
           </>
         )}
       </section>
+
+      {/* Categorias em Destaque - abaixo do banner */}
+      {categoriasEmDestaque.length > 0 && (
+        <section className="py-10 md:py-14 bg-background">
+          <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
+            <h2 className="text-center text-2xl md:text-3xl font-semibold text-primary mb-8 md:mb-10">
+              Categorias em Destaque
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 md:gap-6">
+              {categoriasEmDestaque.map((cat) => {
+                const imagemUrl = categoriasDestaqueImagens[cat.id];
+                return (
+                  <Link
+                    key={cat.id}
+                    href={`/produtos?categoriaId=${cat.id}`}
+                    className="group flex flex-col items-center rounded-lg border border-border bg-card p-3 md:p-4 transition-all hover:shadow-md hover:border-primary/30"
+                  >
+                    <div className="relative h-24 w-full md:h-32 overflow-hidden rounded-md bg-muted mb-2 md:mb-3">
+                      {imagemUrl ? (
+                        <img
+                          src={imagemUrl}
+                          alt={cat.nome}
+                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                          <svg className="h-10 w-10 md:h-12 md:w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-center text-sm font-medium text-foreground group-hover:text-primary">
+                      {cat.nome}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Seção de Produtos com Sidebar e Grid */}
       <section className="py-8 md:py-12 bg-background">

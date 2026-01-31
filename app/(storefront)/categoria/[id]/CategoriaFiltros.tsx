@@ -266,32 +266,34 @@ function CategoriaFiltrosContent({
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {produtos.map((produto) => (
             <Link
               key={produto.id}
               href={`/produto/${produto.id}`}
-              className="group overflow-hidden rounded-lg border bg-white transition-shadow hover:shadow-lg"
+              className="group flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-lg"
             >
               {produto.imagens?.[0] ? (
-                <div className="aspect-square relative overflow-hidden bg-gray-100">
+                <div className="relative aspect-square w-full overflow-hidden bg-white">
                   <img
                     src={produto.imagens[0]}
                     alt={produto.nome}
-                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                    className="h-full w-full object-contain transition-transform group-hover:scale-105"
                   />
                 </div>
               ) : (
-                <div className="aspect-square bg-gray-200 flex items-center justify-center">
-                  <span className="text-gray-400">Sem imagem</span>
+                <div className="aspect-square w-full flex items-center justify-center bg-gray-100">
+                  <span className="text-gray-400 text-sm">Sem imagem</span>
                 </div>
               )}
-              <div className="p-4">
-                <h3 className="font-semibold text-gray-900 group-hover:text-blue-600">
+              <div className="flex flex-1 flex-col justify-end p-4">
+                <h3 className="font-bold text-gray-900 group-hover:text-primary transition-colors">
                   {produto.nome}
                 </h3>
-                <p className="mt-1 text-sm text-gray-600">{produto.familia?.nome}</p>
-                {produto.tipo && <p className="mt-1 text-xs text-gray-500">{produto.tipo}</p>}
+                {produto.familia && (
+                  <p className="mt-0.5 text-xs text-gray-500">{produto.familia.nome}</p>
+                )}
+                {produto.tipo && <p className="mt-0.5 text-xs text-gray-500">{produto.tipo}</p>}
               </div>
             </Link>
           ))}

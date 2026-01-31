@@ -35,7 +35,12 @@ enum CategoriaGrade {
 
 model User {
   id               String    @id @default(cuid())
-  name             String?
+  name             String?   // Nome (primeiro nome)
+  sobrenome        String?   // Sobrenome
+  cpfCnpj          String?   // CPF ou CNPJ
+  dataNascimento   DateTime? // Data de nascimento
+  genero           String?   // Gênero
+  celular          String?   // Celular
   email            String    @unique
   password         String
   role             Role      @default(CLIENTE)
@@ -48,10 +53,25 @@ model User {
 
   pedidos  Pedido[]
   carrinho Carrinho?
+  passwordResetTokens PasswordResetToken[]
 
   @@index([tokenVerificacao])
   @@index([emailVerificado])
   @@index([representante])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 /**
@@ -65,6 +85,15 @@ model Categoria {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   familias  Familia[]
+  produtos  Produto[]
+}
+
+model Ambiente {
+  id        String   @id @default(cuid())
+  nome      String
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   produtos  Produto[]
 }
 
@@ -120,6 +149,7 @@ model Produto {
   itens             PedidoItem[]
   carrinhoItems     CarrinhoItem[]
   imagensDetalhadas ProdutoImagem[]
+  ambientes         Ambiente[]
 
   @@index([familiaId, categoriaId])
 }
@@ -437,6 +467,8 @@ model SiteConfig {
 
   // Categorias selecionadas para exibir na home (IDs das categorias)
   categoriasDestaque String[] @default([])
+  // Imagem customizada por categoria em destaque (JSON: { "categoriaId": "/uploads/xxx.jpg" })
+  categoriasDestaqueImagens Json?
 
   // Produtos selecionados para exibir na home como "Produtos em Destaque" (IDs dos produtos)
   produtosDestaque String[] @default([])
@@ -491,6 +523,8 @@ model SiteConfig {
   rodapeDescricao String? // Texto da coluna "Sobre" no rodapé
   rodapeContato String? // Texto da coluna "Contato" no rodapé
   rodapeCopyright String? // Texto do copyright; use {ano} para o ano atual (ex: "© {ano} AI Sofá. Todos os direitos reservados.")
+  rodapePoliticaPrivacidadeUrl String? // URL do PDF Política de Privacidade (ex: /uploads/xxx.pdf)
+  rodapeTrocasDevolucaoUrl String? // URL do PDF Trocas e Devolução (ex: /uploads/xxx.pdf)
 
   // Configurações adicionais em JSON (para futuras expansões)
   configuracoesExtras Json?

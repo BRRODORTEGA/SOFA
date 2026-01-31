@@ -5,7 +5,12 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 const updateUserSchema = z.object({
+  cpfCnpj: z.string().optional(),
   name: z.string().min(2, "Nome muito curto"),
+  sobrenome: z.string().optional(),
+  dataNascimento: z.string().optional(),
+  genero: z.string().optional(),
+  celular: z.string().optional(),
   email: z.string().email("E-mail inválido"),
   password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres").optional(),
 });
@@ -23,6 +28,11 @@ export async function GET() {
       select: {
         id: true,
         name: true,
+        sobrenome: true,
+        cpfCnpj: true,
+        dataNascimento: true,
+        genero: true,
+        celular: true,
         email: true,
         role: true,
         emailVerificado: true,
@@ -64,7 +74,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { name, email, password } = parsed.data;
+    const { cpfCnpj, name, sobrenome, dataNascimento, genero, celular, email, password } = parsed.data;
 
     // Buscar usuário atual
     const currentUser = await prisma.user.findUnique({
@@ -92,10 +102,27 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Parse data de nascimento (DD/MM/AAAA -> Date)
+    let dataNascimentoDate: Date | null | undefined = undefined;
+    if (dataNascimento !== undefined) {
+      if (dataNascimento === "" || dataNascimento.replace(/\D/g, "").length < 8) {
+        dataNascimentoDate = null;
+      } else {
+        const [d, m, a] = dataNascimento.split("/");
+        if (d && m && a) dataNascimentoDate = new Date(Number(a), Number(m) - 1, Number(d));
+        else dataNascimentoDate = null;
+      }
+    }
+
     // Preparar dados para atualização
     const updateData: any = {
       name: name.trim(),
       email: normalizedEmail,
+      ...(cpfCnpj !== undefined && { cpfCnpj: cpfCnpj.replace(/\D/g, "").trim() || null }),
+      ...(sobrenome !== undefined && { sobrenome: sobrenome?.trim() || null }),
+      ...(dataNascimentoDate !== undefined && { dataNascimento: dataNascimentoDate }),
+      ...(genero !== undefined && { genero: genero?.trim() || null }),
+      ...(celular !== undefined && { celular: celular?.replace(/\D/g, "").trim() || null }),
     };
 
     // Se senha foi fornecida, fazer hash
@@ -110,6 +137,11 @@ export async function PUT(request: NextRequest) {
       select: {
         id: true,
         name: true,
+        sobrenome: true,
+        cpfCnpj: true,
+        dataNascimento: true,
+        genero: true,
+        celular: true,
         email: true,
         role: true,
         emailVerificado: true,

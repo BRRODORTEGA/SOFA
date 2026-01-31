@@ -10,6 +10,8 @@ interface FooterConfig {
   descricao: string;
   contato: string;
   copyright: string;
+  politicaPrivacidadeUrl?: string | null;
+  trocasDevolucaoUrl?: string | null;
 }
 
 interface FooterProps {
@@ -22,6 +24,8 @@ export default function Footer({ config }: FooterProps) {
   const contato = config?.contato ?? DEFAULT_CONTATO;
   const copyrightRaw = config?.copyright ?? DEFAULT_COPYRIGHT;
   const copyright = copyrightRaw.replace("{ano}", String(new Date().getFullYear()));
+  const politicaPrivacidadeUrl = config?.politicaPrivacidadeUrl ?? null;
+  const trocasDevolucaoUrl = config?.trocasDevolucaoUrl ?? null;
 
   return (
     <footer className="border-t border-border bg-bg-1">
@@ -74,6 +78,32 @@ export default function Footer({ config }: FooterProps) {
           <p className="text-sm text-muted-foreground font-light">
             {copyright}
           </p>
+          {(politicaPrivacidadeUrl || trocasDevolucaoUrl) && (
+            <p className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground font-light">
+              {politicaPrivacidadeUrl && (
+                <a
+                  href={politicaPrivacidadeUrl}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:text-domux-burgundy-dark transition-colors underline"
+                >
+                  Política de privacidade
+                </a>
+              )}
+              {trocasDevolucaoUrl && (
+                <a
+                  href={trocasDevolucaoUrl}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:text-domux-burgundy-dark transition-colors underline"
+                >
+                  Trocas e devolução
+                </a>
+              )}
+            </p>
+          )}
         </div>
       </div>
     </footer>

@@ -170,7 +170,7 @@ export function ProductGrid({
         if (groupBy === "none") {
           // Sem agrupamento - renderizar normalmente
           return viewMode === "grid" ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {produtos.map((produto) => {
                 if (produto.descontoPercentual && produto.descontoPercentual > 0) {
                   return <ProductCardDestaque key={produto.id} produto={produto} />;
@@ -224,7 +224,7 @@ export function ProductGrid({
                   </h2>
                 </div>
                 {viewMode === "grid" ? (
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {grupos[nomeGrupo].map((produto) => {
                       if (produto.descontoPercentual && produto.descontoPercentual > 0) {
                         return <ProductCardDestaque key={produto.id} produto={produto} />;
@@ -252,30 +252,30 @@ function ProductCard({ produto }: { produto: Produto }) {
   return (
     <Link
       href={`/produto/${produto.id}`}
-      className="group overflow-hidden rounded-lg border bg-white transition-all hover:shadow-lg"
+      className="group flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:shadow-lg"
     >
       {produto.imagens?.[0] ? (
-        <div className="aspect-square relative overflow-hidden bg-gray-100">
+        <div className="relative aspect-square w-full overflow-hidden bg-white">
           <img
             src={produto.imagens[0]}
             alt={produto.nome}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
           />
         </div>
       ) : (
-        <div className="aspect-square bg-gray-200 flex items-center justify-center">
+        <div className="aspect-square w-full flex items-center justify-center bg-gray-100">
           <span className="text-gray-400 text-sm">Sem imagem</span>
         </div>
       )}
-      <div className="p-4">
-        <h3 className="font-semibold text-gray-900 group-hover:text-primary transition-colors">
+      <div className="flex flex-1 flex-col justify-end p-3">
+        <h3 className="font-bold text-gray-900 group-hover:text-primary transition-colors text-sm">
           {produto.nome}
         </h3>
         {produto.familia && (
-          <p className="mt-1 text-sm text-gray-600">{produto.familia.nome}</p>
+          <p className="mt-0.5 text-xs text-gray-500">{produto.familia.nome}</p>
         )}
-        {produto.preco !== null && produto.preco !== undefined && typeof produto.preco === 'number' && (
-          <p className="mt-2 text-lg font-bold text-gray-900">
+        {produto.preco !== null && produto.preco !== undefined && typeof produto.preco === "number" && (
+          <p className="mt-1.5 text-sm font-bold text-gray-900">
             R$ {produto.preco.toFixed(2)}
           </p>
         )}

@@ -5,6 +5,11 @@ export const categoriaSchema = z.object({
   ativo: z.boolean().default(true),
 });
 
+export const ambienteSchema = z.object({
+  nome: z.string().min(2, "Nome muito curto"),
+  ativo: z.boolean().default(true),
+});
+
 export const familiaSchema = z.object({
   categoriaId: z.string().cuid().optional(),
   nome: z.string().min(2),

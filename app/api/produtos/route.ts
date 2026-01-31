@@ -63,6 +63,14 @@ export async function GET(req: Request) {
     where.familiaId = { in: familiaIds };
   }
 
+  // Filtro por ambiente(s): apenas produtos vinculados a pelo menos um dos ambientes selecionados
+  const ambienteIdsRaw = searchParams.get("ambienteIds")?.split(",") ||
+    (searchParams.get("ambienteId") ? [searchParams.get("ambienteId")] : []);
+  const ambienteIds = ambienteIdsRaw.map((id: string) => id.trim()).filter(Boolean);
+  if (ambienteIds.length > 0) {
+    where.ambientes = { some: { id: { in: ambienteIds } } };
+  }
+
   // Aplicar filtros de opções de produto
   if (tipos.length > 0) {
     where.tipo = { in: tipos };

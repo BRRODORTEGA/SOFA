@@ -72,19 +72,28 @@ export default function ProdutoTecidosTab({ produtoId }: { produtoId: string }) 
   async function handleSave() {
     setSaving(true);
     setSaved(false);
-    const res = await fetch(`/api/produtos/${produtoId}/tecidos`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tecidoIds }),
-    });
-    if (res.ok) {
-      setSaved(true);
-      loadVinculados();
-      setTimeout(() => setSaved(false), 3000);
-    } else {
-      alert("Erro ao salvar");
+    const idsToSave = [...tecidoIds]; // Cópia para evitar referência estranha
+    try {
+      const res = await fetch(`/api/produtos/${produtoId}/tecidos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tecidoIds: idsToSave }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.ok !== false) {
+        setSaved(true);
+        await loadVinculados();
+        setTimeout(() => setSaved(false), 3000);
+      } else {
+        const msg = data?.error || data?.details?.message || data?.message || (Array.isArray(data?.details?.tecidoIds) ? data.details.tecidoIds.join(", ") : "Erro ao salvar tecidos.");
+        alert(msg);
+      }
+    } catch (e) {
+      console.error("Erro ao salvar tecidos:", e);
+      alert("Erro de rede ao salvar. Tente novamente.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   async function handleRemove(tecidoId: string) {
@@ -173,6 +182,7 @@ export default function ProdutoTecidosTab({ produtoId }: { produtoId: string }) 
           {saved && <span className="text-sm font-semibold text-green-600">Salvo ✓</span>}
           {saving && <span className="text-sm font-medium text-gray-500">Salvando...</span>}
           <button
+            type="button"
             onClick={handleSave}
             disabled={saving}
             className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"

@@ -139,55 +139,62 @@ export default function BuscaPage() {
           {produtos.length > 0 && (
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Produtos ({produtos.length})</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {produtos.map((produto) => (
                   <Link
                     key={produto.id}
                     href={`/produto/${produto.id}`}
-                    className="group overflow-hidden rounded-lg border bg-white transition-all hover:shadow-lg"
+                    className="group flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:shadow-lg"
                   >
                     {produto.imagens?.[0] ? (
-                      <div className="aspect-square relative overflow-hidden bg-gray-100">
+                      <div className="relative aspect-square w-full overflow-hidden bg-white">
                         <img
                           src={produto.imagens[0]}
                           alt={produto.nome}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
                         />
+                        {produto.descontoPercentual && produto.descontoPercentual > 0 && (
+                          <div className="absolute top-2 right-2 z-10 rounded-md bg-red-500 px-2.5 py-1 shadow-md">
+                            <span className="text-xs font-bold text-white">
+                              -{produto.descontoPercentual}%
+                            </span>
+                          </div>
+                        )}
                       </div>
                     ) : (
-                      <div className="aspect-square bg-gray-200 flex items-center justify-center">
+                      <div className="relative aspect-square w-full flex items-center justify-center bg-gray-100">
                         <span className="text-gray-400 text-sm">Sem imagem</span>
+                        {produto.descontoPercentual && produto.descontoPercentual > 0 && (
+                          <div className="absolute top-2 right-2 z-10 rounded-md bg-red-500 px-2.5 py-1 shadow-md">
+                            <span className="text-xs font-bold text-white">-{produto.descontoPercentual}%</span>
+                          </div>
+                        )}
                       </div>
                     )}
-                    <div className="p-4">
-                      <h3 className="font-semibold text-gray-900 group-hover:text-primary transition-colors mb-1">
+                    <div className="flex flex-1 flex-col justify-end p-3">
+                      <h3 className="font-bold text-gray-900 group-hover:text-primary transition-colors text-sm">
                         {produto.nome}
                       </h3>
                       {produto.categoria && (
-                        <p className="text-sm text-gray-600 mb-2">
+                        <p className="mt-0.5 text-xs text-gray-500">
                           {produto.categoria.nome}
                           {produto.familia && ` • ${produto.familia.nome}`}
                         </p>
                       )}
-                      <div className="flex items-center gap-2">
+                      <div className="mt-2 flex flex-wrap items-baseline gap-2">
                         {produto.precoComDesconto !== null && produto.precoComDesconto !== undefined ? (
                           <>
                             {produto.precoOriginal && produto.precoOriginal > produto.precoComDesconto && (
-                              <span className="text-sm text-gray-500 line-through">
+                              <span className="text-sm text-gray-400 line-through">
                                 R$ {produto.precoOriginal.toFixed(2)}
                               </span>
                             )}
-                            <span className="text-lg font-bold text-gray-900">
+                            <span className="font-bold text-red-600">
                               R$ {produto.precoComDesconto.toFixed(2)}
                             </span>
-                            {produto.descontoPercentual && produto.descontoPercentual > 0 && (
-                              <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-1 rounded">
-                                -{produto.descontoPercentual}%
-                              </span>
-                            )}
                           </>
                         ) : produto.precoOriginal !== null && produto.precoOriginal !== undefined ? (
-                          <span className="text-lg font-bold text-gray-900">
+                          <span className="font-bold text-gray-900">
                             R$ {produto.precoOriginal.toFixed(2)}
                           </span>
                         ) : null}

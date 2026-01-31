@@ -1,285 +1,130 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
-export default function MeusDadosPage() {
-  const { data: session, update } = useSession();
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
-  
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+export default function MinhaContaPage() {
+  const { data: session } = useSession();
+  const [user, setUser] = useState<{
+    name?: string | null;
+    sobrenome?: string | null;
+    email?: string | null;
+  } | null>(null);
 
-  // Carregar dados do usuário
   useEffect(() => {
-    if (session?.user) {
-      setName(session.user.name || "");
-      setEmail(session.user.email || "");
-    }
-  }, [session]);
+    if (!session?.user?.email) return;
+    fetch("/api/user/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.id) setUser(data);
+      })
+      .catch(() => {});
+  }, [session?.user?.email]);
 
-  // Redirecionar se não estiver logado
-  useEffect(() => {
-    if (session === null) {
-      router.push("/auth/login?redirect=/meus-dados");
-    }
-  }, [session, router]);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    setSuccess(false);
-
-    // Validações
-    if (!name || name.trim().length < 2) {
-      setError("Nome deve ter pelo menos 2 caracteres");
-      setLoading(false);
-      return;
-    }
-
-    if (!email || !email.includes("@")) {
-      setError("E-mail inválido");
-      setLoading(false);
-      return;
-    }
-
-    // Se senha foi preenchida, validar
-    if (password) {
-      if (password.length < 6) {
-        setError("Senha deve ter pelo menos 6 caracteres");
-        setLoading(false);
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        setError("As senhas não coincidem");
-        setLoading(false);
-        return;
-      }
-    }
-
-    try {
-      const body: any = {
-        name: name.trim(),
-        email: email.toLowerCase().trim(),
-      };
-
-      // Só incluir senha se foi preenchida
-      if (password) {
-        body.password = password;
-      }
-
-      const res = await fetch("/api/user/me", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        let errorMsg = "Erro ao atualizar dados";
-        if (data.error) {
-          errorMsg = typeof data.error === "string" ? data.error : data.error.message || errorMsg;
-        } else if (data.message) {
-          errorMsg = data.message;
-        }
-        setError(errorMsg);
-        setLoading(false);
-        return;
-      }
-
-      // Atualizar sessão
-      await update();
-
-      setSuccess(true);
-      setPassword("");
-      setConfirmPassword("");
-      
-      // Limpar mensagem de sucesso após 3 segundos
-      setTimeout(() => {
-        setSuccess(false);
-      }, 3000);
-    } catch (err: any) {
-      setError(err.message || "Erro ao atualizar dados");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (!session) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
+  const displayName = user
+    ? [user.name, user.sobrenome].filter(Boolean).join(" ") || user.name || "—"
+    : (session?.user?.name as string) || "—";
+  const email = user?.email ?? (session?.user?.email as string) ?? "—";
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8 md:px-6 lg:px-8">
-      <div className="mb-6">
+    <div className="space-y-8">
+      <div>
         <Link
           href="/"
-          className="mb-4 inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+          className="mb-4 inline-flex items-center gap-2 text-sm text-gray-600 transition-colors hover:text-gray-900"
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           Voltar para o site
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900">Meus Dados</h1>
-        <p className="mt-2 text-gray-600">Atualize suas informações cadastrais</p>
+        <h1 className="text-2xl font-bold text-gray-900">Minha Conta</h1>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Mensagem de sucesso */}
-          {success && (
-            <div className="rounded-lg bg-green-50 border border-green-200 p-4">
-              <div className="flex items-center gap-2">
-                <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <p className="text-sm font-medium text-green-800">Dados atualizados com sucesso!</p>
-              </div>
+      {/* Informações de Conta */}
+      <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <h2 className="mb-4 border-b border-gray-200 pb-2 text-lg font-semibold text-gray-900">
+          Informações de Conta
+        </h2>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div>
+            <h3 className="mb-2 text-sm font-medium text-gray-500">Informações de Contato</h3>
+            <p className="text-gray-900">{displayName}</p>
+            <p className="mt-1 text-gray-600">{email}</p>
+            <div className="mt-3 flex gap-3">
+              <Link
+                href="/meus-dados/editar"
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                EDITAR
+              </Link>
+              <Link
+                href="/meus-dados/editar#senha"
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                ALTERAR SENHA
+              </Link>
             </div>
-          )}
-
-          {/* Mensagem de erro */}
-          {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-4">
-              <div className="flex items-center gap-2">
-                <svg className="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                <p className="text-sm font-medium text-red-800">{error}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Nome */}
+          </div>
           <div>
-            <label htmlFor="name" className="mb-2 block text-sm font-medium text-gray-700">
-              Nome Completo *
-            </label>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Seu nome completo"
-            />
-          </div>
-
-          {/* Email */}
-          <div>
-            <label htmlFor="email" className="mb-2 block text-sm font-medium text-gray-700">
-              E-mail *
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="seu@email.com"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Se você alterar o e-mail, precisará fazer login novamente.
-            </p>
-          </div>
-
-          {/* Divider */}
-          <div className="border-t border-gray-200 pt-6">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">Alterar Senha</h2>
-            <p className="mb-4 text-sm text-gray-600">
-              Deixe em branco se não desejar alterar a senha.
-            </p>
-          </div>
-
-          {/* Senha */}
-          <div>
-            <label htmlFor="password" className="mb-2 block text-sm font-medium text-gray-700">
-              Nova Senha
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Mínimo 6 caracteres"
-            />
-          </div>
-
-          {/* Confirmar Senha */}
-          <div>
-            <label htmlFor="confirmPassword" className="mb-2 block text-sm font-medium text-gray-700">
-              Confirmar Nova Senha
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Digite a senha novamente"
-            />
-          </div>
-
-          {/* Botões */}
-          <div className="flex gap-4 pt-4">
+            <h3 className="mb-2 text-sm font-medium text-gray-500">Newsletter</h3>
+            <p className="text-sm text-gray-600">Você não está inscrito na nossa Newsletter.</p>
             <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-white hover:bg-domux-burgundy-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              type="button"
+              className="mt-2 text-sm font-medium text-primary hover:underline"
+              disabled
             >
-              {loading ? "Salvando..." : "Salvar Alterações"}
+              EDITAR
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Meus Endereços */}
+      <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="border-b border-transparent pb-0 text-lg font-semibold text-gray-900">
+            Meus Endereços
+          </h2>
+          <Link
+            href="/meus-dados/enderecos"
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            GERENCIAR ENDEREÇOS
+          </Link>
+        </div>
+        <div className="mt-4 grid gap-6 md:grid-cols-2">
+          <div>
+            <h3 className="mb-2 text-sm font-medium text-gray-500">
+              Endereço padrão de cobrança
+            </h3>
+            <p className="text-sm text-gray-600">
+              Você não definiu um endereço de faturamento padrão.
+            </p>
             <Link
-              href="/"
-              className="rounded-lg border border-gray-300 bg-white px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              href="/meus-dados/enderecos"
+              className="mt-2 inline-block text-sm font-medium text-primary hover:underline"
             >
-              Cancelar
+              EDITAR O ENDEREÇO
             </Link>
           </div>
-        </form>
-      </div>
-
-      {/* Informações adicionais */}
-      <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
-        <h3 className="mb-2 text-sm font-semibold text-gray-900">Informações da Conta</h3>
-        <div className="space-y-1 text-sm text-gray-600">
-          <p>
-            <span className="font-medium">Tipo de conta:</span>{" "}
-            {(session.user as any)?.role === "ADMIN"
-              ? "Administrador"
-              : (session.user as any)?.role === "OPERADOR"
-              ? "Operador"
-              : (session.user as any)?.role === "FABRICA"
-              ? "Fábrica"
-              : "Cliente"}
-          </p>
-          <p>
-            <span className="font-medium">E-mail verificado:</span>{" "}
-            {session.user?.email ? "Sim" : "Não"}
-          </p>
+          <div>
+            <h3 className="mb-2 text-sm font-medium text-gray-500">
+              Endereço de entrega padrão
+            </h3>
+            <p className="text-sm text-gray-600">
+              Você não definiu um endereço de entrega padrão.
+            </p>
+            <Link
+              href="/meus-dados/enderecos"
+              className="mt-2 inline-block text-sm font-medium text-primary hover:underline"
+            >
+              EDITAR O ENDEREÇO
+            </Link>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
-

@@ -15,8 +15,23 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
+  const [ambientes, setAmbientes] = useState<{ id: string; nome: string }[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const accountDropdownRef = useRef<HTMLDivElement>(null);
+  const ambientesDropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Buscar ambientes ativos para o menu AMBIENTES
+  useEffect(() => {
+    fetch("/api/ambientes?ativo=true&limit=100")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.ok && data?.data?.items) {
+          setAmbientes(data.data.items);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Buscar logo do site
   useEffect(() => {
@@ -35,7 +50,10 @@ export default function Navbar() {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       
-      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
+      if (dropdownOpen === "account" && accountDropdownRef.current && !accountDropdownRef.current.contains(target)) {
+        setDropdownOpen(null);
+      }
+      if (dropdownOpen === "ambientes" && ambientesDropdownRef.current && !ambientesDropdownRef.current.contains(target)) {
         setDropdownOpen(null);
       }
       
@@ -52,7 +70,7 @@ export default function Navbar() {
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [searchOpen]);
+  }, [searchOpen, dropdownOpen]);
 
   // Focar no input quando abrir
   useEffect(() => {
@@ -203,6 +221,47 @@ export default function Navbar() {
             >
               Home
             </Link>
+
+            {/* AMBIENTES - dropdown */}
+            <div className="relative" ref={ambientesDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setDropdownOpen(dropdownOpen === "ambientes" ? null : "ambientes")}
+                onMouseEnter={() => ambientes.length > 0 && setDropdownOpen("ambientes")}
+                className={`flex items-center gap-1 text-sm font-medium transition-colors duration-300 ${
+                  dropdownOpen === "ambientes" ? "text-primary" : "text-foreground hover:text-primary"
+                }`}
+                aria-expanded={dropdownOpen === "ambientes"}
+                aria-haspopup="true"
+              >
+                Ambientes
+                <svg
+                  className={`h-4 w-4 transition-transform ${dropdownOpen === "ambientes" ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {dropdownOpen === "ambientes" && ambientes.length > 0 && (
+                <div
+                  className="absolute left-0 top-full z-50 mt-1 min-w-[220px] rounded-lg border border-gray-200 bg-white py-2 shadow-lg"
+                  onMouseLeave={() => setDropdownOpen(null)}
+                >
+                  {ambientes.map((a) => (
+                    <Link
+                      key={a.id}
+                      href={`/produtos?ambienteId=${encodeURIComponent(a.id)}`}
+                      className="block px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      onClick={() => setDropdownOpen(null)}
+                    >
+                      {a.nome}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Coleção */}
             <Link 
@@ -390,70 +449,83 @@ export default function Navbar() {
                       <span className="ml-2">Carrinho</span>
                       <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
                     </Link>
-                    <Link 
-                      href="/meus-pedidos" 
-                      className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors duration-300 relative group"
-                    >
-                      <div className="relative">
-                        <svg 
-                          className="h-5 w-5" 
-                          fill="none" 
-                          stroke="currentColor" 
-                          viewBox="0 0 24 24"
-                        >
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
-                          />
-                        </svg>
-                        {pedidosAtualizacoes > 0 && (
-                          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-white">
-                            {pedidosAtualizacoes > 9 ? '9+' : pedidosAtualizacoes}
-                          </span>
-                        )}
-                      </div>
-                      <span>Meus Pedidos</span>
-                      {pedidosAtualizacoes > 0 && (
-                        <span className="relative flex h-2 w-2">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
-                          <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
-                        </span>
-                      )}
-                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
-                    </Link>
-                    <Link 
-                      href="/meus-dados" 
-                      className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors duration-300 relative group"
-                    >
-                      <svg 
-                        className="h-5 w-5" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
+                    {/* Dropdown Conta do usuário */}
+                    <div className="relative" ref={accountDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setDropdownOpen(dropdownOpen === "account" ? null : "account")}
+                        className="flex items-center gap-2 rounded-lg border border-border bg-background/80 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-bg-2 transition-colors duration-300"
                       >
-                        <path 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          strokeWidth={2} 
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" 
-                        />
-                      </svg>
-                      <span>Meus Dados</span>
-                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
-                    </Link>
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span>Olá, {(session.user?.name as string)?.split(" ")[0]?.toUpperCase() || "Usuário"}</span>
+                        <svg className={`h-4 w-4 transition-transform ${dropdownOpen === "account" ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {dropdownOpen === "account" && (
+                        <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-border bg-white py-1 shadow-lg">
+                          <Link
+                            href="/meus-dados"
+                            className="block px-4 py-2.5 text-sm text-foreground hover:bg-bg-2"
+                            onClick={() => setDropdownOpen(null)}
+                          >
+                            Minha Conta
+                          </Link>
+                          <Link
+                            href="/meus-pedidos"
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-bg-2"
+                            onClick={() => setDropdownOpen(null)}
+                          >
+                            Meus pedidos
+                            {pedidosAtualizacoes > 0 && (
+                              <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                {pedidosAtualizacoes > 9 ? "9+" : pedidosAtualizacoes}
+                              </span>
+                            )}
+                          </Link>
+                          <Link
+                            href="/meus-dados/enderecos"
+                            className="block px-4 py-2.5 text-sm text-foreground hover:bg-bg-2"
+                            onClick={() => setDropdownOpen(null)}
+                          >
+                            Meus endereços
+                          </Link>
+                          <Link
+                            href="/meus-dados/editar"
+                            className="block px-4 py-2.5 text-sm text-foreground hover:bg-bg-2"
+                            onClick={() => setDropdownOpen(null)}
+                          >
+                            Editar informações da conta
+                          </Link>
+                          <div className="border-t border-border my-1" />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDropdownOpen(null);
+                              signOut({ callbackUrl: "/" });
+                            }}
+                            className="block w-full px-4 py-2.5 text-left text-sm text-foreground hover:bg-bg-2"
+                          >
+                            Sair
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </>
                 )}
-                <div className="flex items-center gap-4 pl-4 border-l border-border">
-                  <span className="text-sm text-muted-foreground font-light">{session.user?.email}</span>
-                  <button
-                    onClick={() => signOut({ callbackUrl: "/" })}
-                    className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-bg-2 hover:border-gray-1 transition-all duration-300"
-                  >
-                    Sair
-                  </button>
-                </div>
+                {((session.user as any)?.role === "ADMIN" || (session.user as any)?.role === "OPERADOR") && (
+                  <div className="flex items-center gap-4 pl-4 border-l border-border">
+                    <span className="text-sm text-muted-foreground font-light">{session.user?.email}</span>
+                    <button
+                      onClick={() => signOut({ callbackUrl: "/" })}
+                      className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-bg-2 hover:border-gray-1 transition-all duration-300"
+                    >
+                      Sair
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <Link 
@@ -491,6 +563,21 @@ export default function Navbar() {
             >
               Home
             </Link>
+            {ambientes.length > 0 && (
+              <div className="border-b border-border pb-2 mb-2">
+                <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ambientes</div>
+                {ambientes.map((a) => (
+                  <Link
+                    key={a.id}
+                    href={`/produtos?ambienteId=${encodeURIComponent(a.id)}`}
+                    className="block px-6 py-2 text-sm text-foreground hover:bg-bg-2 rounded-lg transition-colors"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {a.nome}
+                  </Link>
+                ))}
+              </div>
+            )}
             <Link 
               href="/produtos"
               className="px-4 py-3 text-sm font-medium text-foreground hover:bg-bg-2 rounded-lg transition-colors duration-300"
@@ -574,7 +661,7 @@ export default function Navbar() {
                           </span>
                         )}
                       </div>
-                      <span>Meus Pedidos</span>
+                      <span>Meus pedidos</span>
                       {pedidosAtualizacoes > 0 && (
                         <span className="ml-auto relative flex h-2 w-2">
                           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
@@ -587,20 +674,31 @@ export default function Navbar() {
                       className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-bg-2 rounded-lg transition-colors duration-300"
                       onClick={() => setMenuOpen(false)}
                     >
-                      <svg 
-                        className="h-5 w-5" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          strokeWidth={2} 
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" 
-                        />
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
-                      <span>Meus Dados</span>
+                      <span>Minha Conta</span>
+                    </Link>
+                    <Link 
+                      href="/meus-dados/enderecos" 
+                      className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-bg-2 rounded-lg transition-colors duration-300"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span>Meus endereços</span>
+                    </Link>
+                    <Link 
+                      href="/meus-dados/editar" 
+                      className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-bg-2 rounded-lg transition-colors duration-300"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      <span>Editar informações da conta</span>
                     </Link>
                   </>
                 )}

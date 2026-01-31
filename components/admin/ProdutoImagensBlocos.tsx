@@ -182,11 +182,11 @@ export function ProdutoImagensBlocos({
     return (
       <div className="relative group space-y-2">
         {isValidUrl ? (
-          <div className="relative aspect-square rounded-lg overflow-hidden border border-gray-300 bg-gray-100">
+          <div className="relative aspect-square rounded-lg overflow-hidden border border-gray-300 bg-gray-100 flex items-center justify-center">
             <img
               src={url}
               alt="Preview"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23ddd' width='100' height='100'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-size='12'%3EImagem inválida%3C/text%3E%3C/svg%3E";
               }}
